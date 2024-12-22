@@ -56,10 +56,16 @@ typedef struct {
 } ZF4CharBatchID;
 
 typedef struct {
+    int spriteBatchCnt;
+} ZF4RenderLayerProps;
+
+typedef void (*ZF4RenderLayerPropsInitializer)(ZF4RenderLayerProps* const props, const int layerIndex);
+
+typedef struct {
     ZF4QuadBuf* spriteBatchQuadBufs;
     ZF4SpriteBatchTransients* spriteBatchTransients;
     int spriteBatchesFilled;
-    int spriteBatchCnt;
+    ZF4RenderLayerProps props;
 } ZF4RenderLayer;
 
 typedef struct {
@@ -75,7 +81,7 @@ typedef struct {
     ZF4Camera cam;
 } ZF4Renderer;
 
-bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int* const layerSpriteBatchCnts);
+bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer);
 void zf4_clean_renderer(ZF4Renderer* const renderer);
 void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs, const ZF4Assets* const assets);
 

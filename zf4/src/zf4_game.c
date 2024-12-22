@@ -10,11 +10,11 @@ typedef struct {
     ZF4MemArena memArena;
     ZF4Assets assets;
     ZF4ShaderProgs shaderProgs;
-    ZF4Renderer renderer;
+    ZF4SceneManager sceneManager;
 } Game;
 
 static void clean_game(Game* const game) {
-    zf4_clean_renderer(&game->renderer);
+    zf4_unload_scene(&game->sceneManager.scene);
     zf4_unload_shader_progs(&game->shaderProgs);
     zf4_unload_assets(&game->assets);
     zf4_clean_window();
@@ -61,9 +61,9 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
 
     zf4_load_shader_progs(&game.shaderProgs);
 
-    int bc = 8; // TEMP
+    game.sceneManager.typeInfoLoader = userInfo->sceneTypeInfoLoader;
 
-    if (!zf4_load_renderer(&game.renderer, &game.memArena, 1, &bc)) {
+    if (!zf4_load_scene_of_type(&game.sceneManager, 0)) {
         clean_game(&game);
         return;
     }
@@ -86,10 +86,10 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
             int i = 0;
 
             do {
-                zf4_empty_sprite_batches(&game.renderer);
-
-                const ZF4Rect rect = {0, 0, 16, 16};
-                zf4_write_to_sprite_batch(&game.renderer, 0, 0, (ZF4Vec2D) { 0.0f, 0.0f }, & rect, (ZF4Vec2D) { 0.0f, 0.0f }, 0.0f, (ZF4Vec2D) { 1.0f, 1.0f }, 1.0f, & game.assets.textures);
+                if (!zf4_proc_scene_tick(&game.sceneManager)) {
+                    clean_game(&game);
+                    return;
+                }
 
                 frameDurAccum -= TARG_TICK_DUR;
                 ++i;
@@ -98,7 +98,7 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
             zf4_save_input_state();
         }
 
-        zf4_render_all(&game.renderer, &game.shaderProgs, &game.assets);
+        zf4_render_all(&game.sceneManager.scene.renderer, &game.shaderProgs, &game.assets);
         zf4_swap_window_buffers();
 
         glfwPollEvents();

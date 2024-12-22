@@ -6,6 +6,7 @@
 #include <zf4_assets.h>
 #include <zf4_shader_progs.h>
 #include <zf4_renderer.h>
+#include <zf4_scenes.h>
 
 typedef struct {
     int windowInitWidth;
@@ -13,6 +14,9 @@ typedef struct {
     const char* windowTitle;
     bool windowResizable;
     bool windowHideCursor;
+
+    int sceneTypeCnt;
+    ZF4SceneTypeInfoLoader sceneTypeInfoLoader;
 } ZF4UserGameInfo;
 
 void zf4_run_game(const ZF4UserGameInfo* const userInfo);

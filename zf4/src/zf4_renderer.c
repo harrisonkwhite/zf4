@@ -85,24 +85,24 @@ static ZF4QuadBuf gen_quad_buf(const int quadCnt, const bool sprite) {
     return buf;
 }
 
-static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const memArena, const int spriteBatchCnt) {
-    layer->spriteBatchCnt = spriteBatchCnt;
-
+static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const memArena, const ZF4RenderLayerProps props) {
+    layer->props = props;
+    
     // Reserve memory in the arena.
-    layer->spriteBatchQuadBufs = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchQuadBufs) * spriteBatchCnt, alignof(ZF4QuadBuf));
+    layer->spriteBatchQuadBufs = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchQuadBufs) * props.spriteBatchCnt, alignof(ZF4QuadBuf));
 
     if (!layer->spriteBatchQuadBufs) {
         return false;
     }
 
-    layer->spriteBatchTransients = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchTransients) * spriteBatchCnt, alignof(ZF4SpriteBatchTransients));
+    layer->spriteBatchTransients = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchTransients) * props.spriteBatchCnt, alignof(ZF4SpriteBatchTransients));
 
     if (!layer->spriteBatchTransients) {
         return false;
     }
 
     // Generate quad buffers.
-    for (int i = 0; i < spriteBatchCnt; ++i) {
+    for (int i = 0; i < props.spriteBatchCnt; ++i) {
         layer->spriteBatchQuadBufs[i] = gen_quad_buf(ZF4_SPRITE_BATCH_SLOT_LIMIT, true);
     }
 
@@ -135,7 +135,7 @@ static void init_cam_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* const
     mat->elems[3][1] = (-cam->pos.y * cam->scale) + (zf4_get_window_size().y / 2.0f);
 }
 
-bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int* const layerSpriteBatchCnts) {
+bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer) {
     assert(zf4_is_zero(renderer, sizeof(*renderer)));
     assert(layerCnt > 0);
 
@@ -148,7 +148,11 @@ bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena,
     renderer->layerCnt = layerCnt;
 
     for (int i = 0; i < layerCnt; ++i) {
-        if (!load_render_layer(&renderer->layers[i], memArena, layerSpriteBatchCnts[i])) {
+        ZF4RenderLayerProps props = {0};
+        layerPropsInitializer(&props, i);
+        assert(!zf4_is_zero(&props, sizeof(props)));
+
+        if (!load_render_layer(&renderer->layers[i], memArena, props)) {
             return false;
         }
     }
@@ -160,7 +164,7 @@ void zf4_clean_renderer(ZF4Renderer* const renderer) {
     for (int i = 0; i < renderer->layerCnt; ++i) {
         ZF4RenderLayer* const layer = &renderer->layers[i];
 
-        for (int j = 0; j < layer->spriteBatchCnt; ++j) {
+        for (int j = 0; j < layer->props.spriteBatchCnt; ++j) {
             glDeleteVertexArrays(1, &layer->spriteBatchQuadBufs[j].vertArrayGLID);
             glDeleteBuffers(1, &layer->spriteBatchQuadBufs[j].vertBufGLID);
             glDeleteBuffers(1, &layer->spriteBatchQuadBufs[j].elemBufGLID);
@@ -206,7 +210,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
 
         const ZF4RenderLayer* const layer = &renderer->layers[i];
 
-        for (int j = 0; j < layer->spriteBatchCnt; ++j) {
+        for (int j = 0; j < layer->props.spriteBatchCnt; ++j) {
             const ZF4QuadBuf* const batchQuadBuf = &layer->spriteBatchQuadBufs[j];
             const ZF4SpriteBatchTransients* const batchTransData = &layer->spriteBatchTransients[j];
 
@@ -226,7 +230,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
 void zf4_empty_sprite_batches(ZF4Renderer* const renderer) {
     for (int i = 0; i < renderer->layerCnt; ++i) {
         ZF4RenderLayer* const layer = &renderer->layers[i];
-        memset(layer->spriteBatchTransients, 0, sizeof(*layer->spriteBatchTransients) * layer->spriteBatchCnt);
+        memset(layer->spriteBatchTransients, 0, sizeof(*layer->spriteBatchTransients) * layer->props.spriteBatchCnt);
         layer->spriteBatchesFilled = 0;
     }
 }
@@ -244,7 +248,7 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
     if (batchTransData->slotsUsed == ZF4_SPRITE_BATCH_SLOT_LIMIT || (texUnit = add_tex_unit_to_sprite_batch(batchTransData, texIndex)) == -1) {
         ++layer->spriteBatchesFilled;
 
-        if (layer->spriteBatchesFilled < layer->spriteBatchCnt) {
+        if (layer->spriteBatchesFilled < layer->props.spriteBatchCnt) {
             zf4_write_to_sprite_batch(renderer, layerIndex, texIndex, pos, srcRect, origin, rot, scale, alpha, textures);
         } else {
             assert(false);
