@@ -2,7 +2,9 @@
 #define ZF4_WINDOW_H
 
 #include <stdbool.h>
+#include <assert.h>
 #include <GLFW/glfw3.h>
+#include <glad/glad.h>
 #include <zf4c_math.h>
 
 typedef enum {

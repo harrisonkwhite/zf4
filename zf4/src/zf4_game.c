@@ -8,6 +8,7 @@ typedef struct {
 
 static void clean_game(GameMem* const mem) {
     zf4_clean_window();
+    glfwTerminate();
     zf4_clean_mem_arena(&mem->arena);
 }
 
@@ -19,10 +20,17 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
         return;
     }
 
+    if (!glfwInit()) {
+        clean_game(&mem);
+        return;
+    }
+
     if (!zf4_init_window(userInfo->windowInitWidth, userInfo->windowInitHeight, userInfo->windowTitle, userInfo->windowResizable, userInfo->windowHideCursor)) {
         clean_game(&mem);
         return;
     }
+
+    zf4_show_window();
 
     while (!zf4_window_should_close()) {
         zf4_swap_window_buffers();
