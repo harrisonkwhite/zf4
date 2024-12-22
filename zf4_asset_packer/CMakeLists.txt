@@ -8,6 +8,7 @@ find_package(SndFile CONFIG REQUIRED)
 
 add_executable(zf4_asset_packer
 	src/zf4ap_main.c
+	src/zf4ap_textures.c
 	${PARENT_DIR}/vendor/stb_image/src/stb_image.c
 
 	src/zf4ap.h
