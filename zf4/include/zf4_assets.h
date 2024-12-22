@@ -14,7 +14,17 @@ typedef struct {
 } ZF4Textures;
 
 typedef struct {
+    ZF4FontArrangementInfo* arrangementInfos;
+
+    GLuint* texGLIDs;
+    ZF4Pt2D* texSizes;
+
+    int cnt;
+} ZF4Fonts;
+
+typedef struct {
     ZF4Textures textures;
+    ZF4Fonts fonts;
 } ZF4Assets;
 
 bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena);

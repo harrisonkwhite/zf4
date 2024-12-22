@@ -1,5 +1,12 @@
 #include <zf4_assets.h>
 
+static void set_up_gl_tex(const GLuint glID, const ZF4Pt2D size, const unsigned char* const pxData) {
+    glBindTexture(GL_TEXTURE_2D, glID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pxData);
+}
+
 static bool load_textures(ZF4Textures* const textures, ZF4MemArena* const memArena, FILE* const fs) {
     fread(&textures->cnt, sizeof(textures->cnt), 1, fs);
 
@@ -18,8 +25,7 @@ static bool load_textures(ZF4Textures* const textures, ZF4MemArena* const memAre
         }
 
         // Allocate memory for pixel data, to be reused for all textures.
-        const int pxDataSize = ZF4_TEX_CHANNEL_CNT * ZF4_TEX_WIDTH_LIMIT * ZF4_TEX_HEIGHT_LIMIT;
-        unsigned char* const pxData = malloc(pxDataSize);
+        unsigned char* const pxData = malloc(ZF4_TEX_PX_DATA_SIZE_LIMIT);
 
         if (!pxData) {
             return false;
@@ -32,12 +38,54 @@ static bool load_textures(ZF4Textures* const textures, ZF4MemArena* const memAre
             for (int i = 0; i < textures->cnt; ++i) {
                 fread(&textures->sizes[i], sizeof(textures->sizes[i]), 1, fs);
                 fread(pxData, ZF4_TEX_CHANNEL_CNT * textures->sizes[i].x * textures->sizes[i].y, 1, fs);
-
-                glBindTexture(GL_TEXTURE_2D, textures->glIDs[i]);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textures->sizes[i].x, textures->sizes[i].y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pxData);
+                set_up_gl_tex(textures->glIDs[i], textures->sizes[i], pxData);
             }
+        }
+
+        free(pxData);
+    }
+
+    return true;
+}
+
+static bool load_fonts(ZF4Fonts* const fonts, ZF4MemArena* const memArena, FILE* const fs) {
+    fread(&fonts->cnt, sizeof(fonts->cnt), 1, fs);
+
+    if (fonts->cnt > 0) {
+        // Reserve space in the arena for font data.
+        fonts->arrangementInfos = zf4_push_to_mem_arena(memArena, sizeof(*fonts->arrangementInfos) * fonts->cnt, alignof(ZF4FontArrangementInfo));
+
+        if (!fonts->arrangementInfos) {
+            return false;
+        }
+
+        fonts->texGLIDs = zf4_push_to_mem_arena(memArena, sizeof(*fonts->texGLIDs) * fonts->cnt, alignof(GLuint));
+
+        if (!fonts->texGLIDs) {
+            return false;
+        }
+
+        fonts->texSizes = zf4_push_to_mem_arena(memArena, sizeof(*fonts->texSizes) * fonts->cnt, alignof(ZF4Pt2D));
+
+        if (!fonts->texSizes) {
+            return false;
+        }
+
+        // Allocate memory for pixel data, to be reused for all font textures.
+        unsigned char* const pxData = malloc(ZF4_TEX_PX_DATA_SIZE_LIMIT);
+
+        if (!pxData) {
+            return false;
+        }
+
+        // Load fonts.
+        glGenTextures(fonts->cnt, fonts->texGLIDs);
+
+        for (int i = 0; i < fonts->cnt; ++i) {
+            fread(&fonts->arrangementInfos[i], sizeof(fonts->arrangementInfos[i]), 1, fs);
+            fread(&fonts->texSizes[i], sizeof(fonts->texSizes[i]), 1, fs);
+            fread(pxData, ZF4_TEX_PX_DATA_SIZE_LIMIT, 1, fs);
+            set_up_gl_tex(fonts->texGLIDs[i], fonts->texSizes[i], pxData);
         }
 
         free(pxData);
@@ -56,7 +104,8 @@ bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena) {
         return false;
     }
 
-    if (!load_textures(&assets->textures, memArena, fs)) {
+    if (!load_textures(&assets->textures, memArena, fs)
+        || !load_fonts(&assets->fonts, memArena, fs)) {
         fclose(fs);
         return false;
     }
