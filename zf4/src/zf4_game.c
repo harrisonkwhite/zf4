@@ -7,17 +7,19 @@
 #define TARG_TICK_DUR_LIMIT_MULT 8.0
 
 typedef struct {
-    ZF4MemArena arena;
+    ZF4MemArena memArena;
     ZF4Assets assets;
     ZF4ShaderProgs shaderProgs;
+    ZF4Renderer renderer;
 } Game;
 
 static void clean_game(Game* const game) {
+    zf4_clean_renderer(&game->renderer);
     zf4_unload_shader_progs(&game->shaderProgs);
     zf4_unload_assets(&game->assets);
     zf4_clean_window();
     glfwTerminate();
-    zf4_clean_mem_arena(&game->arena);
+    zf4_clean_mem_arena(&game->memArena);
 }
 
 static double calc_valid_frame_dur(const double frameTime, const double frameTimeLast) {
@@ -28,7 +30,7 @@ static double calc_valid_frame_dur(const double frameTime, const double frameTim
 void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
     Game game = {0};
 
-    if (!zf4_init_mem_arena(&game.arena, MEM_ARENA_SIZE)) {
+    if (!zf4_init_mem_arena(&game.memArena, MEM_ARENA_SIZE)) {
         clean_game(&game);
         return;
     }
@@ -52,12 +54,19 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (!zf4_load_assets(&game.assets, &game.arena)) {
+    if (!zf4_load_assets(&game.assets, &game.memArena)) {
         clean_game(&game);
         return;
     }
 
     zf4_load_shader_progs(&game.shaderProgs);
+
+    int bc = 8; // TEMP
+
+    if (!zf4_load_renderer(&game.renderer, &game.memArena, 1, &bc)) {
+        clean_game(&game);
+        return;
+    }
 
     zf4_show_window();
 
@@ -77,6 +86,11 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
             int i = 0;
 
             do {
+                zf4_empty_sprite_batches(&game.renderer);
+
+                const ZF4Rect rect = {0, 0, 16, 16};
+                zf4_write_to_sprite_batch(&game.renderer, 0, 0, (ZF4Vec2D) { 0.0f, 0.0f }, & rect, (ZF4Vec2D) { 0.0f, 0.0f }, 0.0f, (ZF4Vec2D) { 1.0f, 1.0f }, 1.0f, & game.assets.textures);
+
                 frameDurAccum -= TARG_TICK_DUR;
                 ++i;
             } while (i < tickCnt);
@@ -84,6 +98,7 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
             zf4_save_input_state();
         }
 
+        zf4_render_all(&game.renderer, &game.shaderProgs, &game.assets);
         zf4_swap_window_buffers();
 
         glfwPollEvents();
