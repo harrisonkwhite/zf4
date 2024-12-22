@@ -11,10 +11,20 @@
 
 #define SRC_ASSET_FILE_PATH_BUF_SIZE 256
 
-cJSON* get_cj_asset_array(const cJSON* const instrsCJObj, const char* const arrayName);
-void write_asset_cnt(FILE* const outputFS, const cJSON* const cjAssetArray);
+typedef bool (*AssetTypePacker)(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjAssets);
+
+typedef struct {
+    FILE* outputFS;
+    char* instrsFileChars;
+    cJSON* instrsCJ;
+} AssetPacker;
+
+bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir);
+void clean_asset_packer(AssetPacker* const packer, const bool packingSuccess);
+
 bool complete_asset_file_path(char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const char* const relPath);
 
-bool pack_textures(FILE* const outputFS, const cJSON* const instrsCJ, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen);
+bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjTextures);
+bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjFonts);
 
 #endif

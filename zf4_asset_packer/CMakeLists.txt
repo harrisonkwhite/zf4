@@ -7,8 +7,10 @@ find_package(Freetype REQUIRED)
 find_package(SndFile CONFIG REQUIRED)
 
 add_executable(zf4_asset_packer
-	src/zf4ap_main.c
+	src/zf4ap_entry.c
+	src/zf4ap.c
 	src/zf4ap_textures.c
+	src/zf4ap_fonts.c
 	${PARENT_DIR}/vendor/stb_image/src/stb_image.c
 
 	src/zf4ap.h

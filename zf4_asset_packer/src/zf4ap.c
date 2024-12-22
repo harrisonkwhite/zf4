@@ -4,38 +4,57 @@
 
 #define PACKING_INSTRS_FILE_NAME "packing_instrs.json"
 
-typedef struct {
-    FILE* outputFS;
-    char* instrsFileChars;
-    cJSON* instrsCJ;
-} AssetPacker;
+static const char* const i_assetTypeNames[] = {
+    "textures",
+    "fonts"
+};
 
-static FILE* open_output_file(const char* const outputDir) {
+static const AssetTypePacker i_assetTypePackers[] = {
+    pack_textures,
+    pack_fonts
+};
+
+static FILE* open_output_fs(const char* const outputDir) {
     // Determine the output file path.
     char filePath[256];
     const int filePathLen = snprintf(filePath, sizeof(filePath), "%s/%s", outputDir, ZF4_ASSETS_FILE_NAME);
 
     if (filePathLen >= sizeof(filePath)) {
+        zf4_log_error("Output file path \"%s\" is too long! Limit is %d characters.", filePath, sizeof(filePath) - 1);
         return NULL;
     }
 
     // Create or replace the output file.
-    return fopen(filePath, "wb");
+    FILE* const fs = fopen(filePath, "wb");
+
+    if (!fs) {
+        zf4_log_error("Failed to open output file \"%s\"!", filePath);
+    }
+
+    return fs;
 }
 
 static char* get_packing_instrs_file_chars(char* const srcAssetFilePathBuf, const int srcAssetFilePathBufStartLen) {
+    // Get the path of the packing instructions file.
     if (!complete_asset_file_path(srcAssetFilePathBuf, srcAssetFilePathBufStartLen, PACKING_INSTRS_FILE_NAME)) {
         return NULL;
     }
 
-    return zf4_get_file_contents(srcAssetFilePathBuf);
+    // Get its contents (dynamically allocated).
+    char* const contents = zf4_get_file_contents(srcAssetFilePathBuf);
+
+    if (!contents) {
+        zf4_log_error("Failed to get packing instructions file contents!", srcAssetFilePathBuf);
+    }
+
+    return contents;
 }
 
-static bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir) {
+bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir) {
     assert(zf4_is_zero(packer, sizeof(*packer)));
 
-    // Open the output file.
-    packer->outputFS = open_output_file(outputDir);
+    // Open the output file stream.
+    packer->outputFS = open_output_fs(outputDir);
 
     if (!packer->outputFS) {
         return false;
@@ -60,18 +79,33 @@ static bool run_asset_packer(AssetPacker* const packer, const char* const srcDir
     packer->instrsCJ = cJSON_Parse(packer->instrsFileChars);
 
     if (!packer->instrsCJ) {
+        zf4_log_error("Failed to parse packing instructions JSON file \"%s\"!", srcAssetFilePathBuf);
         return false;
     }
 
     // Perform packing for each asset type using the packing instructions file.
-    if (!pack_textures(packer->outputFS, packer->instrsCJ, srcAssetFilePathBuf, srcAssetFilePathStartLen)) {
-        return false;
+    for (int i = 0; i < ZF4_ASSET_TYPE_CNT; ++i) {
+        cJSON* const cjAssets = cJSON_GetObjectItemCaseSensitive(packer->instrsCJ, i_assetTypeNames[i]);
+
+        if (!cJSON_IsArray(cjAssets)) {
+            zf4_log_error("Failed to get \"%s\" array from packing instructions JSON file!", i_assetTypeNames[i]);
+            return false;
+        }
+
+        const int assetCnt = cJSON_GetArraySize(cjAssets);
+        fwrite(&assetCnt, sizeof(assetCnt), 1, packer->outputFS);
+
+        if (assetCnt > 0) {
+            if (!i_assetTypePackers[i](packer->outputFS, srcAssetFilePathBuf, srcAssetFilePathStartLen, cjAssets)) {
+                return false;
+            }
+        }
     }
 
     return true;
 }
 
-static void clean_asset_packer(AssetPacker* const packer, const bool packingSuccessful) {
+void clean_asset_packer(AssetPacker* const packer, const bool packingSuccess) {
     cJSON_Delete(packer->instrsCJ);
 
     free(packer->instrsFileChars);
@@ -79,45 +113,12 @@ static void clean_asset_packer(AssetPacker* const packer, const bool packingSucc
     if (packer->outputFS) {
         fclose(packer->outputFS);
 
-        if (!packingSuccessful) {
+        if (!packingSuccess) {
             remove(ZF4_ASSETS_FILE_NAME);
         }
     }
-    
+
     memset(packer, 0, sizeof(*packer));
-}
-
-int main(const int argCnt, const char* const* args) {
-    if (argCnt != 3) {
-        zf4_log_error("Invalid number of command-line arguments! Expected a source directory and an output directory.");
-        return EXIT_FAILURE;
-    }
-
-    const char* const srcDir = args[1]; // The directory containing the assets to pack.
-    const char* const outputDir = args[2]; // The directory to output the packed assets file to.
-
-    AssetPacker packer = {0};
-
-    const bool packingSuccessful = run_asset_packer(&packer, srcDir, outputDir);
-
-    clean_asset_packer(&packer, packingSuccessful);
-
-    return packingSuccessful ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-cJSON* get_cj_asset_array(const cJSON* const instrsCJObj, const char* const arrayName) {
-    cJSON* const assets = cJSON_GetObjectItemCaseSensitive(instrsCJObj, arrayName);
-
-    if (!cJSON_IsArray(assets)) {
-        return NULL;
-    }
-
-    return assets;
-}
-
-void write_asset_cnt(FILE* const outputFS, const cJSON* const cjAssetArray) {
-    const int assetCnt = cJSON_GetArraySize(cjAssetArray);
-    fwrite(&assetCnt, sizeof(assetCnt), 1, outputFS);
 }
 
 bool complete_asset_file_path(char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const char* const relPath) {
@@ -125,6 +126,7 @@ bool complete_asset_file_path(char* const srcAssetFilePathBuf, const int srcAsse
 
     if (srcAssetFilePathBuf[SRC_ASSET_FILE_PATH_BUF_SIZE - 1]) {
         const int lenLimit = SRC_ASSET_FILE_PATH_BUF_SIZE - 1 - srcAssetFilePathStartLen;
+        zf4_log_error("Asset file path \"%s\" is too long! Limit is %d characters.", srcAssetFilePathBuf, lenLimit);
         return false;
     }
 

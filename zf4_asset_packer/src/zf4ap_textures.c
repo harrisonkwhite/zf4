@@ -2,19 +2,12 @@
 
 #include <stb_image.h>
 
-bool pack_textures(FILE* const outputFS, const cJSON* const instrsCJ, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen) {
-    const cJSON* const cjTextures = get_cj_asset_array(instrsCJ, "textures");
-
-    if (!cjTextures) {
-        return false;
-    }
-
-    write_asset_cnt(outputFS, cjTextures);
-
+bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjTextures) {
     const cJSON* cjTexRelFilePath = NULL;
 
     cJSON_ArrayForEach(cjTexRelFilePath, cjTextures) {
         if (!cJSON_IsString(cjTexRelFilePath)) {
+            zf4_log_error("Failed to get texture file path from packing instructions JSON file!");
             return false;
         }
 
@@ -27,6 +20,7 @@ bool pack_textures(FILE* const outputFS, const cJSON* const instrsCJ, char* cons
         stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, NULL, ZF4_TEX_CHANNEL_CNT);
 
         if (!texPxData) {
+            zf4_log_error("Failed to load texture with file path \"%s\"!", srcAssetFilePathBuf);
             return false;
         }
 
