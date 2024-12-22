@@ -8,9 +8,11 @@
 
 typedef struct {
     ZF4MemArena arena;
+    ZF4Assets assets;
 } GameMem;
 
 static void clean_game(GameMem* const mem) {
+    zf4_unload_assets(&mem->assets);
     zf4_clean_window();
     glfwTerminate();
     zf4_clean_mem_arena(&mem->arena);
@@ -35,6 +37,20 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
     }
 
     if (!zf4_init_window(userInfo->windowInitWidth, userInfo->windowInitHeight, userInfo->windowTitle, userInfo->windowResizable, userInfo->windowHideCursor)) {
+        clean_game(&mem);
+        return;
+    }
+
+    if (!gladLoadGLLoader(glfwGetProcAddress)) {
+        zf4_log_error("Failed to initialise OpenGL function pointers!");
+        clean_game(&mem);
+        return;
+    }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    if (!zf4_load_assets(&mem.assets, &mem.arena)) {
         clean_game(&mem);
         return;
     }

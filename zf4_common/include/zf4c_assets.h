@@ -3,6 +3,8 @@
 
 #define ZF4_ASSETS_FILE_NAME "assets.dat"
 
+#define ZF4_TEX_WIDTH_LIMIT 2048
+#define ZF4_TEX_HEIGHT_LIMIT 2048
 #define ZF4_TEX_CHANNEL_CNT 4
 
 #endif
