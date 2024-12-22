@@ -2,67 +2,89 @@
 
 #include <cjson/cJSON.h>
 
-typedef enum {
-    TEXTURES_ASSET_TYPE,
-    FONTS_ASSET_TYPE,
-    SOUNDS_ASSET_TYPE,
-    MUSIC_ASSET_TYPE
-} AssetType;
+#define PACKING_INSTRS_FILE_NAME "packing_instrs.json"
 
-cJSON* get_cj_asset_array(const cJSON* const instrsCJObj, const char* const arrayName) {
-    cJSON* const assetsCJ = cJSON_GetObjectItemCaseSensitive(instrsCJObj, arrayName);
+typedef struct {
+    FILE* outputFS;
+    char* instrsFileChars;
+    cJSON* instrsCJ;
+} AssetPacker;
 
-    if (!cJSON_IsArray(assetsCJ)) {
+static FILE* open_output_file(const char* const outputDir) {
+    // Determine the output file path.
+    char filePath[256];
+    const int filePathLen = snprintf(filePath, sizeof(filePath), "%s/%s", outputDir, ZF4_ASSETS_FILE_NAME);
+
+    if (filePathLen >= sizeof(filePath)) {
         return NULL;
     }
 
-    return assetsCJ;
+    // Create or replace the output file.
+    return fopen(filePath, "wb");
 }
 
-void write_asset_cnt(FILE* const outputFS, const cJSON* const cjAssetArray) {
-    const int assetCnt = cJSON_GetArraySize(cjAssetArray);
-    fwrite(&assetCnt, sizeof(assetCnt), 1, outputFS);
+static char* get_packing_instrs_file_chars(char* const srcAssetFilePathBuf, const int srcAssetFilePathBufStartLen) {
+    if (!complete_asset_file_path(srcAssetFilePathBuf, srcAssetFilePathBufStartLen, PACKING_INSTRS_FILE_NAME)) {
+        return NULL;
+    }
+
+    return zf4_get_file_contents(srcAssetFilePathBuf);
 }
 
-bool pack_textures(FILE* const outputFS, const cJSON* const instrsCJ, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, char* const errorMsgBuf) {
-    const cJSON* const cjTextures = get_cj_assets_array(instrsCJ, "textures");
+static bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir) {
+    assert(zf4_is_zero(packer, sizeof(*packer)));
 
-    if (!cjTextures) {
+    // Open the output file.
+    packer->outputFS = open_output_file(outputDir);
+
+    if (!packer->outputFS) {
         return false;
     }
 
-    write_asset_cnt(outputFS, cjTextures);
+    // Initialise the source asset file path buffer with the source directory.
+    char srcAssetFilePathBuf[SRC_ASSET_FILE_PATH_BUF_SIZE] = {0};
+    const int srcAssetFilePathStartLen = snprintf(srcAssetFilePathBuf, SRC_ASSET_FILE_PATH_BUF_SIZE, "%s/", srcDir);
 
-    const cJSON* cjTexRelFilePath = NULL;
+    if (srcAssetFilePathStartLen >= SRC_ASSET_FILE_PATH_BUF_SIZE) {
+        return false;
+    }
 
-    cJSON_ArrayForEach(cjTexRelFilePath, cjTextures) {
-        // Get the relative file path of the texture.
-        if (!cJSON_IsString(cjTexRelFilePath)) {
-            return false;
-        }
+    // Get the contents of the packing instructions JSON file.
+    packer->instrsFileChars = get_packing_instrs_file_chars(srcAssetFilePathBuf, srcAssetFilePathStartLen);
 
-        if (!complete_asset_file_path(srcAssetFilePathBuf, srcAssetFilePathStartLen, cjTexRelFilePath->valuestring)) {
-            return false;
-        }
+    if (!packer->instrsFileChars) {
+        return false;
+    }
 
-        // Load and write the size and pixel data of the texture.
-        ZF4Pt2D texSize;
-        stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, nullptr, zf3::gk_texChannelCnt);
+    // Parse the packing instructions file contents.
+    packer->instrsCJ = cJSON_Parse(packer->instrsFileChars);
 
-        if (!texPxData) {
-            snprintf(errorMsgBuf, gk_errorMsgBufSize, "Failed to load pixel data for texture with relative file path \"%s\"!", cjTexRelFilePath->valuestring);
-            return false;
-        }
+    if (!packer->instrsCJ) {
+        return false;
+    }
 
-        fwrite(&texSize, sizeof(texSize), 1, outputFS);
-        fwrite(texPxData, sizeof(*texPxData), texSize.x * texSize.y * zf3::gk_texChannelCnt, outputFS);
-
-        zf4_log("Packed texture with file path \"%s\".", srcAssetFilePathBuf);
-
-        stbi_image_free(texPxData);
+    // Perform packing for each asset type using the packing instructions file.
+    if (!pack_textures(packer->outputFS, packer->instrsCJ, srcAssetFilePathBuf, srcAssetFilePathStartLen)) {
+        return false;
     }
 
     return true;
+}
+
+static void clean_asset_packer(AssetPacker* const packer, const bool packingSuccessful) {
+    cJSON_Delete(packer->instrsCJ);
+
+    free(packer->instrsFileChars);
+
+    if (packer->outputFS) {
+        fclose(packer->outputFS);
+
+        if (!packingSuccessful) {
+            remove(ZF4_ASSETS_FILE_NAME);
+        }
+    }
+    
+    memset(packer, 0, sizeof(*packer));
 }
 
 int main(const int argCnt, const char* const* args) {
@@ -74,5 +96,37 @@ int main(const int argCnt, const char* const* args) {
     const char* const srcDir = args[1]; // The directory containing the assets to pack.
     const char* const outputDir = args[2]; // The directory to output the packed assets file to.
 
-    return EXIT_SUCCESS;
+    AssetPacker packer = {0};
+
+    const bool packingSuccessful = run_asset_packer(&packer, srcDir, outputDir);
+
+    clean_asset_packer(&packer, packingSuccessful);
+
+    return packingSuccessful ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+cJSON* get_cj_asset_array(const cJSON* const instrsCJObj, const char* const arrayName) {
+    cJSON* const assets = cJSON_GetObjectItemCaseSensitive(instrsCJObj, arrayName);
+
+    if (!cJSON_IsArray(assets)) {
+        return NULL;
+    }
+
+    return assets;
+}
+
+void write_asset_cnt(FILE* const outputFS, const cJSON* const cjAssetArray) {
+    const int assetCnt = cJSON_GetArraySize(cjAssetArray);
+    fwrite(&assetCnt, sizeof(assetCnt), 1, outputFS);
+}
+
+bool complete_asset_file_path(char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const char* const relPath) {
+    strncpy(srcAssetFilePathBuf + srcAssetFilePathStartLen, relPath, SRC_ASSET_FILE_PATH_BUF_SIZE - srcAssetFilePathStartLen);
+
+    if (srcAssetFilePathBuf[SRC_ASSET_FILE_PATH_BUF_SIZE - 1]) {
+        const int lenLimit = SRC_ASSET_FILE_PATH_BUF_SIZE - 1 - srcAssetFilePathStartLen;
+        return false;
+    }
+
+    return true;
 }
