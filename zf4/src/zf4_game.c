@@ -9,13 +9,15 @@
 typedef struct {
     ZF4MemArena arena;
     ZF4Assets assets;
-} GameMem;
+    ZF4ShaderProgs shaderProgs;
+} Game;
 
-static void clean_game(GameMem* const mem) {
-    zf4_unload_assets(&mem->assets);
+static void clean_game(Game* const game) {
+    zf4_unload_shader_progs(&game->shaderProgs);
+    zf4_unload_assets(&game->assets);
     zf4_clean_window();
     glfwTerminate();
-    zf4_clean_mem_arena(&mem->arena);
+    zf4_clean_mem_arena(&game->arena);
 }
 
 static double calc_valid_frame_dur(const double frameTime, const double frameTimeLast) {
@@ -24,36 +26,38 @@ static double calc_valid_frame_dur(const double frameTime, const double frameTim
 }
 
 void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
-    GameMem mem = {0};
+    Game game = {0};
 
-    if (!zf4_init_mem_arena(&mem.arena, MEM_ARENA_SIZE)) {
-        clean_game(&mem);
+    if (!zf4_init_mem_arena(&game.arena, MEM_ARENA_SIZE)) {
+        clean_game(&game);
         return;
     }
 
     if (!glfwInit()) {
-        clean_game(&mem);
+        clean_game(&game);
         return;
     }
 
     if (!zf4_init_window(userInfo->windowInitWidth, userInfo->windowInitHeight, userInfo->windowTitle, userInfo->windowResizable, userInfo->windowHideCursor)) {
-        clean_game(&mem);
+        clean_game(&game);
         return;
     }
 
-    if (!gladLoadGLLoader(glfwGetProcAddress)) {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         zf4_log_error("Failed to initialise OpenGL function pointers!");
-        clean_game(&mem);
+        clean_game(&game);
         return;
     }
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (!zf4_load_assets(&mem.assets, &mem.arena)) {
-        clean_game(&mem);
+    if (!zf4_load_assets(&game.assets, &game.arena)) {
+        clean_game(&game);
         return;
     }
+
+    zf4_load_shader_progs(&game.shaderProgs);
 
     zf4_show_window();
 
@@ -85,5 +89,5 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
         glfwPollEvents();
     }
 
-    clean_game(&mem);
+    clean_game(&game);
 }

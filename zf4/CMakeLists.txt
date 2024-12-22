@@ -9,12 +9,14 @@ add_library(zf4 STATIC
     src/zf4_game.c
     src/zf4_window.c
     src/zf4_assets.c
+    src/zf4_shader_progs.c
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
     include/zf4.h
     include/zf4_game.h
     include/zf4_window.h
     include/zf4_assets.h
+    include/zf4_shader_progs.h
     ${PARENT_DIR}/vendor/glad/include/glad/glad.h
     ${PARENT_DIR}/vendor/glad/include/KHR/khrplatform.h
 )

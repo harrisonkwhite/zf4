@@ -4,6 +4,7 @@
 #include <zf4c_mem.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
+#include <zf4_shader_progs.h>
 
 typedef struct {
     int windowInitWidth;
