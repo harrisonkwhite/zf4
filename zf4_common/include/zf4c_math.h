@@ -8,6 +8,26 @@ typedef struct {
     float x, y;
 } ZF4Vec2D;
 
+typedef union {
+    struct {
+        float x, y, z;
+    };
+
+    struct {
+        float r, g, b;
+    };
+} ZF4Vec3D;
+
+typedef union {
+    struct {
+        float x, y, z, w;
+    };
+
+    struct {
+        float r, g, b, a;
+    };
+} ZF4Vec4D;
+
 typedef struct {
     int x, y;
 } ZF4Pt2D;

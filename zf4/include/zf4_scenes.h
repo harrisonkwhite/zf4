@@ -24,6 +24,7 @@ typedef struct {
     int memArenaSize;
 
     int renderLayerCnt;
+    int camRenderLayerCnt;
     ZF4RenderLayerPropsInitializer renderLayerPropsInitializer;
 
     ZF4SceneInit init;

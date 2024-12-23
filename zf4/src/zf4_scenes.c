@@ -19,7 +19,7 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
         return false;
     }
 
-    if (!zf4_load_renderer(&scene->renderer, &scene->memArena, typeInfo.renderLayerCnt, typeInfo.renderLayerPropsInitializer)) {
+    if (!zf4_load_renderer(&scene->renderer, &scene->memArena, typeInfo.renderLayerCnt, typeInfo.camRenderLayerCnt, typeInfo.renderLayerPropsInitializer)) {
         zf4_log_error("Failed to load scene renderer!");
         zf4_clean_mem_arena(&scene->memArena); // NOTE: Unnecessary?
         return false;
@@ -35,6 +35,8 @@ void zf4_unload_scene(ZF4Scene* const scene) {
 }
 
 bool zf4_proc_scene_tick(ZF4SceneManager* const sceneManager, const ZF4GamePtrs* const gamePtrs) {
+    zf4_empty_sprite_batches(&sceneManager->scene.renderer);
+
     int sceneChangeIndex = -1;
 
     if (!sceneManager->typeInfo.tick(&sceneManager->scene, &sceneChangeIndex, gamePtrs)) {

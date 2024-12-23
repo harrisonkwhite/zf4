@@ -22,10 +22,6 @@ typedef enum {
 } ZF4FontVerAlign;
 
 typedef struct {
-    float r, g, b, a;
-} ZF4Color;
-
-typedef struct {
     GLuint vertArrayGLID;
     GLuint vertBufGLID;
     GLuint elemBufGLID;
@@ -51,7 +47,7 @@ typedef struct {
     int fontIndex;
     ZF4Vec2D pos;
     float rot;
-    ZF4Color blend;
+    ZF4Vec4D blend;
 } ZF4CharBatchDisplayProps;
 
 typedef struct {
@@ -92,11 +88,11 @@ typedef struct {
     ZF4RenderLayer* layers;
     int layerCnt;
     int camLayerCnt;
-    ZF4Color bgColor;
+    ZF4Vec3D bgColor;
     ZF4Camera cam;
 } ZF4Renderer;
 
-bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer);
+bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int camLayerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer);
 void zf4_clean_renderer(ZF4Renderer* const renderer);
 void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs, const ZF4Assets* const assets);
 

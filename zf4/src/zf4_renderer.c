@@ -159,9 +159,10 @@ static void init_cam_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* const
     mat->elems[3][1] = (-cam->pos.y * cam->scale) + (zf4_get_window_size().y / 2.0f);
 }
 
-bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer) {
+bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int camLayerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer) {
     assert(zf4_is_zero(renderer, sizeof(*renderer)));
     assert(layerCnt > 0);
+    assert(camLayerCnt >= 0 && camLayerCnt <= layerCnt);
 
     renderer->layers = zf4_push_to_mem_arena(memArena, sizeof(*renderer->layers) * layerCnt, alignof(ZF4RenderLayer));
 
@@ -170,6 +171,7 @@ bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena,
     }
 
     renderer->layerCnt = layerCnt;
+    renderer->camLayerCnt = camLayerCnt;
 
     for (int i = 0; i < layerCnt; ++i) {
         ZF4RenderLayerProps props = {0};
