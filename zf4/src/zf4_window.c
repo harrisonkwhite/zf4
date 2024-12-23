@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <glad/glad.h>
+#include <zf4c.h>
 
 typedef unsigned long long KeysDownBitset;
 typedef unsigned char MouseButtonsDownBitset;
@@ -152,6 +153,7 @@ bool zf4_init_window(const int width, const int height, const char* const title,
     i_glfwWindow = glfwCreateWindow(width, height, title, NULL, NULL);
 
     if (!i_glfwWindow) {
+        zf4_log_error("Failed to create GLFW window!");
         return false;
     }
 

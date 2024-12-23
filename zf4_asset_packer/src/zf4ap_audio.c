@@ -2,7 +2,7 @@
 
 #include <sndfile.h>
 
-static bool write_audio_file_data(FILE* const outputFS, float* const samples, const char* const filePath) {
+static bool write_audio_file_data(FILE* const outputFS, float* const samples, const char* const filePath, const bool snd) {
     SF_INFO sfInfo;
     SNDFILE* const sf = sf_open(filePath, SFM_READ, &sfInfo);
 
@@ -19,6 +19,12 @@ static bool write_audio_file_data(FILE* const outputFS, float* const samples, co
 
     if (audioInfo.channelCnt != 1 && audioInfo.channelCnt != 2) {
         zf4_log_error("Audio file with path \"%s\" has an unsupported channel count of %d.", filePath, audioInfo.channelCnt);
+        sf_close(sf);
+        return false;
+    }
+
+    if (snd && audioInfo.sampleCntPerChannel * audioInfo.channelCnt > ZF4_SOUND_SAMPLE_LIMIT) {
+        zf4_log_error("Sound file with path \"%s\" exceeds the sample limit of %d!", filePath, ZF4_SOUND_SAMPLE_LIMIT);
         sf_close(sf);
         return false;
     }
@@ -64,7 +70,7 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
             break;
         }
 
-        if (!write_audio_file_data(outputFS, samples, srcAssetFilePathBuf)) {
+        if (!write_audio_file_data(outputFS, samples, srcAssetFilePathBuf, true)) {
             success = false;
             break;
         }
@@ -101,7 +107,7 @@ bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
             break;
         }
 
-        if (!write_audio_file_data(outputFS, samples, srcAssetFilePathBuf)) {
+        if (!write_audio_file_data(outputFS, samples, srcAssetFilePathBuf, false)) {
             success = false;
             break;
         }

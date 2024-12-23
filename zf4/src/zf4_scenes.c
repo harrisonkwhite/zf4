@@ -13,10 +13,12 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
     sceneManager->typeInfoLoader(&typeInfo, typeIndex);
 
     if (!zf4_init_mem_arena(&scene->memArena, typeInfo.memArenaSize)) {
+        zf4_log_error("Failed to initialise scene memory arena!");
         return false;
     }
 
     if (!zf4_load_renderer(&scene->renderer, &scene->memArena, typeInfo.renderLayerCnt, typeInfo.renderLayerPropsInitializer)) {
+        zf4_log_error("Failed to load scene renderer!");
         zf4_clean_mem_arena(&scene->memArena); // NOTE: Unnecessary?
         return false;
     }

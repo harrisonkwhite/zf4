@@ -144,9 +144,20 @@ bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena) {
         return false;
     }
 
-    if (!load_textures(&assets->textures, memArena, fs)
-        || !load_fonts(&assets->fonts, memArena, fs)
-        || !load_sounds(&assets->sounds, memArena, fs)) {
+    if (!load_textures(&assets->textures, memArena, fs)) {
+        zf4_log_error("Failed to load textures!");
+        fclose(fs);
+        return false;
+    }
+
+    if (!load_fonts(&assets->fonts, memArena, fs)) {
+        zf4_log_error("Failed to load fonts!");
+        fclose(fs);
+        return false;
+    }
+
+    if (!load_sounds(&assets->sounds, memArena, fs)) {
+        zf4_log_error("Failed to load sounds!");
         fclose(fs);
         return false;
     }

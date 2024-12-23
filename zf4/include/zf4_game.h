@@ -14,6 +14,6 @@ typedef struct {
     ZF4SceneTypeInfoLoader sceneTypeInfoLoader;
 } ZF4UserGameInfo;
 
-void zf4_run_game(const ZF4UserGameInfo* const userInfo);
+void zf4_start_game(const ZF4UserGameInfo* const userInfo);
 
 #endif
