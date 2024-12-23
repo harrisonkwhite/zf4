@@ -4,6 +4,7 @@
 #include <zf4c.h>
 #include <zf4_assets.h>
 #include <zf4_shader_progs.h>
+#include <zf4_window.h>
 
 #define ZF4_SPRITE_BATCH_SLOT_LIMIT 4096
 #define ZF4_CHAR_BATCH_SLOT_LIMIT 1024
@@ -105,17 +106,20 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
 void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchID id);
 
 inline ZF4Vec2D zf4_get_cam_size(const ZF4Camera* const cam) {
-    return (ZF4Vec2D) { zf4_get_window_size().x / cam->scale, zf4_get_window_size().y / cam->scale };
+    const ZF4Vec2D size = {zf4_get_window_size().x / cam->scale, zf4_get_window_size().y / cam->scale};
+    return size;
 }
 
 inline ZF4Vec2D zf4_get_cam_top_left(const ZF4Camera* const cam) {
-    const ZF4Vec2D camSize = zf4_get_cam_size(cam);
-    return (ZF4Vec2D) { cam->pos.x - (camSize.x / 2.0f), cam->pos.y - (camSize.y / 2.0f) };
+    const ZF4Vec2D size = zf4_get_cam_size(cam);
+    const ZF4Vec2D topLeft = {cam->pos.x - (size.x / 2.0f), cam->pos.y - (size.y / 2.0f)};
+    return topLeft;
 }
 
 inline ZF4Vec2D zf4_get_cam_bottom_right(const ZF4Camera* const cam) {
-    const ZF4Vec2D camSize = zf4_get_cam_size(cam);
-    return (ZF4Vec2D) { cam->pos.x + (camSize.x / 2.0f), cam->pos.y + (camSize.y / 2.0f) };
+    const ZF4Vec2D size = zf4_get_cam_size(cam);
+    const ZF4Vec2D bottomRight = {cam->pos.x + (size.x / 2.0f), cam->pos.y + (size.y / 2.0f)};
+    return bottomRight;
 }
 
 #endif
