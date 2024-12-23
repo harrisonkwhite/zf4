@@ -14,9 +14,13 @@
 #define ZF4_FONT_CHAR_RANGE_BEGIN 32
 #define ZF4_FONT_CHAR_RANGE_SIZE 95
 
+#define ZF4_AUDIO_SAMPLES_PER_CHUNK 44100
+
 typedef enum {
     ZF4_TEX_ASSET_TYPE,
     ZF4_FONT_ASSET_TYPE,
+    ZF4_SOUND_ASSET_TYPE,
+    ZF4_MUSIC_ASSET_TYPE,
 
     ZF4_ASSET_TYPE_CNT
 } ZF4AssetType;
@@ -35,5 +39,11 @@ typedef struct {
     int lineHeight;
     ZF4FontCharsArrangementInfo chars;
 } ZF4FontArrangementInfo;
+
+typedef struct {
+    int channelCnt;
+    long long sampleCntPerChannel;
+    int sampleRate;
+} ZF4AudioInfo;
 
 #endif

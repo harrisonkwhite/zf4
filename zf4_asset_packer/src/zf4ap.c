@@ -6,12 +6,16 @@
 
 static const char* const i_assetTypeNames[] = {
     "textures",
-    "fonts"
+    "fonts",
+    "sounds",
+    "music"
 };
 
 static const AssetTypePacker i_assetTypePackers[] = {
     pack_textures,
-    pack_fonts
+    pack_fonts,
+    pack_sounds,
+    pack_music
 };
 
 static FILE* open_output_fs(const char* const outputDir) {
