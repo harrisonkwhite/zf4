@@ -7,8 +7,10 @@
 typedef struct {
     ZF4MemArena memArena;
     ZF4Renderer renderer;
+    void* miscPtr;
 } ZF4Scene;
 
+typedef bool (*ZF4SceneInit)(ZF4Scene* const scene);
 typedef bool (*ZF4SceneTick)(ZF4Scene* const scene, int* const sceneChangeIndex);
 
 typedef struct {
@@ -17,6 +19,7 @@ typedef struct {
     int renderLayerCnt;
     ZF4RenderLayerPropsInitializer renderLayerPropsInitializer;
 
+    ZF4SceneInit init;
     ZF4SceneTick tick;
 } ZF4SceneTypeInfo;
 

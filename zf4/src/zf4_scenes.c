@@ -21,7 +21,7 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
         return false;
     }
 
-    return true;
+    return typeInfo.init(scene);
 }
 
 void zf4_unload_scene(ZF4Scene* const scene) {
