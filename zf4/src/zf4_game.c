@@ -17,11 +17,13 @@ typedef struct {
     ZF4MemArena memArena;
     ZF4Assets assets;
     ZF4ShaderProgs shaderProgs;
+    ZF4SoundSrcManager sndSrcManager;
     ZF4SceneManager sceneManager;
 } Game;
 
 static void clean_game(Game* const game) {
     zf4_unload_scene(&game->sceneManager.scene);
+    zf4_clean_sound_srcs(&game->sndSrcManager);
     zf4_unload_shader_progs(&game->shaderProgs);
     zf4_unload_assets(&game->assets);
     zf4_clean_audio_system();
@@ -96,6 +98,8 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
             int i = 0;
 
             do {
+                zf4_handle_auto_release_sound_srcs(&game.sndSrcManager);
+
                 if (!zf4_proc_scene_tick(&game.sceneManager)) {
                     clean_game(&game);
                     return;
