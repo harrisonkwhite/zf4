@@ -24,7 +24,15 @@ typedef struct {
     float elems[4][4];
 } ZF4Matrix4x4;
 
-void init_identity_matrix_4x4(ZF4Matrix4x4* const mat);
-void init_ortho_matrix_4x4(ZF4Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
+void zf4_init_identity_matrix_4x4(ZF4Matrix4x4* const mat);
+void zf4_init_ortho_matrix_4x4(ZF4Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
+
+inline int zf4_get_rect_right(const ZF4Rect* const rect) {
+    return rect->x + rect->width;
+}
+
+inline int zf4_get_rect_bottom(const ZF4Rect* const rect) {
+    return rect->y + rect->height;
+}
 
 #endif

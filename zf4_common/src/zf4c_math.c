@@ -1,6 +1,6 @@
 #include <zf4c_math.h>
 
-void init_identity_matrix_4x4(ZF4Matrix4x4* const mat) {
+void zf4_init_identity_matrix_4x4(ZF4Matrix4x4* const mat) {
     assert(zf4_is_zero(mat, sizeof(*mat)));
 
     mat->elems[0][0] = 1.0f;
@@ -9,7 +9,7 @@ void init_identity_matrix_4x4(ZF4Matrix4x4* const mat) {
     mat->elems[3][3] = 1.0f;
 }
 
-void init_ortho_matrix_4x4(ZF4Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far) {
+void zf4_init_ortho_matrix_4x4(ZF4Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far) {
     assert(zf4_is_zero(mat, sizeof(*mat)));
 
     mat->elems[0][0] = 2.0f / (right - left);

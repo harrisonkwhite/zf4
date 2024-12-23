@@ -1,15 +1,5 @@
 #include <zf4c_mem.h>
 
-bool zf4_is_power_of_two(const int n) {
-    return !(n & (n - 1));
-}
-
-int zf4_align_forward(const int n, const int alignment) {
-    assert(n >= 0);
-    assert(zf4_is_power_of_two(alignment));
-    return (n + alignment - 1) & ~(alignment - 1);
-}
-
 bool zf4_is_zero(const void* const data, const int size) {
     const ZF4Byte* const dataBytes = data;
 
@@ -22,10 +12,38 @@ bool zf4_is_zero(const void* const data, const int size) {
     return true;
 }
 
+int zf4_get_first_active_bit_index(const ZF4Byte* const bytes, const int bitCnt) {
+    for (int i = 0; i < bitCnt; ++i) {
+        if (zf4_is_bit_active(bytes, i)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int zf4_get_first_inactive_bit_index(const ZF4Byte* const bytes, const int bitCnt) {
+    for (int i = 0; i < bitCnt; ++i) {
+        if (!zf4_is_bit_active(bytes, i)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+bool zf4_are_all_bits_active(const ZF4Byte* const bytes, const int bitCnt) {
+    return zf4_get_first_inactive_bit_index(bytes, bitCnt) == -1;
+}
+
+bool zf4_are_all_bits_inactive(const ZF4Byte* const bytes, const int bitCnt) {
+    return zf4_get_first_active_bit_index(bytes, bitCnt) == -1;
+}
+
 bool zf4_init_mem_arena(ZF4MemArena* const arena, const int size) {
     assert(zf4_is_zero(arena, sizeof(*arena)));
 
-    arena->buf = malloc(size);
+    arena->buf = calloc(size, 1);
 
     if (!arena->buf) {
         return false;
