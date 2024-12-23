@@ -2,6 +2,7 @@
 #define ZF4C_MATH_H
 
 #include <math.h>
+#include <stdbool.h>
 
 #define ZF4_MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 #define ZF4_MAX(X, Y) ((X) > (Y) ? (X) : (Y))
@@ -41,6 +42,11 @@ typedef struct {
 } ZF4Rect;
 
 typedef struct {
+    float x, y;
+    float width, height;
+} ZF4RectF;
+
+typedef struct {
     float elems[4][4];
 } ZF4Matrix4x4;
 
@@ -76,12 +82,33 @@ inline ZF4Rect zf4_create_rect(const int x, const int y, const int width, const 
     return rect;
 }
 
+inline ZF4RectF zf4_create_rect_f(const float x, const float y, const float width, const float height) {
+    const ZF4RectF rect = {x, y, width, height};
+    return rect;
+}
+
 inline int zf4_get_rect_right(const ZF4Rect* const rect) {
+    return rect->x + rect->width;
+}
+
+inline float zf4_get_rect_f_right(const ZF4RectF* const rect) {
     return rect->x + rect->width;
 }
 
 inline int zf4_get_rect_bottom(const ZF4Rect* const rect) {
     return rect->y + rect->height;
+}
+
+inline float zf4_get_rect_f_bottom(const ZF4RectF* const rect) {
+    return rect->y + rect->height;
+}
+
+inline bool zf4_do_rects_intersect(const ZF4Rect* const a, const ZF4Rect* const b) {
+    return a->x < zf4_get_rect_right(b) && zf4_get_rect_right(a) > b->x && a->y < zf4_get_rect_bottom(b) && zf4_get_rect_bottom(a) > b->y;
+}
+
+inline bool zf4_do_rect_fs_intersect(const ZF4RectF* const a, const ZF4RectF* const b) {
+    return a->x < zf4_get_rect_f_right(b) && zf4_get_rect_f_right(a) > b->x && a->y < zf4_get_rect_f_bottom(b) && zf4_get_rect_f_bottom(a) > b->y;
 }
 
 #endif
