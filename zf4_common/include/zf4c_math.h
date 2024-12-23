@@ -1,9 +1,6 @@
 #ifndef ZF4C_MATH_H
 #define ZF4C_MATH_H
 
-#include <assert.h>
-#include <zf4c_mem.h>
-
 #define ZF4_MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 #define ZF4_MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 

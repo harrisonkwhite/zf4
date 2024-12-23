@@ -1,8 +1,6 @@
 #ifndef ZF4_SHADER_PROGS_H
 #define ZF4_SHADER_PROGS_H
 
-#include <assert.h>
-#include <string.h>
 #include <stdbool.h>
 #include <glad/glad.h>
 

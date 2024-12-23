@@ -2,7 +2,6 @@
 #define ZF4_RENDERER_H
 
 #include <zf4c.h>
-#include <zf4_window.h>
 #include <zf4_assets.h>
 #include <zf4_shader_progs.h>
 

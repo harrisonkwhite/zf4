@@ -1,5 +1,8 @@
 #include <zf4_renderer.h>
 
+#include <stdalign.h>
+#include <zf4_window.h>
+
 #define QUAD_LIMIT ZF4_MAX(ZF4_SPRITE_BATCH_SLOT_LIMIT, ZF4_CHAR_BATCH_SLOT_LIMIT)
 #define QUAD_INDICES_LEN (6 * QUAD_LIMIT)
 
@@ -442,7 +445,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
                 textFirstLineMinOffs = fontArrangementInfo->chars.verOffsets[textCharIndex];
                 textFirstLineMinOffsUpdated = true;
             } else {
-                textFirstLineMinOffs = min(fontArrangementInfo->chars.verOffsets[textCharIndex], textFirstLineMinOffs);
+                textFirstLineMinOffs = ZF4_MIN(fontArrangementInfo->chars.verOffsets[textCharIndex], textFirstLineMinOffs);
             }
         }
 
@@ -450,7 +453,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
             textLastLineMaxHeight = fontArrangementInfo->chars.verOffsets[textCharIndex] + fontArrangementInfo->chars.srcRects[textCharIndex].height;
             textLastLineMaxHeightUpdated = true;
         } else {
-            textLastLineMaxHeight = max(fontArrangementInfo->chars.verOffsets[textCharIndex] + fontArrangementInfo->chars.srcRects[textCharIndex].height, textLastLineMaxHeight);
+            textLastLineMaxHeight = ZF4_MAX(fontArrangementInfo->chars.verOffsets[textCharIndex] + fontArrangementInfo->chars.srcRects[textCharIndex].height, textLastLineMaxHeight);
         }
 
         if (i > 0) {

@@ -1,5 +1,10 @@
 #include <zf4_assets.h>
 
+#include <stdalign.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <AL/alext.h>
+
 static void set_up_gl_tex(const GLuint glID, const ZF4Pt2D size, const unsigned char* const pxData) {
     glBindTexture(GL_TEXTURE_2D, glID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

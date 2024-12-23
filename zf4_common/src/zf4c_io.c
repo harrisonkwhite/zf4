@@ -1,5 +1,9 @@
 #include <zf4c_io.h>
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+
 void zf4_log(const char* const format, ...) {
     va_list args;
     va_start(args, format);

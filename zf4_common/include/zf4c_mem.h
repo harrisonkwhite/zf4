@@ -2,7 +2,6 @@
 #define ZF4C_MEM_H
 
 #include <assert.h>
-#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 

@@ -1,12 +1,9 @@
 #ifndef ZF4_ASSETS_H
 #define ZF4_ASSETS_H
 
-#include <stdlib.h>
 #include <stdbool.h>
-#include <stdalign.h>
 #include <glad/glad.h>
 #include <AL/al.h>
-#include <AL/alext.h>
 #include <zf4c.h>
 
 typedef struct {

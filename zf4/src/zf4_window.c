@@ -1,5 +1,8 @@
 #include <zf4_window.h>
 
+#include <assert.h>
+#include <glad/glad.h>
+
 typedef unsigned long long KeysDownBitset;
 typedef unsigned char MouseButtonsDownBitset;
 

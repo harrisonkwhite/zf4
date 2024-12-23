@@ -1,5 +1,7 @@
 #include <zf4c_mem.h>
 
+#include <stdlib.h>
+
 bool zf4_is_zero(const void* const data, const int size) {
     const ZF4Byte* const dataBytes = data;
 

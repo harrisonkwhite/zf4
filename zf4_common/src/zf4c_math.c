@@ -1,5 +1,8 @@
 #include <zf4c_math.h>
 
+#include <assert.h>
+#include <zf4c_mem.h>
+
 void zf4_init_identity_matrix_4x4(ZF4Matrix4x4* const mat) {
     assert(zf4_is_zero(mat, sizeof(*mat)));
 

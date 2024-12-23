@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <zf4c.h>
+#include <AL/alc.h>
 
 static ALCdevice* i_alDevice;
 static ALCcontext* i_alContext;

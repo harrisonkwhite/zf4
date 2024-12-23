@@ -1,12 +1,11 @@
 #ifndef ZF4AP_H
 #define ZF4AP_H
 
-#include <assert.h>
-#include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <cjson/cJSON.h>
+#include <assert.h>
 #include <zf4c.h>
 
 #define SRC_ASSET_FILE_PATH_BUF_SIZE 256
