@@ -1,5 +1,6 @@
 #include <zf4_renderer.h>
 
+#include <stdlib.h>
 #include <stdalign.h>
 #include <zf4_window.h>
 
@@ -475,7 +476,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
     zf4_clear_char_batch(renderer, id);
 
     const int vertsLen = CHAR_BATCH_SLOT_VERTS_CNT * textLen;
-    float* const verts = (float*)calloc(vertsLen, sizeof(float));
+    float* const verts = calloc(vertsLen, sizeof(*verts));
 
     if (!verts) {
         return;
