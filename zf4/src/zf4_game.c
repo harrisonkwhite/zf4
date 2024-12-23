@@ -73,7 +73,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 
     game->sceneManager.typeInfoLoader = userInfo->sceneTypeInfoLoader;
 
-    if (!zf4_load_scene_of_type(&game->sceneManager, 0, &gamePtrs)) { // We begin with the first scene.
+    if (!zf4_load_scene_of_type(&game->sceneManager, 0, &gamePtrs)) { // We begin with the first scene index.
         return;
     }
 

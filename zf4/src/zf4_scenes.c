@@ -3,6 +3,8 @@
 bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeIndex, const ZF4GamePtrs* const gamePtrs) {
     assert(zf4_is_zero(&sceneManager->scene, sizeof(sceneManager->scene)));
 
+    zf4_log("Loading scene of type index %d...", typeIndex);
+
     memset(&sceneManager->typeInfo, 0, sizeof(sceneManager->typeInfo));
     sceneManager->typeInfoLoader(&sceneManager->typeInfo, typeIndex);
     assert(!zf4_is_zero(&sceneManager->typeInfo, sizeof(sceneManager->typeInfo)));
@@ -40,6 +42,8 @@ bool zf4_proc_scene_tick(ZF4SceneManager* const sceneManager, const ZF4GamePtrs*
     }
 
     if (sceneChangeIndex != -1) {
+        zf4_log("Scene change request detected.");
+
         zf4_unload_scene(&sceneManager->scene);
 
         if (!zf4_load_scene_of_type(sceneManager, sceneChangeIndex, gamePtrs)) {
