@@ -1,8 +1,11 @@
 #ifndef ZF4C_MATH_H
 #define ZF4C_MATH_H
 
+#include <math.h>
+
 #define ZF4_MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 #define ZF4_MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+#define ZF4_CLAMP(X, MIN, MAX) ZF4_MIN(ZF4_MAX(X, MIN), MAX)
 
 typedef struct {
     float x, y;
@@ -46,6 +49,31 @@ void zf4_init_ortho_matrix_4x4(ZF4Matrix4x4* const mat, const float left, const 
 
 inline float zf4_lerp(const float a, const float b, const float t) {
     return a + ((b - a) * t);
+}
+
+inline ZF4Vec2D zf4_create_vec_2d(const float x, const float y) {
+    const ZF4Vec2D vec = {x, y};
+    return vec;
+}
+
+inline ZF4Vec3D zf4_create_vec_3d(const float x, const float y, const float z) {
+    const ZF4Vec3D vec = {x, y, z};
+    return vec;
+}
+
+inline ZF4Vec4D zf4_create_vec_4d(const float x, const float y, const float z, const float w) {
+    const ZF4Vec4D vec = {x, y, z, w};
+    return vec;
+}
+
+inline ZF4Pt2D zf4_create_pt_2d(const int x, const int y) {
+    const ZF4Pt2D pt = {x, y};
+    return pt;
+}
+
+inline ZF4Rect zf4_create_rect(const int x, const int y, const int width, const int height) {
+    const ZF4Rect rect = {x, y, width, height};
+    return rect;
 }
 
 inline int zf4_get_rect_right(const ZF4Rect* const rect) {
