@@ -1,6 +1,6 @@
 #include <zf4_scenes.h>
 
-bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeIndex) {
+bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeIndex, const ZF4GamePtrs* const gamePtrs) {
     assert(zf4_is_zero(&sceneManager->scene, sizeof(sceneManager->scene)));
 
     memset(&sceneManager->typeInfo, 0, sizeof(sceneManager->typeInfo));
@@ -23,7 +23,7 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
         return false;
     }
 
-    return typeInfo.init(scene);
+    return typeInfo.init(scene, gamePtrs);
 }
 
 void zf4_unload_scene(ZF4Scene* const scene) {
@@ -32,17 +32,17 @@ void zf4_unload_scene(ZF4Scene* const scene) {
     memset(scene, 0, sizeof(ZF4Scene));
 }
 
-bool zf4_proc_scene_tick(ZF4SceneManager* const sceneManager) {
+bool zf4_proc_scene_tick(ZF4SceneManager* const sceneManager, const ZF4GamePtrs* const gamePtrs) {
     int sceneChangeIndex = -1;
 
-    if (!sceneManager->typeInfo.tick(&sceneManager->scene, &sceneChangeIndex)) {
+    if (!sceneManager->typeInfo.tick(&sceneManager->scene, &sceneChangeIndex, gamePtrs)) {
         return false;
     }
 
     if (sceneChangeIndex != -1) {
         zf4_unload_scene(&sceneManager->scene);
 
-        if (!zf4_load_scene_of_type(sceneManager, sceneChangeIndex)) {
+        if (!zf4_load_scene_of_type(sceneManager, sceneChangeIndex, gamePtrs)) {
             return false;
         }
     }

@@ -66,9 +66,14 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 
     zf4_load_shader_progs(&game->shaderProgs);
 
+    const ZF4GamePtrs gamePtrs = {
+        .assets = &game->assets,
+        .sndSrcManager = &game->sndSrcManager
+    };
+
     game->sceneManager.typeInfoLoader = userInfo->sceneTypeInfoLoader;
 
-    if (!zf4_load_scene_of_type(&game->sceneManager, 0)) { // We begin with the first scene.
+    if (!zf4_load_scene_of_type(&game->sceneManager, 0, &gamePtrs)) { // We begin with the first scene.
         return;
     }
 
@@ -97,7 +102,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
             do {
                 zf4_handle_auto_release_sound_srcs(&game->sndSrcManager);
 
-                if (!zf4_proc_scene_tick(&game->sceneManager)) {
+                if (!zf4_proc_scene_tick(&game->sceneManager, &gamePtrs)) {
                     return;
                 }
 
