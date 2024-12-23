@@ -38,6 +38,16 @@ typedef struct {
 } ZF4SpriteBatchTransients;
 
 typedef struct {
+    int texIndex;
+    ZF4Vec2D pos;
+    ZF4Rect srcRect;
+    ZF4Vec2D origin;
+    float rot;
+    ZF4Vec2D scale;
+    float alpha;
+} ZF4SpriteBatchWriteInfo;
+
+typedef struct {
     int fontIndex;
     ZF4Vec2D pos;
     float rot;
@@ -91,7 +101,7 @@ void zf4_clean_renderer(ZF4Renderer* const renderer);
 void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs, const ZF4Assets* const assets);
 
 void zf4_empty_sprite_batches(ZF4Renderer* const renderer);
-void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const int texIndex, const ZF4Vec2D pos, const ZF4Rect* const srcRect, const ZF4Vec2D origin, const float rot, const ZF4Vec2D scale, const float alpha, const ZF4Textures* const textures);
+void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info, const ZF4Textures* const textures);
 
 ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex, const ZF4Vec2D pos);
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id);

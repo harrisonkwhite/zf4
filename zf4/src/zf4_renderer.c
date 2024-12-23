@@ -288,7 +288,7 @@ void zf4_empty_sprite_batches(ZF4Renderer* const renderer) {
     }
 }
 
-void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const int texIndex, const ZF4Vec2D pos, const ZF4Rect* const srcRect, const ZF4Vec2D origin, const float rot, const ZF4Vec2D scale, const float alpha, const ZF4Textures* const textures) {
+void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info, const ZF4Textures* const textures) {
     assert(layerIndex >= 0 && layerIndex < renderer->layerCnt);
 
     ZF4RenderLayer* const layer = &renderer->layers[layerIndex];
@@ -298,11 +298,11 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
 
     int texUnit;
 
-    if (batchTransData->slotsUsed == ZF4_SPRITE_BATCH_SLOT_LIMIT || (texUnit = add_tex_unit_to_sprite_batch(batchTransData, texIndex)) == -1) {
+    if (batchTransData->slotsUsed == ZF4_SPRITE_BATCH_SLOT_LIMIT || (texUnit = add_tex_unit_to_sprite_batch(batchTransData, info->texIndex)) == -1) {
         ++layer->spriteBatchesFilled;
 
         if (layer->spriteBatchesFilled < layer->props.spriteBatchCnt) {
-            zf4_write_to_sprite_batch(renderer, layerIndex, texIndex, pos, srcRect, origin, rot, scale, alpha, textures);
+            zf4_write_to_sprite_batch(renderer, layerIndex, info, textures);
         } else {
             assert(false);
         }
@@ -311,56 +311,56 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
     }
 
     const int slotIndex = batchTransData->slotsUsed;
-    const ZF4Pt2D texSize = textures->sizes[texIndex];
+    const ZF4Pt2D texSize = textures->sizes[info->texIndex];
 
     const float verts[] = {
-        (0.0f - origin.x) * scale.x,
-        (0.0f - origin.y) * scale.y,
-        pos.x,
-        pos.y,
-        srcRect->width,
-        srcRect->height,
-        rot,
+        (0.0f - info->origin.x) * info->scale.x,
+        (0.0f - info->origin.y) * info->scale.y,
+        info->pos.x,
+        info->pos.y,
+        info->srcRect.width,
+        info->srcRect.height,
+        info->rot,
         texUnit,
-        (float)srcRect->x / texSize.x,
-        (float)srcRect->y / texSize.y,
-        alpha,
+        (float)info->srcRect.x / texSize.x,
+        (float)info->srcRect.y / texSize.y,
+        info->alpha,
 
-        (1.0f - origin.x) * scale.x,
-        (0.0f - origin.y) * scale.y,
-        pos.x,
-        pos.y,
-        srcRect->width,
-        srcRect->height,
-        rot,
+        (1.0f - info->origin.x) * info->scale.x,
+        (0.0f - info->origin.y) * info->scale.y,
+        info->pos.x,
+        info->pos.y,
+        info->srcRect.width,
+        info->srcRect.height,
+        info->rot,
         texUnit,
-        (float)(srcRect->x + srcRect->width) / texSize.x,
-        (float)srcRect->y / texSize.y,
-        alpha,
+        (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
+        (float)info->srcRect.y / texSize.y,
+        info->alpha,
 
-        (1.0f - origin.x) * scale.x,
-        (1.0f - origin.y) * scale.y,
-        pos.x,
-        pos.y,
-        srcRect->width,
-        srcRect->height,
-        rot,
+        (1.0f - info->origin.x) * info->scale.x,
+        (1.0f - info->origin.y) * info->scale.y,
+        info->pos.x,
+        info->pos.y,
+        info->srcRect.width,
+        info->srcRect.height,
+        info->rot,
         texUnit,
-        (float)(srcRect->x + srcRect->width) / texSize.x,
-        (float)(srcRect->y + srcRect->height) / texSize.y,
-        alpha,
+        (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
+        (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
+        info->alpha,
 
-        (0.0f - origin.x) * scale.x,
-        (1.0f - origin.y) * scale.y,
-        pos.x,
-        pos.y,
-        srcRect->width,
-        srcRect->height,
-        rot,
+        (0.0f - info->origin.x) * info->scale.x,
+        (1.0f - info->origin.y) * info->scale.y,
+        info->pos.x,
+        info->pos.y,
+        info->srcRect.width,
+        info->srcRect.height,
+        info->rot,
         texUnit,
-        (float)srcRect->x / texSize.x,
-        (float)(srcRect->y + srcRect->height) / texSize.y,
-        alpha
+        (float)info->srcRect.x / texSize.x,
+        (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
+        info->alpha
     };
 
     const ZF4QuadBuf* const batchQuadBuf = &layer->spriteBatchQuadBufs[batchIndex];
