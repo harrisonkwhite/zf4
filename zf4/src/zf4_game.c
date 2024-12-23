@@ -1,5 +1,12 @@
 #include <zf4_game.h>
 
+#include <zf4c_mem.h>
+#include <zf4_window.h>
+#include <zf4_assets.h>
+#include <zf4_shader_progs.h>
+#include <zf4_renderer.h>
+#include <zf4_audio.h>
+
 #define MEM_ARENA_SIZE ZF4_MEGABYTES(32)
 
 #define TARG_FPS 60
@@ -17,6 +24,7 @@ static void clean_game(Game* const game) {
     zf4_unload_scene(&game->sceneManager.scene);
     zf4_unload_shader_progs(&game->shaderProgs);
     zf4_unload_assets(&game->assets);
+    zf4_clean_audio_system();
     zf4_clean_window();
     glfwTerminate();
     zf4_clean_mem_arena(&game->memArena);
@@ -53,6 +61,8 @@ void zf4_run_game(const ZF4UserGameInfo* const userInfo) {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    zf4_init_audio_system();
 
     if (!zf4_load_assets(&game.assets, &game.memArena)) {
         clean_game(&game);

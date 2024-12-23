@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdalign.h>
 #include <glad/glad.h>
+#include <AL/al.h>
+#include <AL/alext.h>
 #include <zf4c.h>
 
 typedef struct {
@@ -23,8 +25,14 @@ typedef struct {
 } ZF4Fonts;
 
 typedef struct {
+    GLuint* bufALIDs;
+    int cnt;
+} ZF4Sounds;
+
+typedef struct {
     ZF4Textures textures;
     ZF4Fonts fonts;
+    ZF4Sounds sounds;
 } ZF4Assets;
 
 bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena);
