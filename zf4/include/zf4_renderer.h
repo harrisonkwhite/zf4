@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ZF4_RENDERER_H
+#define ZF4_RENDERER_H
 
 #include <zf4c.h>
 #include <zf4_window.h>
@@ -97,3 +98,5 @@ ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const in
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id);
 void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign, const ZF4Fonts* const fonts);
 void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchID id);
+
+#endif

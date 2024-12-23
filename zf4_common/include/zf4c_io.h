@@ -1,5 +1,5 @@
-#ifndef ZF4C_LOGGING_H
-#define ZF4C_LOGGING_H
+#ifndef ZF4C_IO_H
+#define ZF4C_IO_H
 
 #include <stdlib.h>
 #include <stdio.h>

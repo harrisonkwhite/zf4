@@ -1,5 +1,5 @@
-#ifndef ZF4C
-#define ZF4C
+#ifndef ZF4C_H
+#define ZF4C_H
 
 #include <zf4c_io.h>
 #include <zf4c_assets.h>
