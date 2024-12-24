@@ -10,7 +10,7 @@
 typedef struct {
     ZF4MemArena memArena;
     ZF4Renderer renderer;
-    void* miscPtr;
+    void* userData;
 } ZF4Scene;
 
 typedef struct {
@@ -30,6 +30,9 @@ typedef struct {
 
     ZF4SceneInit init;
     ZF4SceneTick tick;
+
+    int userDataSize;
+    int userDataAlignment;
 } ZF4SceneTypeInfo;
 
 typedef void (*ZF4SceneTypeInfoLoader)(ZF4SceneTypeInfo* const typeInfo, const int typeIndex);

@@ -21,8 +21,16 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
 
     if (!zf4_load_renderer(&scene->renderer, &scene->memArena, typeInfo.renderLayerCnt, typeInfo.camRenderLayerCnt, typeInfo.renderLayerPropsInitializer)) {
         zf4_log_error("Failed to load scene renderer!");
-        zf4_clean_mem_arena(&scene->memArena); // NOTE: Unnecessary?
         return false;
+    }
+
+    if (typeInfo.userDataSize > 0) {
+        scene->userData = zf4_push_to_mem_arena(&scene->memArena, typeInfo.userDataSize, typeInfo.userDataAlignment);
+
+        if (!scene->userData) {
+            zf4_log_error("Failed to reserve memory for scene user data!");
+            return false;
+        }
     }
 
     return typeInfo.init(scene, gamePtrs);
