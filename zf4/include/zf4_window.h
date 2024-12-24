@@ -87,6 +87,9 @@ typedef enum {
     ZF4_NUM_MOUSE_BUTTON_CODES
 } ZF4MouseButtonCode;
 
+//
+// State
+//
 bool zf4_init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
 void zf4_clean_window();
 ZF4Pt2D zf4_get_window_size();
@@ -102,5 +105,11 @@ bool zf4_is_mouse_button_down(const ZF4MouseButtonCode buttonCode);
 bool zf4_is_mouse_button_pressed(const ZF4MouseButtonCode buttonCode);
 bool zf4_is_mouse_button_released(const ZF4MouseButtonCode buttonCode);
 ZF4Vec2D zf4_get_mouse_pos();
+
+//
+// Logic
+//
+ZF4KeyCode zf4_conv_glfw_key_code(const int keyCode);
+ZF4MouseButtonCode zf4_conv_glfw_mouse_button_code(const int buttonCode);
 
 #endif

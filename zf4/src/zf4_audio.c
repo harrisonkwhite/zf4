@@ -15,7 +15,7 @@ static void release_sound_src_by_index(ZF4SoundSrcManager* const manager, const 
     manager->alIDs[index] = 0;
 }
 
-static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID, const ZF4Music* const music) {
+static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID) {
     assert(bufALID);
 
     //const auto buf = alloc<AudioSample>(gk_musicBufSampleCnt); // TODO: Allocate this once and reuse.
@@ -25,7 +25,7 @@ static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID, co
         return false;
     }
 
-    const ZF4AudioInfo* const musicInfo = &music->infos[src->musicIndex];
+    const ZF4AudioInfo* const musicInfo = &zf4_get_music()->infos[src->musicIndex];
 
     const int totalBytesToRead = sizeof(ZF4AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt;
     const int bytesToRead = min(ZF4_MUSIC_BUF_SIZE, totalBytesToRead - src->fsBytesRead);
@@ -42,7 +42,7 @@ static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID, co
 
     if (src->fsBytesRead == totalBytesToRead) {
         src->fsBytesRead = 0;
-        fseek(src->fs, music->sampleDataFilePositions[src->musicIndex], SEEK_SET);
+        fseek(src->fs, zf4_get_music()->sampleDataFilePositions[src->musicIndex], SEEK_SET);
     }
 
     const ALenum format = musicInfo->channelCnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;
@@ -135,11 +135,11 @@ void zf4_handle_auto_release_sound_srcs(ZF4SoundSrcManager* const manager) {
     }
 }
 
-ZF4AudioSrcID zf4_add_sound_src(ZF4SoundSrcManager* const manager, const int sndIndex, const ZF4Sounds* const snds) {
+ZF4AudioSrcID zf4_add_sound_src(ZF4SoundSrcManager* const manager, const int sndIndex) {
     for (int i = 0; i < ZF4_SOUND_SRC_LIMIT; ++i) {
         if (!manager->alIDs[i]) {
             alGenSources(1, &manager->alIDs[i]);
-            alSourcei(manager->alIDs[i], AL_BUFFER, snds->bufALIDs[sndIndex]);
+            alSourcei(manager->alIDs[i], AL_BUFFER, zf4_get_sounds()->bufALIDs[sndIndex]);
 
             ++manager->versions[i];
 
@@ -173,8 +173,8 @@ void zf4_play_sound_src(const ZF4SoundSrcManager* const manager, const ZF4AudioS
     alSourcePlay(manager->alIDs[srcID.index]);
 }
 
-void zf4_add_and_play_sound_src(ZF4SoundSrcManager* const manager, const int sndIndex, const float gain, const float pitch, const ZF4Sounds* const snds) {
-    const ZF4AudioSrcID srcID = zf4_add_sound_src(manager, sndIndex, snds);
+void zf4_add_and_play_sound_src(ZF4SoundSrcManager* const manager, const int sndIndex, const float gain, const float pitch) {
+    const ZF4AudioSrcID srcID = zf4_add_sound_src(manager, sndIndex);
     zf4_play_sound_src(manager, srcID, gain, pitch);
     zf4_activate_bit(manager->autoReleaseBitset, srcID.index); // No reference to this source is returned, so it needs to be automatically released once it is detected as finished.
 }
@@ -189,7 +189,7 @@ void zf4_clean_music_srcs(ZF4MusicSrcManager* const manager) {
     memset(manager, 0, sizeof(*manager));
 }
 
-bool zf4_refresh_music_src_bufs(ZF4MusicSrcManager* const manager, const ZF4Music* const music) {
+bool zf4_refresh_music_src_bufs(ZF4MusicSrcManager* const manager) {
     for (int i = 0; i < ZF4_MUSIC_SRC_LIMIT; ++i) {
         if (!zf4_is_bit_active(manager->activityBitset, i)) {
             continue;
@@ -205,7 +205,7 @@ bool zf4_refresh_music_src_bufs(ZF4MusicSrcManager* const manager, const ZF4Musi
             ALuint bufALID;
             alSourceUnqueueBuffers(src->alID, 1, &bufALID);
 
-            if (!load_music_buf_data(src, bufALID, music)) {
+            if (!load_music_buf_data(src, bufALID)) {
                 return false;
             }
 
@@ -246,7 +246,7 @@ void zf4_remove_music_src(ZF4MusicSrcManager* const manager, const ZF4AudioSrcID
     zf4_deactivate_bit(manager->activityBitset, id.index);
 }
 
-bool zf4_play_music_src(ZF4MusicSrcManager* const manager, const ZF4AudioSrcID id, const float gain, const ZF4Music* const music) {
+bool zf4_play_music_src(ZF4MusicSrcManager* const manager, const ZF4AudioSrcID id, const float gain) {
     assert(id.index >= 0 && id.index < ZF4_MUSIC_SRC_LIMIT);
     assert(manager->versions[id.index] == id.version);
     assert(zf4_is_bit_active(manager->activityBitset, id.index));
@@ -259,10 +259,10 @@ bool zf4_play_music_src(ZF4MusicSrcManager* const manager, const ZF4AudioSrcID i
         return false;
     }
 
-    fseek(src->fs, music->sampleDataFilePositions[src->musicIndex], SEEK_SET);
+    fseek(src->fs, zf4_get_music()->sampleDataFilePositions[src->musicIndex], SEEK_SET);
 
     for (int i = 0; i < ZF4_MUSIC_BUF_CNT; ++i) {
-        if (!load_music_buf_data(src, src->bufALIDs[i], music)) {
+        if (!load_music_buf_data(src, src->bufALIDs[i])) {
             return false;
         }
     }

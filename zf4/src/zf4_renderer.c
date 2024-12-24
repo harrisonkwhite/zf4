@@ -200,7 +200,7 @@ void zf4_clean_renderer(ZF4Renderer* const renderer) {
     memset(renderer, 0, sizeof(*renderer));
 }
 
-void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs, const ZF4Assets* const assets) {
+void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs) {
     glClearColor(renderer->bgColor.r, renderer->bgColor.g, renderer->bgColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -248,7 +248,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
 
             for (int k = 0; k < batchTransData->texUnitsInUse; ++k) {
                 glActiveTexture(GL_TEXTURE0 + k);
-                glBindTexture(GL_TEXTURE_2D, assets->textures.glIDs[batchTransData->texUnitTexIDs[k]]);
+                glBindTexture(GL_TEXTURE_2D, zf4_get_textures()->glIDs[batchTransData->texUnitTexIDs[k]]);
             }
 
             glDrawElements(GL_TRIANGLES, 6 * batchTransData->slotsUsed, GL_UNSIGNED_SHORT, NULL);
@@ -274,7 +274,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
             glUniform4fv(shaderProgs->charQuad.blendUniLoc, 1, (const float*)&batch->displayProps.blend);
 
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, assets->fonts.texGLIDs[batch->displayProps.fontIndex]);
+            glBindTexture(GL_TEXTURE_2D, zf4_get_fonts()->texGLIDs[batch->displayProps.fontIndex]);
 
             glBindVertexArray(batch->quadBuf.vertArrayGLID);
             glDrawElements(GL_TRIANGLES, 6 * batch->slotCnt, GL_UNSIGNED_SHORT, NULL);
@@ -290,7 +290,7 @@ void zf4_empty_sprite_batches(ZF4Renderer* const renderer) {
     }
 }
 
-void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info, const ZF4Textures* const textures) {
+void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info) {
     assert(layerIndex >= 0 && layerIndex < renderer->layerCnt);
 
     ZF4RenderLayer* const layer = &renderer->layers[layerIndex];
@@ -304,7 +304,7 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
         ++layer->spriteBatchesFilled;
 
         if (layer->spriteBatchesFilled < layer->props.spriteBatchCnt) {
-            zf4_write_to_sprite_batch(renderer, layerIndex, info, textures);
+            zf4_write_to_sprite_batch(renderer, layerIndex, info);
         } else {
             assert(false);
         }
@@ -313,7 +313,7 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
     }
 
     const int slotIndex = batchTransData->slotsUsed;
-    const ZF4Pt2D texSize = textures->sizes[info->texIndex];
+    const ZF4Pt2D texSize = zf4_get_textures()->sizes[info->texIndex];
 
     const float verts[] = {
         (0.0f - info->origin.x) * info->scale.x,
@@ -403,15 +403,15 @@ void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID
     zf4_deactivate_bit(layer->charBatchActivityBitset, id.batchIndex);
 }
 
-void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign, const ZF4Fonts* const fonts) {
+void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign) {
     ZF4RenderLayer* const layer = &renderer->layers[id.layerIndex];
     ZF4CharBatch* const batch = &layer->charBatches[id.batchIndex];
 
     const int textLen = strlen(text);
     assert(textLen > 0 && textLen <= batch->slotCnt);
 
-    const ZF4FontArrangementInfo* const fontArrangementInfo = &fonts->arrangementInfos[batch->displayProps.fontIndex];
-    const ZF4Pt2D fontTexSize = fonts->texSizes[batch->displayProps.fontIndex];
+    const ZF4FontArrangementInfo* const fontArrangementInfo = &zf4_get_fonts()->arrangementInfos[batch->displayProps.fontIndex];
+    const ZF4Pt2D fontTexSize = zf4_get_fonts()->texSizes[batch->displayProps.fontIndex];
 
     ZF4Vec2D charDrawPositions[ZF4_CHAR_BATCH_SLOT_LIMIT];
     ZF4Vec2D charDrawPosPen = {0};

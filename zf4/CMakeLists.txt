@@ -7,12 +7,14 @@ find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
     src/zf4_game.c
-    src/zf4_window.c
-    src/zf4_assets.c
+    src/zf4_window_state.c
+    src/zf4_window_logic.c
+    src/zf4_assets_state.c
+    src/zf4_assets_logic.c
     src/zf4_shader_progs.c
     src/zf4_renderer.c
-    src/zf4_anims.c
-    src/zf4_anim_types.c
+    src/zf4_anims_state.c
+    src/zf4_anims_logic.c
     src/zf4_audio.c
     src/zf4_scenes.c
     ${PARENT_DIR}/vendor/glad/src/glad.c

@@ -1,7 +1,6 @@
 #include <zf4_assets.h>
 
 #include <stdalign.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <AL/alext.h>
 
@@ -12,7 +11,7 @@ static void set_up_gl_tex(const GLuint glID, const ZF4Pt2D size, const unsigned 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pxData);
 }
 
-static bool load_textures(ZF4Textures* const textures, ZF4MemArena* const memArena, FILE* const fs) {
+bool zf4_load_textures(ZF4Textures* const textures, ZF4MemArena* const memArena, FILE* const fs) {
     fread(&textures->cnt, sizeof(textures->cnt), 1, fs);
 
     if (textures->cnt > 0) {
@@ -53,7 +52,7 @@ static bool load_textures(ZF4Textures* const textures, ZF4MemArena* const memAre
     return true;
 }
 
-static bool load_fonts(ZF4Fonts* const fonts, ZF4MemArena* const memArena, FILE* const fs) {
+bool zf4_load_fonts(ZF4Fonts* const fonts, ZF4MemArena* const memArena, FILE* const fs) {
     fread(&fonts->cnt, sizeof(fonts->cnt), 1, fs);
 
     if (fonts->cnt > 0) {
@@ -99,7 +98,7 @@ static bool load_fonts(ZF4Fonts* const fonts, ZF4MemArena* const memArena, FILE*
     return true;
 }
 
-static bool load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE* const fs) {
+bool zf4_load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE* const fs) {
     fread(&snds->cnt, sizeof(snds->cnt), 1, fs);
 
     if (snds->cnt > 0) {
@@ -134,7 +133,7 @@ static bool load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE
     return true;
 }
 
-static bool load_music(ZF4Music* const music, ZF4MemArena* const memArena, FILE* const fs) {
+bool zf4_load_music(ZF4Music* const music, ZF4MemArena* const memArena, FILE* const fs) {
     fread(&music->cnt, sizeof(music->cnt), 1, fs);
 
     if (music->cnt > 0) {
@@ -157,59 +156,4 @@ static bool load_music(ZF4Music* const music, ZF4MemArena* const memArena, FILE*
     }
 
     return true;
-}
-
-bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena) {
-    assert(zf4_is_zero(assets, sizeof(*assets)));
-
-    FILE* const fs = fopen(ZF4_ASSETS_FILE_NAME, "rb");
-
-    if (!fs) {
-        zf4_log_error("Failed to open \"%s\"!", ZF4_ASSETS_FILE_NAME);
-        return false;
-    }
-
-    if (!load_textures(&assets->textures, memArena, fs)) {
-        zf4_log_error("Failed to load textures!");
-        fclose(fs);
-        return false;
-    }
-
-    if (!load_fonts(&assets->fonts, memArena, fs)) {
-        zf4_log_error("Failed to load fonts!");
-        fclose(fs);
-        return false;
-    }
-
-    if (!load_sounds(&assets->sounds, memArena, fs)) {
-        zf4_log_error("Failed to load sounds!");
-        fclose(fs);
-        return false;
-    }
-
-    if (!load_music(&assets->music, memArena, fs)) {
-        zf4_log_error("Failed to load music!");
-        fclose(fs);
-        return false;
-    }
-
-    fclose(fs);
-
-    return true;
-}
-
-void zf4_unload_assets(ZF4Assets* const assets) {
-    if (assets->sounds.cnt > 0) {
-        alDeleteBuffers(assets->sounds.cnt, assets->sounds.bufALIDs);
-    }
-
-    if (assets->fonts.cnt > 0) {
-        glDeleteTextures(assets->fonts.cnt, assets->fonts.texGLIDs);
-    }
-
-    if (assets->textures.cnt > 0) {
-        glDeleteTextures(assets->textures.cnt, assets->textures.glIDs);
-    }
-
-    memset(assets, 0, sizeof(*assets));
 }

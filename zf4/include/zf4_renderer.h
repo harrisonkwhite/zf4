@@ -95,14 +95,14 @@ typedef struct {
 
 bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int camLayerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer);
 void zf4_clean_renderer(ZF4Renderer* const renderer);
-void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs, const ZF4Assets* const assets);
+void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs);
 
 void zf4_empty_sprite_batches(ZF4Renderer* const renderer);
-void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info, const ZF4Textures* const textures);
+void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info);
 
 ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex, const ZF4Vec2D pos);
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id);
-void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign, const ZF4Fonts* const fonts);
+void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign);
 void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchID id);
 
 inline ZF4Vec2D zf4_get_cam_size(const ZF4Camera* const cam) {

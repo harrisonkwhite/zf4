@@ -14,22 +14,18 @@ typedef struct {
 
 typedef void (*ZF4AnimTypeLoader)(ZF4AnimType* const type, const int index);
 
-/*typedef struct {
-    ZF4AnimType* types;
-    int typeCnt;
-} ZF4AnimTypeManager;*/
-
 typedef struct {
     int typeIndex;
     int frameIndex;
     int frameTime;
 } ZF4Anim;
 
+//
+// State
+//
 bool zf4_load_anim_types(const int typeCnt, const ZF4AnimTypeLoader typeLoader);
 void zf4_unload_anim_types();
 const ZF4AnimType* zf4_get_anim_type(const int index);
-
-void zf4_anim_tick(ZF4Anim* const anim);
 
 inline ZF4Rect zf4_get_anim_src_rect(const ZF4Anim* const anim) {
     ZF4Rect rect;
@@ -37,6 +33,9 @@ inline ZF4Rect zf4_get_anim_src_rect(const ZF4Anim* const anim) {
     return rect;
 }
 
-//bool zf4_push_anim_types(ZF4AnimTypeManager* const manager, ZF4MemArena* const memArena, const ZF4AnimTypeLoader typeLoader, const int typeCnt);
+//
+// Logic
+//
+void zf4_anim_tick(ZF4Anim* const anim);
 
 #endif

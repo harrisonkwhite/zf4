@@ -9,15 +9,11 @@
 #include <zf4_renderer.h>
 #include <zf4_audio.h>
 
-#define MEM_ARENA_SIZE ZF4_MEGABYTES(32)
-
 #define TARG_FPS 60
 #define TARG_TICK_DUR (1.0 / TARG_FPS) // In seconds.
 #define TARG_TICK_DUR_LIMIT_MULT 8.0 // The multiplier on the target tick duration which produces the maximum acceptable tick duration.
 
 typedef struct {
-    ZF4MemArena memArena;
-    ZF4Assets assets;
     ZF4ShaderProgs shaderProgs;
     ZF4SoundSrcManager sndSrcManager;
     ZF4MusicSrcManager musicSrcManager;
@@ -36,11 +32,6 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
     // Initialisation
     //
     zf4_log("Initialising...");
-
-    if (!zf4_init_mem_arena(&game->memArena, MEM_ARENA_SIZE)) {
-        zf4_log_error("Failed to initialise game memory arena!");
-        return;
-    }
 
     if (!glfwInit()) {
         zf4_log_error("Failed to initialise GLFW!");
@@ -63,7 +54,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
         return;
     }
 
-    if (!zf4_load_assets(&game->assets, &game->memArena)) {
+    if (!zf4_load_assets()) {
         return;
     }
 
@@ -74,7 +65,6 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
     }
 
     const ZF4GamePtrs gamePtrs = {
-        .assets = &game->assets,
         .sndSrcManager = &game->sndSrcManager,
         .musicSrcManager = &game->musicSrcManager
     };
@@ -110,7 +100,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
             do {
                 zf4_handle_auto_release_sound_srcs(&game->sndSrcManager);
 
-                if (!zf4_refresh_music_src_bufs(&game->musicSrcManager, &game->assets.music)) {
+                if (!zf4_refresh_music_src_bufs(&game->musicSrcManager)) {
                     return;
                 }
 
@@ -125,7 +115,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
             zf4_save_input_state();
         }
 
-        zf4_render_all(&game->sceneManager.scene.renderer, &game->shaderProgs, &game->assets);
+        zf4_render_all(&game->sceneManager.scene.renderer, &game->shaderProgs);
         zf4_swap_window_buffers();
 
         glfwPollEvents();
@@ -142,9 +132,8 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
     zf4_clean_music_srcs(&game.musicSrcManager);
     zf4_clean_sound_srcs(&game.sndSrcManager);
     zf4_unload_shader_progs(&game.shaderProgs);
-    zf4_unload_assets(&game.assets);
+    zf4_unload_assets();
     zf4_clean_audio_system();
     zf4_clean_window();
     glfwTerminate();
-    zf4_clean_mem_arena(&game.memArena);
 }
