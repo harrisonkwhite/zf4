@@ -5,6 +5,7 @@
 #include <zf4_assets.h>
 #include <zf4_renderer.h>
 #include <zf4_audio.h>
+#include <zf4_anims.h>
 
 typedef struct {
     ZF4MemArena memArena;

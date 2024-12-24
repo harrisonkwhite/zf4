@@ -66,6 +66,10 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 
     zf4_load_shader_progs(&game->shaderProgs);
 
+    if (!zf4_load_anim_types(userInfo->animTypeCnt, userInfo->animTypeLoader)) {
+        return;
+    }
+
     const ZF4GamePtrs gamePtrs = {
         .assets = &game->assets,
         .sndSrcManager = &game->sndSrcManager
@@ -126,6 +130,7 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
     run_game(&game, userInfo);
 
     zf4_unload_scene(&game.sceneManager.scene);
+    zf4_unload_anim_types();
     zf4_clean_sound_srcs(&game.sndSrcManager);
     zf4_unload_shader_progs(&game.shaderProgs);
     zf4_unload_assets(&game.assets);
