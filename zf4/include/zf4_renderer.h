@@ -75,7 +75,7 @@ typedef struct {
     int spriteBatchesFilled;
 
     ZF4CharBatch* charBatches;
-    ZF4Byte* charBatchActivity;
+    ZF4Byte* charBatchActivityBitset;
 
     ZF4RenderLayerProps props;
 } ZF4RenderLayer;

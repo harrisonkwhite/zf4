@@ -1,5 +1,7 @@
 #include <zf4_game.h>
 
+#include <threads.h>
+
 #include <zf4c_mem.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
@@ -18,6 +20,7 @@ typedef struct {
     ZF4Assets assets;
     ZF4ShaderProgs shaderProgs;
     ZF4SoundSrcManager sndSrcManager;
+    ZF4MusicSrcManager musicSrcManager;
     ZF4SceneManager sceneManager;
 } Game;
 
@@ -72,7 +75,8 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 
     const ZF4GamePtrs gamePtrs = {
         .assets = &game->assets,
-        .sndSrcManager = &game->sndSrcManager
+        .sndSrcManager = &game->sndSrcManager,
+        .musicSrcManager = &game->musicSrcManager
     };
 
     game->sceneManager.typeInfoLoader = userInfo->sceneTypeInfoLoader;
@@ -106,6 +110,10 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
             do {
                 zf4_handle_auto_release_sound_srcs(&game->sndSrcManager);
 
+                if (!zf4_refresh_music_src_bufs(&game->musicSrcManager, &game->assets.music)) {
+                    return;
+                }
+
                 if (!zf4_proc_scene_tick(&game->sceneManager, &gamePtrs)) {
                     return;
                 }
@@ -131,6 +139,7 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
 
     zf4_unload_scene(&game.sceneManager.scene);
     zf4_unload_anim_types();
+    zf4_clean_music_srcs(&game.musicSrcManager);
     zf4_clean_sound_srcs(&game.sndSrcManager);
     zf4_unload_shader_progs(&game.shaderProgs);
     zf4_unload_assets(&game.assets);

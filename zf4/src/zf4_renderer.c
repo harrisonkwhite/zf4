@@ -114,9 +114,9 @@ static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const me
             return false;
         }
 
-        layer->charBatchActivity = zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(props.charBatchCnt), alignof(ZF4Byte));
+        layer->charBatchActivityBitset = zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(props.charBatchCnt), alignof(ZF4Byte));
 
-        if (!layer->charBatchActivity) {
+        if (!layer->charBatchActivityBitset) {
             return false;
         }
     }
@@ -263,7 +263,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
         glUniformMatrix4fv(shaderProgs->charQuad.viewUniLoc, 1, false, (const float*)viewMat->elems);
 
         for (int j = 0; j < layer->props.charBatchCnt; ++j) {
-            if (!zf4_is_bit_active(layer->charBatchActivity, j)) {
+            if (!zf4_is_bit_active(layer->charBatchActivityBitset, j)) {
                 continue;
             }
 
@@ -379,10 +379,10 @@ ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const in
 
     ZF4RenderLayer* const layer = &renderer->layers[layerIndex];
 
-    const int batchIndex = zf4_get_first_inactive_bit_index(layer->charBatchActivity, layer->props.charBatchCnt);
+    const int batchIndex = zf4_get_first_inactive_bit_index(layer->charBatchActivityBitset, layer->props.charBatchCnt);
     assert(batchIndex != -1);
 
-    zf4_activate_bit(layer->charBatchActivity, batchIndex);
+    zf4_activate_bit(layer->charBatchActivityBitset, batchIndex);
 
     layer->charBatches[batchIndex].quadBuf = gen_quad_buf(slotCnt, false);
     layer->charBatches[batchIndex].slotCnt = slotCnt;
@@ -400,7 +400,7 @@ ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const in
 
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id) {
     ZF4RenderLayer* const layer = &renderer->layers[id.layerIndex];
-    zf4_deactivate_bit(layer->charBatchActivity, id.batchIndex);
+    zf4_deactivate_bit(layer->charBatchActivityBitset, id.batchIndex);
 }
 
 void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign, const ZF4Fonts* const fonts) {

@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     const ZF4Assets* const assets;
     ZF4SoundSrcManager* const sndSrcManager;
+    ZF4MusicSrcManager* const musicSrcManager;
 } ZF4GamePtrs;
 
 typedef bool (*ZF4SceneInit)(ZF4Scene* const scene, const ZF4GamePtrs* const gamePtrs);

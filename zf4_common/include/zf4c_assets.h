@@ -18,6 +18,8 @@
 
 #define ZF4_SOUND_SAMPLE_LIMIT 441000
 
+typedef float ZF4AudioSample;
+
 typedef enum {
     ZF4_TEX_ASSET_TYPE,
     ZF4_FONT_ASSET_TYPE,
