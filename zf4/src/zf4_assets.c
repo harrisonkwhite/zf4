@@ -134,6 +134,31 @@ static bool load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE
     return true;
 }
 
+static bool load_music(ZF4Music* const music, ZF4MemArena* const memArena, FILE* const fs) {
+    fread(&music->cnt, sizeof(music->cnt), 1, fs);
+
+    if (music->cnt > 0) {
+        music->infos = zf4_push_to_mem_arena(memArena, sizeof(*music->infos) * music->cnt, alignof(ZF4AudioInfo));
+
+        if (!music->infos) {
+            return false;
+        }
+
+        music->sampleDataFilePositions = zf4_push_to_mem_arena(memArena, sizeof(*music->sampleDataFilePositions) * music->cnt, alignof(int));
+
+        if (!music->sampleDataFilePositions) {
+            return false;
+        }
+
+        for (int i = 0; i < music->cnt; ++i) {
+            fread(&music->infos[i], sizeof(music->infos[i]), 1, fs);
+            music->sampleDataFilePositions[i] = ftell(fs);
+        }
+    }
+
+    return true;
+}
+
 bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena) {
     assert(zf4_is_zero(assets, sizeof(*assets)));
 
@@ -158,6 +183,12 @@ bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena) {
 
     if (!load_sounds(&assets->sounds, memArena, fs)) {
         zf4_log_error("Failed to load sounds!");
+        fclose(fs);
+        return false;
+    }
+
+    if (!load_music(&assets->music, memArena, fs)) {
+        zf4_log_error("Failed to load music!");
         fclose(fs);
         return false;
     }

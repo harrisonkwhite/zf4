@@ -27,9 +27,16 @@ typedef struct {
 } ZF4Sounds;
 
 typedef struct {
+    ZF4AudioInfo* infos;
+    int* sampleDataFilePositions;
+    int cnt;
+} ZF4Music;
+
+typedef struct {
     ZF4Textures textures;
     ZF4Fonts fonts;
     ZF4Sounds sounds;
+    ZF4Music music;
 } ZF4Assets;
 
 bool zf4_load_assets(ZF4Assets* const assets, ZF4MemArena* const memArena);

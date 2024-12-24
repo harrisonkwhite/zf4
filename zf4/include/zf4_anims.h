@@ -31,7 +31,7 @@ const ZF4AnimType* zf4_get_anim_type(const int index);
 
 void zf4_anim_tick(ZF4Anim* const anim);
 
-inline ZF4Rect zf4_get_anim_src_rect(ZF4Anim* const anim) {
+inline ZF4Rect zf4_get_anim_src_rect(const ZF4Anim* const anim) {
     ZF4Rect rect;
     zf4_get_anim_type(anim->typeIndex)->srcRectLoader(&rect, anim->frameIndex);
     return rect;
