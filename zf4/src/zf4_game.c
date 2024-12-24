@@ -64,6 +64,8 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
         return;
     }
 
+    zf4_init_rng();
+
     const ZF4GamePtrs gamePtrs = {
         .sndSrcManager = &game->sndSrcManager,
         .musicSrcManager = &game->musicSrcManager

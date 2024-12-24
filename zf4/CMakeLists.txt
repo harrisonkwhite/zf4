@@ -16,6 +16,7 @@ add_library(zf4 STATIC
     src/zf4_anims_state.c
     src/zf4_anims_logic.c
     src/zf4_audio.c
+    src/zf4_rand.c
     src/zf4_scenes.c
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
@@ -27,6 +28,7 @@ add_library(zf4 STATIC
     include/zf4_renderer.h
     include/zf4_anims.h
     include/zf4_audio.h
+    include/zf4_rand.h
     include/zf4_scenes.h
     ${PARENT_DIR}/vendor/glad/include/glad/glad.h
     ${PARENT_DIR}/vendor/glad/include/KHR/khrplatform.h
