@@ -62,6 +62,24 @@ inline ZF4Vec2D zf4_create_vec_2d(const float x, const float y) {
     return vec;
 }
 
+inline ZF4Vec2D zf4_get_vec_2d_normalized(const ZF4Vec2D vec) {
+    const float mag = sqrtf(powf(vec.x, 2) + powf(vec.y, 2));
+    return zf4_create_vec_2d(vec.x / mag, vec.y / mag);
+}
+
+inline float zf4_calc_dist(const ZF4Vec2D a, const ZF4Vec2D b) {
+    return sqrtf(powf(b.x - a.x, 2) + powf(b.y - a.y, 2));
+}
+
+inline float zf4_calc_dir(const ZF4Vec2D a, const ZF4Vec2D b) {
+    return atan2f(b.y - a.y, b.x - a.x);
+}
+
+inline ZF4Vec2D zf4_calc_dir_vec_2d(const ZF4Vec2D a, const ZF4Vec2D b) {
+    const ZF4Vec2D diff = {b.x - a.x, b.y - a.y};
+    return zf4_get_vec_2d_normalized(diff);
+}
+
 inline ZF4Vec3D zf4_create_vec_3d(const float x, const float y, const float z) {
     const ZF4Vec3D vec = {x, y, z};
     return vec;
