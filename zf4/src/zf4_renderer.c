@@ -149,7 +149,7 @@ static int add_tex_unit_to_sprite_batch(ZF4SpriteBatchTransients* const batchTra
     return batchTransData->texUnitsInUse++;
 }
 
-static void init_cam_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* const cam) {
+static void init_camera_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* const cam) {
     assert(zf4_is_zero(mat, sizeof(*mat)));
 
     mat->elems[0][0] = cam->scale;
@@ -219,7 +219,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
     zf4_init_ortho_matrix_4x4(&projMat, 0.0f, zf4_get_window_size().x, zf4_get_window_size().y, 0.0f, -1.0f, 1.0f);
 
     ZF4Matrix4x4 camViewMat = {0};
-    init_cam_view_matrix(&camViewMat, &renderer->cam);
+    init_camera_view_matrix(&camViewMat, &renderer->cam);
 
     ZF4Matrix4x4 defaultViewMat = {0};
     zf4_init_identity_matrix_4x4(&defaultViewMat);

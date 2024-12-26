@@ -105,21 +105,31 @@ void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID
 void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign);
 void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchID id);
 
-inline ZF4Vec2D zf4_get_cam_size(const ZF4Camera* const cam) {
+inline ZF4Vec2D zf4_get_camera_size(const ZF4Camera* const cam) {
     const ZF4Vec2D size = {zf4_get_window_size().x / cam->scale, zf4_get_window_size().y / cam->scale};
     return size;
 }
 
-inline ZF4Vec2D zf4_get_cam_top_left(const ZF4Camera* const cam) {
-    const ZF4Vec2D size = zf4_get_cam_size(cam);
+inline ZF4Vec2D zf4_get_camera_top_left(const ZF4Camera* const cam) {
+    const ZF4Vec2D size = zf4_get_camera_size(cam);
     const ZF4Vec2D topLeft = {cam->pos.x - (size.x / 2.0f), cam->pos.y - (size.y / 2.0f)};
     return topLeft;
 }
 
-inline ZF4Vec2D zf4_get_cam_bottom_right(const ZF4Camera* const cam) {
-    const ZF4Vec2D size = zf4_get_cam_size(cam);
+inline ZF4Vec2D zf4_get_camera_bottom_right(const ZF4Camera* const cam) {
+    const ZF4Vec2D size = zf4_get_camera_size(cam);
     const ZF4Vec2D bottomRight = {cam->pos.x + (size.x / 2.0f), cam->pos.y + (size.y / 2.0f)};
     return bottomRight;
+}
+
+inline ZF4Vec2D zf4_camera_to_screen_pos(const ZF4Vec2D pos, const ZF4Camera* const cam) {
+    const ZF4Vec2D topLeft = zf4_get_camera_top_left(cam);
+    return (ZF4Vec2D) { (pos.x - topLeft.x) * cam->scale, (pos.y - topLeft.y) * cam->scale };
+}
+
+inline ZF4Vec2D zf4_screen_to_camera_pos(const ZF4Vec2D pos, const ZF4Camera* const cam) {
+    const ZF4Vec2D topLeft = zf4_get_camera_top_left(cam);
+    return (ZF4Vec2D) { (pos.x / cam->scale) + topLeft.x, (pos.y / cam->scale) + topLeft.y };
 }
 
 #endif
