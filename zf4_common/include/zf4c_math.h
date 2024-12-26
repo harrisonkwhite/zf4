@@ -85,6 +85,10 @@ inline ZF4Vec2D zf4_calc_vec_2d_scaled(const ZF4Vec2D vec, const float scalar) {
     return zf4_create_vec_2d(vec.x * scalar, vec.y * scalar);
 }
 
+inline ZF4Vec2D zf4_calc_vec_2d_avg(const ZF4Vec2D a, const ZF4Vec2D b) {
+    return zf4_create_vec_2d((a.x + b.x) / 2.0f, (a.y + b.y) / 2.0f);
+}
+
 inline float zf4_calc_vec_2d_dist(const ZF4Vec2D a, const ZF4Vec2D b) {
     const ZF4Vec2D diff = zf4_calc_vec_2d_diff(b, a);
     return zf4_calc_vec_2d_mag(diff);
@@ -122,6 +126,30 @@ inline ZF4Rect zf4_create_rect(const int x, const int y, const int width, const 
 inline ZF4RectF zf4_create_rect_f(const float x, const float y, const float width, const float height) {
     const ZF4RectF rect = {x, y, width, height};
     return rect;
+}
+
+inline ZF4Pt2D zf4_get_rect_pos(const ZF4Rect* const rect) {
+    return (ZF4Pt2D) { rect->x, rect->y };
+}
+
+inline ZF4Vec2D zf4_get_rect_f_pos(const ZF4RectF* const rect) {    
+    return (ZF4Vec2D) { rect->x, rect->y };
+}
+
+inline ZF4Pt2D zf4_get_rect_size(const ZF4Rect* const rect) {
+    return (ZF4Pt2D) { rect->width, rect->height };
+}
+
+inline ZF4Vec2D zf4_get_rect_f_size(const ZF4RectF* const rect) {
+    return (ZF4Vec2D) { rect->width, rect->height };
+}
+
+inline ZF4Pt2D zf4_get_rect_center(const ZF4Rect* const rect) {
+    return (ZF4Pt2D) { rect->x + (rect->width / 2), rect->y + (rect->height / 2) };
+}
+
+inline ZF4Vec2D zf4_get_rect_f_center(const ZF4RectF* const rect) {
+    return (ZF4Vec2D) { rect->x + (rect->width / 2.0f), rect->y + (rect->height / 2.0f) };
 }
 
 inline int zf4_get_rect_right(const ZF4Rect* const rect) {
