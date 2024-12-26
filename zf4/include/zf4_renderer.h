@@ -100,10 +100,14 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
 void zf4_empty_sprite_batches(ZF4Renderer* const renderer);
 void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex, const ZF4SpriteBatchWriteInfo* const info);
 
-ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex, const ZF4Vec2D pos);
+ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex);
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id);
 void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id, const char* const text, const ZF4FontHorAlign horAlign, const ZF4FontVerAlign verAlign);
 void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchID id);
+
+inline ZF4CharBatchDisplayProps* const zf4_get_char_batch_display_props(const ZF4Renderer* const renderer, const ZF4CharBatchID id) {
+    return &renderer->layers[id.layerIndex].charBatches[id.batchIndex].displayProps;
+}
 
 inline ZF4Vec2D zf4_get_camera_size(const ZF4Camera* const cam) {
     const ZF4Vec2D size = {zf4_get_window_size().x / cam->scale, zf4_get_window_size().y / cam->scale};

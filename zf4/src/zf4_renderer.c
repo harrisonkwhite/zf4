@@ -373,7 +373,7 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
     ++batchTransData->slotsUsed;
 }
 
-ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex, const ZF4Vec2D pos) {
+ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex) {
     assert(layerIndex >= 0 && layerIndex < renderer->layerCnt);
     assert(slotCnt > 0 && slotCnt < ZF4_CHAR_BATCH_SLOT_LIMIT);
 
@@ -384,18 +384,16 @@ ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const in
 
     zf4_activate_bit(layer->charBatchActivityBitset, batchIndex);
 
-    layer->charBatches[batchIndex].quadBuf = gen_quad_buf(slotCnt, false);
-    layer->charBatches[batchIndex].slotCnt = slotCnt;
+    layer->charBatches[batchIndex] = (ZF4CharBatch) {
+        .quadBuf = gen_quad_buf(slotCnt, false),
+        .slotCnt = slotCnt,
+        .displayProps = {
+            .fontIndex = fontIndex,
+            .blend = {1.0f, 1.0f, 1.0f, 1.0f}
+        }
+    };
 
-    layer->charBatches[batchIndex].displayProps.fontIndex = fontIndex;
-    layer->charBatches[batchIndex].displayProps.pos = pos;
-    layer->charBatches[batchIndex].displayProps.blend.r = 1.0f;
-    layer->charBatches[batchIndex].displayProps.blend.g = 1.0f;
-    layer->charBatches[batchIndex].displayProps.blend.b = 1.0f;
-    layer->charBatches[batchIndex].displayProps.blend.a = 1.0f;
-
-    const ZF4CharBatchID id = {layerIndex, batchIndex};
-    return id;
+    return (ZF4CharBatchID) {layerIndex, batchIndex};
 }
 
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id) {
