@@ -8,6 +8,8 @@
 #define ZF4_MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 #define ZF4_CLAMP(X, MIN, MAX) ZF4_MIN(ZF4_MAX(X, MIN), MAX)
 
+#define ZF4_PI 3.14159265359f
+
 typedef struct {
     float x, y;
 } ZF4Vec2D;
