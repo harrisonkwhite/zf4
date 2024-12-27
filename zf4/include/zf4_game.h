@@ -1,7 +1,7 @@
 #ifndef ZF4_GAME_H
 #define ZF4_GAME_H
 
-#include <zf4_anims.h>
+#include <zf4_sprites.h>
 #include <zf4_scenes.h>
 
 typedef struct {
@@ -11,8 +11,8 @@ typedef struct {
     bool windowResizable;
     bool windowHideCursor;
 
-    int animTypeCnt;
-    ZF4AnimTypeLoader animTypeLoader;
+    int spriteCnt;
+    ZF4SpriteLoader spriteLoader;
 
     int sceneTypeCnt;
     ZF4SceneTypeInfoLoader sceneTypeInfoLoader;

@@ -9,6 +9,6 @@
 #include <zf4_renderer.h>
 #include <zf4_shader_progs.h>
 #include <zf4_scenes.h>
-#include <zf4_anims.h>
+#include <zf4_sprites.h>
 
 #endif

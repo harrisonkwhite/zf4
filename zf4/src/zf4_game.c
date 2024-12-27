@@ -1,7 +1,5 @@
 #include <zf4_game.h>
 
-#include <threads.h>
-
 #include <zf4c_mem.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
@@ -60,7 +58,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 
     zf4_load_shader_progs(&game->shaderProgs);
 
-    if (!zf4_load_anim_types(userInfo->animTypeCnt, userInfo->animTypeLoader)) {
+    if (!zf4_load_sprites(userInfo->spriteCnt, userInfo->spriteLoader)) {
         return;
     }
 
@@ -130,7 +128,7 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
     run_game(&game, userInfo);
 
     zf4_unload_scene(&game.sceneManager.scene);
-    zf4_unload_anim_types();
+    zf4_unload_sprites();
     zf4_clean_music_srcs(&game.musicSrcManager);
     zf4_clean_sound_srcs(&game.sndSrcManager);
     zf4_unload_shader_progs(&game.shaderProgs);
