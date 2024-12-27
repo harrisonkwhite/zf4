@@ -62,6 +62,10 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
         return;
     }
 
+    if (!zf4_load_ent_types(userInfo->entTypeCnt, userInfo->entTypeLoader)) {
+        return;
+    }
+
     zf4_init_rng();
 
     const ZF4GamePtrs gamePtrs = {
@@ -128,6 +132,7 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
     run_game(&game, userInfo);
 
     zf4_unload_scene(&game.sceneManager.scene);
+    zf4_unload_ent_types();
     zf4_unload_sprites();
     zf4_clean_music_srcs(&game.musicSrcManager);
     zf4_clean_sound_srcs(&game.sndSrcManager);

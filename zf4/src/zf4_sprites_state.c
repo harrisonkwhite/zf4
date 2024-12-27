@@ -11,7 +11,7 @@ bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader) {
     i_spriteCnt = cnt;
 
     if (cnt > 0) {
-        i_sprites = malloc(sizeof(*i_sprites) * cnt);
+        i_sprites = calloc(cnt, sizeof(*i_sprites));
 
         if (!i_sprites) {
             return false;

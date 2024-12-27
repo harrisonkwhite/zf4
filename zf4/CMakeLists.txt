@@ -17,6 +17,8 @@ add_library(zf4 STATIC
     src/zf4_sprites_logic.c
     src/zf4_audio.c
     src/zf4_rand.c
+    src/zf4_ent_types.c
+    src/zf4_ents.c
     src/zf4_scenes.c
     ${PARENT_DIR}/vendor/glad/src/glad.c
 

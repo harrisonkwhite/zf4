@@ -14,6 +14,9 @@ typedef struct {
     int spriteCnt;
     ZF4SpriteLoader spriteLoader;
 
+    int entTypeCnt;
+    ZF4EntTypeLoader entTypeLoader;
+
     int sceneTypeCnt;
     ZF4SceneTypeInfoLoader sceneTypeInfoLoader;
 } ZF4UserGameInfo;

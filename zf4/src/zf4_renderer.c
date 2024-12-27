@@ -114,7 +114,7 @@ static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const me
             return false;
         }
 
-        layer->charBatchActivityBitset = zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(props.charBatchCnt), alignof(ZF4Byte));
+        layer->charBatchActivityBitset = zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(props.charBatchCnt), 1);
 
         if (!layer->charBatchActivityBitset) {
             return false;
