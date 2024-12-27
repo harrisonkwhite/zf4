@@ -7,6 +7,7 @@
 
 typedef struct {
     ZF4Vec2D pos;
+    ZF4Vec2D scale;
 
     int spriteIndex;
     ZF4Vec2D origin;
@@ -30,6 +31,8 @@ typedef struct {
     int index;
     int version;
 } ZF4EntID;
+
+typedef bool (*ZF4EntFilter)(const ZF4EntID entID, const ZF4EntManager* const entManager);
 
 typedef struct {
     ZF4MemArena memArena;
@@ -96,6 +99,8 @@ ZF4EntID zf4_spawn_ent(ZF4Scene* const scene, const int typeIndex, const ZF4Vec2
 void zf4_destroy_ent(ZF4EntManager* const entManager, const ZF4EntID id);
 void zf4_write_ent_render_data(ZF4Renderer* const renderer, const ZF4Ent* const ent, const int layerIndex);
 ZF4RectF zf4_get_ent_collider(const ZF4Ent* const ent);
+int zf4_get_colliding_ents(ZF4EntID* const collidingEntIDs, const int collidingEntIDLimit, const ZF4EntFilter entFilter, const ZF4EntID srcEntID, const ZF4EntManager* const entManager);
+bool zf4_get_nearest_ent(ZF4EntID* const nearestEntID, const ZF4EntFilter entFilter, const ZF4EntID srcEntID, const ZF4EntManager* const entManager);
 
 bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeIndex, const ZF4GamePtrs* const gamePtrs);
 void zf4_unload_scene(ZF4Scene* const scene);
@@ -105,12 +110,17 @@ inline bool zf4_does_ent_exist(const ZF4EntID id, const ZF4EntManager* const ent
     return zf4_is_bit_active(entManager->entActivityBitset, id.index) && entManager->entVersions[id.index] == id.version;
 }
 
-inline ZF4Ent* zf4_get_ent(const ZF4EntID id, ZF4EntManager* const entManager) {
+inline ZF4Ent* zf4_get_ent(const ZF4EntManager* const entManager, const ZF4EntID id) {
     assert(zf4_does_ent_exist(id, entManager));
     return &entManager->ents[id.index];
 }
 
-inline void* zf4_get_ent_type_ext(const ZF4EntID id, ZF4EntManager* const entManager) {
+inline const ZF4Ent* zf4_get_ent_const(const ZF4EntManager* const entManager, const ZF4EntID id) {
+    assert(zf4_does_ent_exist(id, entManager));
+    return &entManager->ents[id.index];
+}
+
+inline void* zf4_get_ent_type_ext(ZF4EntManager* const entManager, const ZF4EntID id) {
     assert(zf4_does_ent_exist(id, entManager));
 
     ZF4Ent* const ent = &entManager->ents[id.index];

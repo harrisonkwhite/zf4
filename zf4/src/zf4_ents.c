@@ -1,6 +1,7 @@
 #include <zf4_scenes.h>
 
 #include <stdalign.h>
+#include <float.h>
 #include <zf4c.h>
 #include <zf4_sprites.h>
 
@@ -102,6 +103,7 @@ ZF4EntID zf4_spawn_ent(ZF4Scene* const scene, const int typeIndex, const ZF4Vec2
     // Overwrite base entity data.
     entManager->ents[entIndex] = (ZF4Ent) {
         .pos = pos,
+        .scale = {1.0f, 1.0f},
         .origin = {0.5f, 0.5f},
         .typeIndex = typeIndex,
         .typeExtIndex = entTypeExtIndex
@@ -135,7 +137,7 @@ void zf4_write_ent_render_data(ZF4Renderer* const renderer, const ZF4Ent* const 
         .srcRect = zf4_get_sprite_src_rect(ent->spriteIndex, 0),
         .origin = ent->origin,
         .rot = 0.0f,
-        .scale = {1.0f, 1.0f},
+        .scale = ent->scale,
         .alpha = 1.0f
     };
 
@@ -144,12 +146,86 @@ void zf4_write_ent_render_data(ZF4Renderer* const renderer, const ZF4Ent* const 
 
 ZF4RectF zf4_get_ent_collider(const ZF4Ent* const ent) {
     const ZF4Rect srcRect = zf4_get_sprite_src_rect(ent->spriteIndex, 0);
-    const ZF4Pt2D texSize = zf4_get_rect_size(&srcRect);
+    const ZF4Pt2D srcRectSize = zf4_get_rect_size(&srcRect);
+    const ZF4Vec2D size = {srcRectSize.x * ent->scale.x, srcRectSize.y * ent->scale.y};
 
     return (ZF4RectF) {
-        ent->pos.x - (texSize.x * ent->origin.x),
-        ent->pos.y - (texSize.y * ent->origin.y),
-        texSize.x,
-        texSize.y
+        ent->pos.x - (size.x * ent->origin.x),
+        ent->pos.y - (size.y * ent->origin.y),
+        size.x,
+        size.y
     };
+}
+
+int zf4_get_colliding_ents(ZF4EntID* const collidingEntIDs, const int collidingEntIDLimit, const ZF4EntFilter entFilter, const ZF4EntID srcEntID, const ZF4EntManager* const entManager) {
+    assert(collidingEntIDLimit > 0 && zf4_does_ent_exist(srcEntID, entManager));
+
+    const ZF4Ent* const srcEnt = zf4_get_ent(entManager, srcEntID);
+    const ZF4RectF srcEntCollider = zf4_get_ent_collider(srcEnt);
+
+    int collidingEntIDCnt = 0;
+
+    for (int i = 0; i < entManager->entLimit; ++i) {
+        if (i == srcEntID.index) {
+            continue;
+        }
+        
+        if (!zf4_is_bit_active(entManager->entActivityBitset, i)) {
+            continue;
+        }
+
+        const ZF4EntID entID = {i, entManager->entVersions[i]};
+
+        if (entFilter && !entFilter(entID, entManager)) {
+            continue;
+        }
+
+        const ZF4RectF collider = zf4_get_ent_collider(&entManager->ents[i]);
+
+        if (zf4_do_rect_fs_intersect(&srcEntCollider, &collider)) {
+            collidingEntIDs[collidingEntIDCnt] = entID;
+            ++collidingEntIDCnt;
+
+            if (collidingEntIDCnt == collidingEntIDLimit) {
+                break;
+            }
+        }
+    }
+
+    return collidingEntIDCnt;
+}
+
+bool zf4_get_nearest_ent(ZF4EntID* const nearestEntID, const ZF4EntFilter entFilter, const ZF4EntID srcEntID, const ZF4EntManager* const entManager) {
+    const ZF4Ent* const srcEnt = zf4_get_ent(entManager, srcEntID);
+    
+    float nearestDist;
+    bool nearestDistSet = false;
+
+    for (int i = 0; i < entManager->entLimit; ++i) {
+        if (i == srcEntID.index) {
+            continue;
+        }
+
+        if (!zf4_is_bit_active(entManager->entActivityBitset, i)) {
+            continue;
+        }
+
+        const ZF4EntID entID = {i, entManager->entVersions[i]};
+
+        if (entFilter && !entFilter(entID, entManager)) {
+            continue;
+        }
+
+        const ZF4Ent* const ent = zf4_get_ent(entManager, entID);
+
+        const float dist = zf4_calc_vec_2d_dist(srcEnt->pos, ent->pos);
+
+        if (!nearestDistSet || dist < nearestDist) {
+            *nearestEntID = entID;
+            nearestDist = dist;
+            nearestDistSet = true;
+        }
+    }
+
+    return nearestDistSet;
 }
