@@ -1,22 +1,98 @@
 #include <zf4_scenes.h>
 
 #include <stdalign.h>
-#include <zf4_sprites.h>
 
-bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeIndex, const ZF4GamePtrs* const gamePtrs) {
-    assert(zf4_is_zero(&sceneManager->scene, sizeof(sceneManager->scene)));
+static bool load_scene_ent(ZF4Scene* scene, ZF4Ent* ent) {
+    ent->compIndexes = zf4_push_to_mem_arena(&scene->memArena, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt(), alignof(int));
 
-    zf4_log("Loading scene of type index %d...", typeIndex);
+    if (!ent->compIndexes) {
+        return false;
+    }
 
-    // Load scene type information.
-    ZF4SceneTypeInfo* const sceneTypeInfo = &sceneManager->typeInfo;
-    memset(sceneTypeInfo, 0, sizeof(*sceneTypeInfo));
-    sceneManager->typeInfoLoader(sceneTypeInfo, typeIndex);
-    assert(!zf4_is_zero(sceneTypeInfo, sizeof(*sceneTypeInfo)));
+    ent->compSig = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()), alignof(ZF4Byte));
 
-    // Set up various scene components.
-    ZF4Scene* const scene = &sceneManager->scene;
-    
+    if (!ent->compSig) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool load_scene_ents(ZF4Scene* scene) {
+    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
+
+    if (sceneTypeInfo->entLimit > 0) {
+        //
+        // Entities
+        //
+        scene->ents = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->ents) * sceneTypeInfo->entLimit, alignof(ZF4Ent));
+
+        if (!scene->ents) {
+            return false;
+        }
+
+        for (int i = 0; i < sceneTypeInfo->entLimit; ++i) {
+            if (!load_scene_ent(scene, &scene->ents[i])) {
+                return false;
+            }
+        }
+
+        scene->entActivity = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(sceneTypeInfo->entLimit), alignof(ZF4Byte));
+
+        if (!scene->entActivity) {
+            return false;
+        }
+
+        scene->entVersions = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->entVersions) * sceneTypeInfo->entLimit, alignof(int));
+
+        if (!scene->entVersions) {
+            return false;
+        }
+
+        //
+        // Components
+        //
+        scene->compArrays = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compArrays) * zf4_get_component_type_cnt(), alignof(void*));
+
+        if (!scene->compArrays) {
+            return false;
+        }
+
+        scene->compActivities = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compActivities) * zf4_get_component_type_cnt(), alignof(ZF4Byte*));
+
+        if (!scene->compActivities) {
+            return false;
+        }
+
+        for (int i = 0; i < zf4_get_component_type_cnt(); ++i) {
+            ZF4ComponentTypeInfo* compTypeInfo = zf4_get_component_type_info(i);
+
+            scene->compArrays[i] = zf4_push_to_mem_arena(&scene->memArena, compTypeInfo->size * sceneTypeInfo->entLimit, compTypeInfo->alignment);
+
+            if (!scene->compArrays[i]) {
+                return false;
+            }
+
+            scene->compActivities[i] = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(sceneTypeInfo->entLimit), alignof(ZF4Byte));
+
+            if (!scene->compActivities[i]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
+    assert(zf4_is_zero(scene, sizeof(*scene)));
+
+    zf4_log("Loading scene of type index %d...", sceneTypeIndex);
+
+    scene->typeIndex = sceneTypeIndex;
+
+    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(sceneTypeIndex);
+
     if (!zf4_init_mem_arena(&scene->memArena, sceneTypeInfo->memArenaSize)) {
         zf4_log_error("Failed to initialise scene memory arena!");
         return false;
@@ -27,8 +103,8 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
         return false;
     }
 
-    if (!zf4_load_ents(&scene->entManager, &scene->memArena, sceneTypeInfo->entLimit, sceneTypeInfo->entTypeExtLimitLoader)) {
-        zf4_log_error("Failed to load scene entities!");
+    if (!load_scene_ents(scene)) {
+        zf4_log_error("Failed to load scene ents!");
         return false;
     }
 
@@ -41,48 +117,47 @@ bool zf4_load_scene_of_type(ZF4SceneManager* const sceneManager, const int typeI
         }
     }
 
-    return sceneTypeInfo->init(scene, gamePtrs);
+    return sceneTypeInfo->init(scene);
 }
 
-void zf4_unload_scene(ZF4Scene* const scene) {
+void zf4_unload_scene(ZF4Scene* scene) {
     zf4_clean_renderer(&scene->renderer);
     zf4_clean_mem_arena(&scene->memArena);
-    memset(scene, 0, sizeof(ZF4Scene));
+    memset(scene, 0, sizeof(*scene));
 }
 
-bool zf4_proc_scene_tick(ZF4SceneManager* const sceneManager, const ZF4GamePtrs* const gamePtrs) {
-    ZF4Scene* const scene = &sceneManager->scene;
+bool zf4_proc_scene_tick(ZF4Scene* scene) {
+    static ZF4MemArena lp_scratchSpace;
+    static bool lp_scratchSpaceInitialized;
+
+    if (!lp_scratchSpaceInitialized) {
+        if (!zf4_init_mem_arena(&lp_scratchSpace, ZF4_MEGABYTES(1))) {
+            return false;
+        }
+
+        lp_scratchSpaceInitialized = true;
+
+        // NOTE: Add explicit cleanup?
+    }
+
+    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
 
     zf4_empty_sprite_batches(&scene->renderer);
 
-    // Call the tick function for each active entity.
-    for (int i = 0; i < scene->entManager.entLimit; ++i) {
-        if (!zf4_is_bit_active(scene->entManager.entActivityBitset, i)) {
-            continue;
-        }
-
-        const ZF4EntType* const entType = zf4_get_ent_type(scene->entManager.ents[i].typeIndex);
-        const ZF4EntID entID = {i, scene->entManager.entVersions[i]};
-
-        if (!entType->tick(scene, entID, gamePtrs)) {
-            return false;
-        }
-    }
-
-    // Run the scene tick function.
     int sceneChangeIndex = -1;
 
-    if (!sceneManager->typeInfo.tick(&sceneManager->scene, &sceneChangeIndex, gamePtrs)) {
+    if (!sceneTypeInfo->tick(scene, &sceneChangeIndex, &lp_scratchSpace)) {
         return false;
     }
-    //
+
+    zf4_reset_mem_arena(&lp_scratchSpace);
 
     if (sceneChangeIndex != -1) {
         zf4_log("Scene change request detected.");
 
-        zf4_unload_scene(&sceneManager->scene);
+        zf4_unload_scene(scene);
 
-        if (!zf4_load_scene_of_type(sceneManager, sceneChangeIndex, gamePtrs)) {
+        if (!zf4_load_scene(scene, sceneChangeIndex)) {
             return false;
         }
     }

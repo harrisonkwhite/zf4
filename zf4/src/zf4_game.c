@@ -6,6 +6,7 @@
 #include <zf4_shader_progs.h>
 #include <zf4_renderer.h>
 #include <zf4_audio.h>
+#include <zf4_rand.h>
 
 #define TARG_FPS 60
 #define TARG_TICK_DUR (1.0 / TARG_FPS) // In seconds.
@@ -15,7 +16,7 @@ typedef struct {
     ZF4ShaderProgs shaderProgs;
     ZF4SoundSrcManager sndSrcManager;
     ZF4MusicSrcManager musicSrcManager;
-    ZF4SceneManager sceneManager;
+    ZF4Scene scene;
 } Game;
 
 static double calc_valid_frame_dur(const double frameTime, const double frameTimeLast) {
@@ -62,20 +63,17 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
         return;
     }
 
-    if (!zf4_load_ent_types(userInfo->entTypeCnt, userInfo->entTypeLoader)) {
+    if (!zf4_load_component_types(userInfo->componentTypeCnt, userInfo->componentTypeInfoLoader)) {
+        return;
+    }
+
+    if (!zf4_load_scene_types(userInfo->sceneTypeCnt, userInfo->sceneTypeInfoLoader)) {
         return;
     }
 
     zf4_init_rng();
-
-    const ZF4GamePtrs gamePtrs = {
-        .sndSrcManager = &game->sndSrcManager,
-        .musicSrcManager = &game->musicSrcManager
-    };
-
-    game->sceneManager.typeInfoLoader = userInfo->sceneTypeInfoLoader;
-
-    if (!zf4_load_scene_of_type(&game->sceneManager, 0, &gamePtrs)) { // We begin with the first scene index.
+    
+    if (!zf4_load_scene(&game->scene, 0)) { // We begin with the first scene.
         return;
     }
 
@@ -108,7 +106,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
                     return;
                 }
 
-                if (!zf4_proc_scene_tick(&game->sceneManager, &gamePtrs)) {
+                if (!zf4_proc_scene_tick(&game->scene)) {
                     return;
                 }
 
@@ -119,7 +117,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
             zf4_save_input_state();
         }
 
-        zf4_render_all(&game->sceneManager.scene.renderer, &game->shaderProgs);
+        zf4_render_all(&game->scene.renderer, &game->shaderProgs);
         zf4_swap_window_buffers();
 
         glfwPollEvents();
@@ -131,8 +129,9 @@ void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
 
     run_game(&game, userInfo);
 
-    zf4_unload_scene(&game.sceneManager.scene);
-    zf4_unload_ent_types();
+    zf4_unload_scene(&game.scene);
+    zf4_unload_scene_types();
+    zf4_unload_component_types();
     zf4_unload_sprites();
     zf4_clean_music_srcs(&game.musicSrcManager);
     zf4_clean_sound_srcs(&game.sndSrcManager);
