@@ -13,6 +13,7 @@ ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
     ent->pos = pos;
     memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt());
     memset(ent->compSig, 0, sizeof(*ent->compSig) * ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()));
+    ent->tag = -1;
 
     ++scene->entVersions[entIndex];
 
@@ -74,6 +75,31 @@ int zf4_get_ents_with_component_signature(ZF4EntID* entIDs, int entIDLimit, ZF4B
         }
 
         if (zf4_does_ent_have_component_signature(entID, compSig, scene)) {
+            entIDs[entCnt] = entID;
+            ++entCnt;
+        }
+    }
+
+    return entCnt;
+}
+
+int zf4_get_ents_with_tag(ZF4EntID* entIDs, int entIDLimit, int tag, ZF4Scene* scene) {
+    assert(entIDLimit > 0);
+
+    int entCnt = 0;
+
+    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
+
+    for (int i = 0; i < sceneTypeInfo->entLimit && entCnt < entIDLimit; ++i) {
+        ZF4EntID entID = {i, scene->entVersions[i]};
+        
+        if (!zf4_does_ent_exist(entID, scene)) {
+            continue;
+        }
+        
+        ZF4Ent* ent = zf4_get_ent(entID, scene);
+
+        if (ent->tag == tag) {
             entIDs[entCnt] = entID;
             ++entCnt;
         }
