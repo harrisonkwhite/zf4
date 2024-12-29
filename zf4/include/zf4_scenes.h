@@ -5,9 +5,13 @@
 #include <zf4c.h>
 #include <zf4_renderer.h>
 
+typedef void (*ZF4ComponentDefaultsLoader)(void* comp);
+
 typedef struct {
     int size;
     int alignment;
+
+    ZF4ComponentDefaultsLoader defaultsLoader;
 } ZF4ComponentTypeInfo;
 
 typedef void (*ZF4ComponentTypeInfoLoader)(ZF4ComponentTypeInfo* typeInfo, int typeIndex);

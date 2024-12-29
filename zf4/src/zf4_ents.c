@@ -34,18 +34,28 @@ void* zf4_get_ent_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene) 
 void* zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene) {
     assert(!zf4_does_ent_have_component(entID, compTypeIndex, scene));
 
+    // Find and use the first inactive component of the type.
     ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
-
     int compIndex = zf4_get_first_inactive_bit_index(scene->compActivities[compTypeIndex], sceneTypeInfo->entLimit);
     assert(compIndex != -1);
 
     zf4_activate_bit(scene->compActivities[compTypeIndex], compIndex);
 
+    // Update the component index of the entity.
     ZF4Ent* ent = &scene->ents[entID.index];
     ent->compIndexes[compTypeIndex] = compIndex;
     zf4_activate_bit(ent->compSig, compTypeIndex);
+    
+    // Clear the component data, and run the defaults loader function if defined.
+    ZF4ComponentTypeInfo* compTypeInfo = zf4_get_component_type_info(compTypeIndex);
+    void* comp = zf4_get_ent_component(entID, compTypeIndex, scene);
+    memset(comp, 0, compTypeInfo->size);
 
-    return zf4_get_ent_component(entID, compTypeIndex, scene);
+    if (compTypeInfo->defaultsLoader) {
+        compTypeInfo->defaultsLoader(comp);
+    }
+
+    return comp;
 }
 
 bool zf4_does_ent_have_component_signature(ZF4EntID entID, ZF4Byte* compSig, ZF4Scene* scene) {
