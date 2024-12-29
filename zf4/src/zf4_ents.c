@@ -21,7 +21,19 @@ ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
 }
 
 void zf4_destroy_ent(ZF4EntID entID, ZF4Scene* scene) {
-    assert(false);
+    // NOTE: This might need to be only a request; the actual destruction occurs at the end of the tick.
+
+    ZF4Ent* ent = zf4_get_ent(entID, scene);
+
+    zf4_deactivate_bit(scene->entActivity, entID.index);
+    
+    for (int i = 0; i < zf4_get_component_type_cnt(); ++i) {
+        int compIndex = ent->compIndexes[i];
+
+        if (compIndex != -1) {
+            zf4_deactivate_bit(scene->compActivities[i], compIndex);
+        }
+    }
 }
 
 void* zf4_get_ent_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene) {
