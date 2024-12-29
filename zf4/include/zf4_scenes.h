@@ -5,6 +5,8 @@
 #include <zf4c.h>
 #include <zf4_renderer.h>
 
+#define ZF4_SCENE_SCRATCH_SPACE_SIZE ZF4_MEGABYTES(2)
+
 typedef void (*ZF4ComponentTypeLimitLoader)(int* typeLimit, int typeIndex);
 typedef void (*ZF4ComponentDefaultsLoader)(void* comp);
 
@@ -33,6 +35,7 @@ typedef struct ZF4Scene {
     int typeIndex;
 
     ZF4MemArena memArena;
+    ZF4MemArena scratchSpace;
 
     ZF4Renderer renderer;
 
@@ -53,7 +56,7 @@ typedef struct ZF4EntID {
 } ZF4EntID;
 
 typedef bool (*ZF4SceneInit)(ZF4Scene* const scene);
-typedef bool (*ZF4SceneTick)(ZF4Scene* const scene, int* const sceneChangeIndex, ZF4MemArena* scratchSpace);
+typedef bool (*ZF4SceneTick)(ZF4Scene* const scene, int* const sceneChangeIndex);
 
 typedef struct {
     int memArenaSize;

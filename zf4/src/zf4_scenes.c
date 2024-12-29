@@ -103,7 +103,12 @@ bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
     ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(sceneTypeIndex);
 
     if (!zf4_init_mem_arena(&scene->memArena, sceneTypeInfo->memArenaSize)) {
-        zf4_log_error("Failed to initialise scene memory arena!");
+        zf4_log_error("Failed to initialise scene main memory arena!");
+        return false;
+    }
+
+    if (!zf4_init_mem_arena(&scene->scratchSpace, ZF4_SCENE_SCRATCH_SPACE_SIZE)) {
+        zf4_log_error("Failed to initialise scene scratch space memory arena!");
         return false;
     }
 
@@ -131,36 +136,24 @@ bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
 
 void zf4_unload_scene(ZF4Scene* scene) {
     zf4_clean_renderer(&scene->renderer);
+    zf4_clean_mem_arena(&scene->scratchSpace);
     zf4_clean_mem_arena(&scene->memArena);
     memset(scene, 0, sizeof(*scene));
 }
 
 bool zf4_proc_scene_tick(ZF4Scene* scene) {
-    static ZF4MemArena lp_scratchSpace;
-    static bool lp_scratchSpaceInitialized;
-
-    if (!lp_scratchSpaceInitialized) {
-        if (!zf4_init_mem_arena(&lp_scratchSpace, ZF4_MEGABYTES(1))) {
-            return false;
-        }
-
-        lp_scratchSpaceInitialized = true;
-
-        // NOTE: Add explicit cleanup?
-    }
-
     ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
 
     zf4_empty_sprite_batches(&scene->renderer);
 
+    zf4_reset_mem_arena(&scene->scratchSpace);
+
     int sceneChangeIndex = -1;
 
-    if (!sceneTypeInfo->tick(scene, &sceneChangeIndex, &lp_scratchSpace)) {
+    if (!sceneTypeInfo->tick(scene, &sceneChangeIndex)) {
         return false;
     }
-
-    zf4_reset_mem_arena(&lp_scratchSpace);
-
+    
     if (sceneChangeIndex != -1) {
         zf4_log("Scene change request detected.");
 
