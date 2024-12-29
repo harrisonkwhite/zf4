@@ -5,6 +5,7 @@
 #include <zf4c.h>
 #include <zf4_renderer.h>
 
+typedef void (*ZF4ComponentTypeLimitLoader)(int* typeLimit, int typeIndex);
 typedef void (*ZF4ComponentDefaultsLoader)(void* comp);
 
 typedef struct {
@@ -41,6 +42,7 @@ typedef struct ZF4Scene {
 
     void** compArrays; // One array per component type.
     ZF4Byte** compActivities; // One bitset per component type.
+    int* compTypeLimits; // The maximum number of components of each type.
 
     void* userData;
 } ZF4Scene;
@@ -61,6 +63,7 @@ typedef struct {
     ZF4RenderLayerPropsInitializer renderLayerPropsInitializer;
 
     int entLimit;
+    ZF4ComponentTypeLimitLoader compTypeLimitLoader;
 
     ZF4SceneInit init;
     ZF4SceneTick tick;

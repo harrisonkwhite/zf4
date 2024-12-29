@@ -64,16 +64,25 @@ static bool load_scene_ents(ZF4Scene* scene) {
             return false;
         }
 
+        scene->compTypeLimits = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compTypeLimits) * zf4_get_component_type_cnt(), alignof(int));
+
+        if (!scene->compTypeLimits) {
+            return false;
+        }
+
         for (int i = 0; i < zf4_get_component_type_cnt(); ++i) {
+            scene->compTypeLimits[i] = sceneTypeInfo->entLimit; // The default component type limit is the entity limit.
+            sceneTypeInfo->compTypeLimitLoader(&scene->compTypeLimits[i], i);
+
             ZF4ComponentTypeInfo* compTypeInfo = zf4_get_component_type_info(i);
 
-            scene->compArrays[i] = zf4_push_to_mem_arena(&scene->memArena, compTypeInfo->size * sceneTypeInfo->entLimit, compTypeInfo->alignment);
+            scene->compArrays[i] = zf4_push_to_mem_arena(&scene->memArena, compTypeInfo->size * scene->compTypeLimits[i], compTypeInfo->alignment);
 
             if (!scene->compArrays[i]) {
                 return false;
             }
 
-            scene->compActivities[i] = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(sceneTypeInfo->entLimit), alignof(ZF4Byte));
+            scene->compActivities[i] = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(scene->compTypeLimits[i]), alignof(ZF4Byte));
 
             if (!scene->compActivities[i]) {
                 return false;
