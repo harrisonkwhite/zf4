@@ -16,14 +16,19 @@ typedef struct {
 
 typedef void (*ZF4ComponentTypeInfoLoader)(ZF4ComponentTypeInfo* typeInfo, int typeIndex);
 
+typedef struct ZF4EntID ZF4EntID;
+typedef struct ZF4Scene ZF4Scene;
+typedef void (*ZF4OnEntDestroy)(ZF4EntID entID, ZF4Scene* scene);
+
 typedef struct {
     ZF4Vec2D pos;
     int* compIndexes;
     ZF4Byte* compSig;
     int tag;
+    ZF4OnEntDestroy onDestroy;
 } ZF4Ent;
 
-typedef struct {
+typedef struct ZF4Scene {
     int typeIndex;
 
     ZF4MemArena memArena;
@@ -39,6 +44,11 @@ typedef struct {
 
     void* userData;
 } ZF4Scene;
+
+typedef struct ZF4EntID {
+    int index;
+    int version;
+} ZF4EntID;
 
 typedef bool (*ZF4SceneInit)(ZF4Scene* const scene);
 typedef bool (*ZF4SceneTick)(ZF4Scene* const scene, int* const sceneChangeIndex, ZF4MemArena* scratchSpace);
@@ -60,11 +70,6 @@ typedef struct {
 } ZF4SceneTypeInfo;
 
 typedef void (*ZF4SceneTypeInfoLoader)(ZF4SceneTypeInfo* typeInfo, int typeIndex);
-
-typedef struct {
-    int index;
-    int version;
-} ZF4EntID;
 
 bool zf4_load_component_types(int typeCnt, ZF4ComponentTypeInfoLoader typeInfoLoader);
 void zf4_unload_component_types();

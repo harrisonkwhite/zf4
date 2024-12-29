@@ -14,6 +14,7 @@ ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
     memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt());
     memset(ent->compSig, 0, sizeof(*ent->compSig) * ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()));
     ent->tag = -1;
+    ent->onDestroy = NULL;
 
     ++scene->entVersions[entIndex];
 
@@ -21,9 +22,11 @@ ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
 }
 
 void zf4_destroy_ent(ZF4EntID entID, ZF4Scene* scene) {
-    // NOTE: This might need to be only a request; the actual destruction occurs at the end of the tick.
-
     ZF4Ent* ent = zf4_get_ent(entID, scene);
+
+    if (ent->onDestroy) {
+        ent->onDestroy(entID, scene);
+    }
 
     zf4_deactivate_bit(scene->entActivity, entID.index);
     
