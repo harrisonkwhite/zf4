@@ -53,8 +53,8 @@ static void glfw_mouse_button_callback(GLFWwindow* const window, const int butto
 }
 
 static void glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y) {
-    i_inputState.mousePos.x = x;
-    i_inputState.mousePos.y = y;
+    i_inputState.mousePos.x = (float)x;
+    i_inputState.mousePos.y = (float)y;
 }
 
 bool zf4_init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor) {

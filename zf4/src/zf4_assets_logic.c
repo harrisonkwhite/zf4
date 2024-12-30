@@ -120,7 +120,7 @@ bool zf4_load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE* c
             ZF4AudioInfo audioInfo;
             fread(&audioInfo, sizeof(audioInfo), 1, fs);
 
-            const int sampleCnt = audioInfo.sampleCntPerChannel * audioInfo.channelCnt;
+            const long long sampleCnt = audioInfo.sampleCntPerChannel * audioInfo.channelCnt;
             fread(samples, sizeof(*samples), sampleCnt, fs);
 
             const ALenum format = audioInfo.channelCnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;

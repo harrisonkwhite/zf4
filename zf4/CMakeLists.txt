@@ -46,3 +46,9 @@ target_include_directories(zf4 PRIVATE
 target_link_libraries(zf4 PRIVATE zf4_common glfw OpenAL::OpenAL)
 
 target_compile_definitions(zf4 PRIVATE GLFW_INCLUDE_NONE)
+
+target_compile_options(zf4 PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -pedantic>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
+)

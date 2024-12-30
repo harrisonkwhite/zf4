@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <zf4c.h>
 
 static GLuint create_shader_from_src(const char* const src, const bool frag) {
     const GLuint glID = glCreateShader(frag ? GL_FRAGMENT_SHADER : GL_VERTEX_SHADER);

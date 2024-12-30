@@ -14,3 +14,9 @@ add_library(zf4_common STATIC
 )
 
 target_include_directories(zf4_common PRIVATE include)
+
+target_compile_options(zf4_common PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -pedantic>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
+)

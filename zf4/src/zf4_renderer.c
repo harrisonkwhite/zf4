@@ -35,7 +35,7 @@ static ZF4QuadBuf gen_quad_buf(const int quadCnt, const bool sprite) {
         static bool quadIndicesInitialized = false;
 
         if (!quadIndicesInitialized) {
-            for (int i = 0; i < QUAD_LIMIT; i++) {
+            for (unsigned short i = 0; i < QUAD_LIMIT; i++) {
                 quadIndices[(i * 6) + 0] = (i * 4) + 0;
                 quadIndices[(i * 6) + 1] = (i * 4) + 1;
                 quadIndices[(i * 6) + 2] = (i * 4) + 2;
@@ -216,7 +216,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
     }
 
     ZF4Matrix4x4 projMat = {0};
-    zf4_init_ortho_matrix_4x4(&projMat, 0.0f, zf4_get_window_size().x, zf4_get_window_size().y, 0.0f, -1.0f, 1.0f);
+    zf4_init_ortho_matrix_4x4(&projMat, 0.0f, (float)zf4_get_window_size().x, (float)zf4_get_window_size().y, 0.0f, -1.0f, 1.0f);
 
     ZF4Matrix4x4 camViewMat = {0};
     init_camera_view_matrix(&camViewMat, &renderer->cam);
@@ -320,10 +320,10 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
         (0.0f - info->origin.y) * info->scale.y,
         info->pos.x,
         info->pos.y,
-        info->srcRect.width,
-        info->srcRect.height,
+        (float)info->srcRect.width,
+        (float)info->srcRect.height,
         info->rot,
-        texUnit,
+        (float)texUnit,
         (float)info->srcRect.x / texSize.x,
         (float)info->srcRect.y / texSize.y,
         info->alpha,
@@ -332,10 +332,10 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
         (0.0f - info->origin.y) * info->scale.y,
         info->pos.x,
         info->pos.y,
-        info->srcRect.width,
-        info->srcRect.height,
+        (float)info->srcRect.width,
+        (float)info->srcRect.height,
         info->rot,
-        texUnit,
+        (float)texUnit,
         (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
         (float)info->srcRect.y / texSize.y,
         info->alpha,
@@ -344,10 +344,10 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
         (1.0f - info->origin.y) * info->scale.y,
         info->pos.x,
         info->pos.y,
-        info->srcRect.width,
-        info->srcRect.height,
+        (float)info->srcRect.width,
+        (float)info->srcRect.height,
         info->rot,
-        texUnit,
+        (float)texUnit,
         (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
         (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
         info->alpha,
@@ -356,10 +356,10 @@ void zf4_write_to_sprite_batch(ZF4Renderer* const renderer, const int layerIndex
         (1.0f - info->origin.y) * info->scale.y,
         info->pos.x,
         info->pos.y,
-        info->srcRect.width,
-        info->srcRect.height,
+        (float)info->srcRect.width,
+        (float)info->srcRect.height,
         info->rot,
-        texUnit,
+        (float)texUnit,
         (float)info->srcRect.x / texSize.x,
         (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
         info->alpha
@@ -405,14 +405,14 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
     ZF4RenderLayer* const layer = &renderer->layers[id.layerIndex];
     ZF4CharBatch* const batch = &layer->charBatches[id.batchIndex];
 
-    const int textLen = strlen(text);
+    const int textLen = (int)strlen(text);
     assert(textLen > 0 && textLen <= batch->slotCnt);
 
     const ZF4FontArrangementInfo* const fontArrangementInfo = &zf4_get_fonts()->arrangementInfos[batch->displayProps.fontIndex];
     const ZF4Pt2D fontTexSize = zf4_get_fonts()->texSizes[batch->displayProps.fontIndex];
 
-    ZF4Vec2D charDrawPositions[ZF4_CHAR_BATCH_SLOT_LIMIT];
-    ZF4Vec2D charDrawPosPen = {0};
+    ZF4Pt2D charDrawPositions[ZF4_CHAR_BATCH_SLOT_LIMIT];
+    ZF4Pt2D charDrawPosPen = {0};
 
     int textLineWidths[ZF4_CHAR_BATCH_SLOT_LIMIT + 1];
     int textFirstLineMinOffs = 0;
@@ -434,7 +434,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
             textLastLineMaxHeightUpdated = false;
 
             textLineCnter++;
-            charDrawPosPen.x = 0.0f;
+            charDrawPosPen.x = 0;
             charDrawPosPen.y += fontArrangementInfo->lineHeight;
             continue;
         }

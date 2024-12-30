@@ -18,7 +18,6 @@ static void release_sound_src_by_index(ZF4SoundSrcManager* const manager, const 
 static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID) {
     assert(bufALID);
 
-    //const auto buf = alloc<AudioSample>(gk_musicBufSampleCnt); // TODO: Allocate this once and reuse.
     float* const buf = malloc(ZF4_MUSIC_BUF_SIZE);
 
     if (!buf) {
@@ -27,9 +26,9 @@ static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID) {
 
     const ZF4AudioInfo* const musicInfo = &zf4_get_music()->infos[src->musicIndex];
 
-    const int totalBytesToRead = sizeof(ZF4AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt;
-    const int bytesToRead = min(ZF4_MUSIC_BUF_SIZE, totalBytesToRead - src->fsBytesRead);
-    const int bytesRead = fread(buf, 1, bytesToRead, src->fs);
+    const long long totalBytesToRead = (long long)(sizeof(ZF4AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt);
+    const int bytesToRead = (int)ZF4_MIN(ZF4_MUSIC_BUF_SIZE, totalBytesToRead - src->fsBytesRead);
+    const int bytesRead = (int)fread(buf, 1, bytesToRead, src->fs);
 
     if (bytesRead < bytesToRead) {
         if (ferror(src->fs)) {

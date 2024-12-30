@@ -94,7 +94,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
         const double frameDur = calc_valid_frame_dur(frameTime, frameTimeLast);
         frameDurAccum += frameDur;
 
-        const int tickCnt = frameDurAccum / TARG_TICK_DUR;
+        const int tickCnt = (int)(frameDurAccum / TARG_TICK_DUR);
 
         if (tickCnt > 0) {
             int i = 0;

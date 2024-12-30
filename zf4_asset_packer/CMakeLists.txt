@@ -23,3 +23,9 @@ target_include_directories(zf4_asset_packer PRIVATE
 )
 
 target_link_libraries(zf4_asset_packer PRIVATE zf4_common cjson Freetype::Freetype SndFile::sndfile)
+
+target_compile_options(zf4_asset_packer PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -pedantic>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
+)

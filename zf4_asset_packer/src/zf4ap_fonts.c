@@ -20,7 +20,7 @@ static int calc_largest_bitmap_width(const FT_Face ftFace) {
         FT_Load_Glyph(ftFace, FT_Get_Char_Index(ftFace, ZF4_FONT_CHAR_RANGE_BEGIN + i), FT_LOAD_DEFAULT);
         FT_Render_Glyph(ftFace->glyph, FT_RENDER_MODE_NORMAL);
 
-        if (ftFace->glyph->bitmap.width > width) {
+        if ((int)ftFace->glyph->bitmap.width > width) {
             width = ftFace->glyph->bitmap.width;
         }
     }
