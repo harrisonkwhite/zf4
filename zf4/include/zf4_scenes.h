@@ -91,10 +91,10 @@ bool zf4_load_scene(ZF4Scene* scene, int typeIndex);
 void zf4_unload_scene(ZF4Scene* scene);
 bool zf4_proc_scene_tick(ZF4Scene* scene);
 
-ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene);
+bool zf4_spawn_ent(ZF4EntID* const entID, const ZF4Vec2D pos, const ZF4Scene* const scene);
 void zf4_destroy_ent(ZF4EntID entID, ZF4Scene* scene);
 void* zf4_get_ent_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene);
-void* zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene); // NOTE: Return value might be placeholder?
+bool zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene);
 bool zf4_does_ent_have_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene);
 bool zf4_does_ent_have_component_signature(ZF4EntID entID, ZF4Byte* compSig, ZF4Scene* scene);
 int zf4_get_ents_with_component_signature(ZF4EntID* entIDs, int entIDLimit, ZF4Byte* compSig, ZF4Scene* scene);

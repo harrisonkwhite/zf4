@@ -1,14 +1,19 @@
 #include <zf4_scenes.h>
 
-ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
-    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
+bool zf4_spawn_ent(ZF4EntID* const entID, const ZF4Vec2D pos, const ZF4Scene* const scene) {
+    assert(zf4_is_zero(entID, sizeof(*entID)));
 
-    int entIndex = zf4_get_first_inactive_bit_index(scene->entActivity, sceneTypeInfo->entLimit);
-    assert(entIndex != -1);
+    const ZF4SceneTypeInfo* const sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
 
-    zf4_activate_bit(scene->entActivity, entIndex);
+    entID->index = zf4_get_first_inactive_bit_index(scene->entActivity, sceneTypeInfo->entLimit);
 
-    ZF4Ent* ent = &scene->ents[entIndex];
+    if (entID->index == -1) {
+        return false;
+    }
+
+    zf4_activate_bit(scene->entActivity, entID->index);
+
+    ZF4Ent* ent = &scene->ents[entID->index];
 
     ent->pos = pos;
     memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt());
@@ -16,9 +21,10 @@ ZF4EntID zf4_spawn_ent(ZF4Vec2D pos, ZF4Scene* scene) {
     ent->tag = -1;
     ent->onDestroy = NULL;
 
-    ++scene->entVersions[entIndex];
+    ++scene->entVersions[entID->index];
+    entID->version = scene->entVersions[entID->index];
 
-    return (ZF4EntID) { entIndex, scene->entVersions[entIndex] };
+    return true;
 }
 
 void zf4_destroy_ent(ZF4EntID entID, ZF4Scene* scene) {
@@ -46,13 +52,16 @@ void* zf4_get_ent_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene) 
     return (ZF4Byte*)scene->compArrays[compTypeIndex] + (compIndex * compSize);
 }
 
-void* zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene) {
+bool zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene) {
     assert(!zf4_does_ent_have_component(entID, compTypeIndex, scene));
 
     // Find and use the first inactive component of the type.
     ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
     int compIndex = zf4_get_first_inactive_bit_index(scene->compActivities[compTypeIndex], sceneTypeInfo->entLimit);
-    assert(compIndex != -1);
+
+    if (compIndex == -1) {
+        return false;
+    }
 
     zf4_activate_bit(scene->compActivities[compTypeIndex], compIndex);
 
@@ -70,7 +79,7 @@ void* zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scen
         compTypeInfo->defaultsLoader(comp);
     }
 
-    return comp;
+    return true;
 }
 
 bool zf4_does_ent_have_component_signature(ZF4EntID entID, ZF4Byte* compSig, ZF4Scene* scene) {
