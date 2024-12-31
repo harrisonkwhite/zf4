@@ -115,6 +115,11 @@ inline bool zf4_does_ent_have_component(ZF4EntID entID, int compTypeIndex, ZF4Sc
     return ent->compIndexes[compTypeIndex] != -1;
 }
 
+inline bool zf4_does_ent_have_tag(ZF4EntID entID, int tag, ZF4Scene* scene) {
+    ZF4Ent* ent = zf4_get_ent(entID, scene);
+    return ent->tag == tag;
+}
+
 inline ZF4Byte* zf4_push_component_signature(ZF4MemArena* memArena) {
     int compTypeCnt = zf4_get_component_type_cnt();
     return zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(compTypeCnt), 1);
