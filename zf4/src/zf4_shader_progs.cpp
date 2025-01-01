@@ -6,7 +6,7 @@
 
 static GLuint create_shader_from_src(const char* const src, const bool frag) {
     const GLuint glID = glCreateShader(frag ? GL_FRAGMENT_SHADER : GL_VERTEX_SHADER);
-    glShaderSource(glID, 1, &src, NULL);
+    glShaderSource(glID, 1, &src, nullptr);
     glCompileShader(glID);
 
     GLint compileSuccess;
@@ -47,7 +47,7 @@ static GLuint create_shader_prog_from_srcs(const char* const vertShaderSrc, cons
 }
 
 static void load_sprite_quad_shader_prog(ZF4SpriteQuadShaderProg* const prog) {
-    assert(zf4_is_zero(prog, sizeof(*prog)));
+    assert(zf4_is_zero(prog));
 
     const char* const vertShaderSrc =
         "#version 430 core\n"
@@ -112,7 +112,7 @@ static void load_sprite_quad_shader_prog(ZF4SpriteQuadShaderProg* const prog) {
 }
 
 static void load_char_quad_shader_prog(ZF4CharQuadShaderProg* const prog) {
-    assert(zf4_is_zero(prog, sizeof(*prog)));
+    assert(zf4_is_zero(prog));
 
     const char* const vertShaderSrc =
         "#version 430 core\n"
@@ -173,7 +173,7 @@ static void load_char_quad_shader_prog(ZF4CharQuadShaderProg* const prog) {
 }
 
 void zf4_load_shader_progs(ZF4ShaderProgs* const progs) {
-    assert(zf4_is_zero(progs, sizeof(*progs)));
+    assert(zf4_is_zero(progs));
 
     load_sprite_quad_shader_prog(&progs->spriteQuad);
     load_char_quad_shader_prog(&progs->charQuad);

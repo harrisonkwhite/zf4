@@ -9,7 +9,7 @@ static bool i_rngInitialized;
 
 void zf4_init_rng() {
     assert(!i_rngInitialized);
-    srand((unsigned int)time(NULL));
+    srand((unsigned int)time(nullptr));
     i_rngInitialized = true;
 }
 

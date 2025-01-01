@@ -25,7 +25,7 @@ static double calc_valid_frame_dur(const double frameTime, const double frameTim
 }
 
 static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
-    assert(zf4_is_zero(game, sizeof(*game)));
+    assert(zf4_is_zero(game));
 
     //
     // Initialisation
@@ -125,7 +125,7 @@ static void run_game(Game* const game, const ZF4UserGameInfo* const userInfo) {
 }
 
 void zf4_start_game(const ZF4UserGameInfo* const userInfo) {
-    Game game = {0};
+    Game game = {};
 
     run_game(&game, userInfo);
 

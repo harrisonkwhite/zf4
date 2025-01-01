@@ -12,7 +12,7 @@ bool zf4_load_component_types(int typeCnt, ZF4ComponentTypeInfoLoader typeInfoLo
 
     assert(typeCnt > 0);
 
-    i_componentTypeInfos = calloc(typeCnt, sizeof(ZF4ComponentTypeInfo));
+    i_componentTypeInfos = zf4_alloc_zeroed<ZF4ComponentTypeInfo>(typeCnt);
 
     if (!i_componentTypeInfos) {
         return false;
@@ -22,7 +22,7 @@ bool zf4_load_component_types(int typeCnt, ZF4ComponentTypeInfoLoader typeInfoLo
 
     for (int i = 0; i < typeCnt; i++) {
         typeInfoLoader(&i_componentTypeInfos[i], i);
-        assert(!zf4_is_zero(&i_componentTypeInfos[i], sizeof(i_componentTypeInfos[i])));
+        assert(!zf4_is_zero(&i_componentTypeInfos[i]));
     }
 
     return true;
@@ -33,7 +33,7 @@ void zf4_unload_component_types() {
 
     if (i_componentTypeInfos) {
         free(i_componentTypeInfos);
-        i_componentTypeInfos = NULL;
+        i_componentTypeInfos = nullptr;
     }
 }
 

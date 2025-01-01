@@ -3,7 +3,7 @@
 #include <stb_image.h>
 
 bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjTextures) {
-    const cJSON* cjTexRelFilePath = NULL;
+    const cJSON* cjTexRelFilePath = nullptr;
 
     cJSON_ArrayForEach(cjTexRelFilePath, cjTextures) {
         if (!cJSON_IsString(cjTexRelFilePath)) {
@@ -17,7 +17,7 @@ bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const 
 
         // Load and write the size and pixel data of the texture.
         ZF4Pt2D texSize;
-        stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, NULL, ZF4_TEX_CHANNEL_CNT);
+        stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, nullptr, ZF4_TEX_CHANNEL_CNT);
 
         if (!texPxData) {
             zf4_log_error("Failed to load texture with file path \"%s\"!", srcAssetFilePathBuf);

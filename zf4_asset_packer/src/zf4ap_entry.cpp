@@ -9,7 +9,7 @@ int main(const int argCnt, const char* const* args) {
     const char* const srcDir = args[1]; // The directory containing the assets to pack.
     const char* const outputDir = args[2]; // The directory to output the packed assets file to.
 
-    AssetPacker packer = {0};
+    AssetPacker packer = {};
 
     const bool packingSuccess = run_asset_packer(&packer, srcDir, outputDir);
 

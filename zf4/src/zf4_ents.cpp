@@ -1,7 +1,7 @@
 #include <zf4_scenes.h>
 
 bool zf4_spawn_ent(ZF4EntID* const entID, const ZF4Vec2D pos, const ZF4Scene* const scene) {
-    assert(zf4_is_zero(entID, sizeof(*entID)));
+    assert(zf4_is_zero(entID));
 
     const ZF4SceneTypeInfo* const sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
 
@@ -19,7 +19,7 @@ bool zf4_spawn_ent(ZF4EntID* const entID, const ZF4Vec2D pos, const ZF4Scene* co
     memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt());
     memset(ent->compSig, 0, sizeof(*ent->compSig) * ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()));
     ent->tag = -1;
-    ent->onDestroy = NULL;
+    ent->onDestroy = nullptr;
 
     ++scene->entVersions[entID->index];
     entID->version = scene->entVersions[entID->index];

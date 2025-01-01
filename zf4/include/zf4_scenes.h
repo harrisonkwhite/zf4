@@ -101,7 +101,7 @@ int zf4_get_ents_with_component_signature(ZF4EntID* entIDs, int entIDLimit, ZF4B
 int zf4_get_ents_with_tag(ZF4EntID* entIDs, int entIDLimit, int tag, ZF4Scene* scene);
 
 inline ZF4EntID zf4_create_ent_id(int entIndex, ZF4Scene* scene) {
-    return (ZF4EntID) {
+    return {
         .index = entIndex,
         .version = scene->entVersions[entIndex]
     };
@@ -129,7 +129,7 @@ inline bool zf4_does_ent_have_tag(ZF4EntID entID, int tag, ZF4Scene* scene) {
 
 inline ZF4Byte* zf4_push_component_signature(ZF4MemArena* memArena) {
     int compTypeCnt = zf4_get_component_type_cnt();
-    return zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(compTypeCnt), 1);
+    return memArena->push<ZF4Byte>(ZF4_BITS_TO_BYTES(compTypeCnt));
 }
 
 #endif

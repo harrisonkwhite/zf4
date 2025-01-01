@@ -25,7 +25,7 @@ static FILE* open_output_fs(const char* const outputDir) {
 
     if (filePathLen >= sizeof(filePath)) {
         zf4_log_error("Output file path \"%s\" is too long! Limit is %d characters.", filePath, sizeof(filePath) - 1);
-        return NULL;
+        return nullptr;
     }
 
     // Create or replace the output file.
@@ -41,7 +41,7 @@ static FILE* open_output_fs(const char* const outputDir) {
 static char* get_packing_instrs_file_chars(char* const srcAssetFilePathBuf, const int srcAssetFilePathBufStartLen) {
     // Get the path of the packing instructions file.
     if (!complete_asset_file_path(srcAssetFilePathBuf, srcAssetFilePathBufStartLen, PACKING_INSTRS_FILE_NAME)) {
-        return NULL;
+        return nullptr;
     }
 
     // Get its contents (dynamically allocated).
@@ -55,7 +55,7 @@ static char* get_packing_instrs_file_chars(char* const srcAssetFilePathBuf, cons
 }
 
 bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir) {
-    assert(zf4_is_zero(packer, sizeof(*packer)));
+    assert(zf4_is_zero(packer));
 
     // Open the output file stream.
     packer->outputFS = open_output_fs(outputDir);
@@ -65,7 +65,7 @@ bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const
     }
 
     // Initialise the source asset file path buffer with the source directory.
-    char srcAssetFilePathBuf[SRC_ASSET_FILE_PATH_BUF_SIZE] = {0};
+    char srcAssetFilePathBuf[SRC_ASSET_FILE_PATH_BUF_SIZE] = {};
     const int srcAssetFilePathStartLen = snprintf(srcAssetFilePathBuf, SRC_ASSET_FILE_PATH_BUF_SIZE, "%s/", srcDir);
 
     if (srcAssetFilePathStartLen >= SRC_ASSET_FILE_PATH_BUF_SIZE) {

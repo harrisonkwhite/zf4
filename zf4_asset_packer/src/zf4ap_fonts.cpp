@@ -39,7 +39,7 @@ static ZF4Pt2D calc_font_tex_size(const FT_Face ftFace) {
 }
 
 static bool load_font_data(FontData* const fd, const FT_Library ftLib, const char* const filePath, const int ptSize) {
-    assert(zf4_is_zero(fd, sizeof(*fd)));
+    assert(zf4_is_zero(fd));
 
     FT_Face ftFace;
 
@@ -70,7 +70,7 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
         fd->texPxData[i + 3] = 0;
     }
 
-    ZF4Pt2D charDrawPos = {0}; // Where we are in the font texture.
+    ZF4Pt2D charDrawPos = {}; // Where we are in the font texture.
 
     for (int i = 0; i < ZF4_FONT_CHAR_RANGE_SIZE; i++) {
         FT_UInt ftCharIndex = FT_Get_Char_Index(ftFace, ZF4_FONT_CHAR_RANGE_BEGIN + i);
@@ -132,7 +132,7 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
         return false;
     }
 
-    FontData* fontData = malloc(sizeof(*fontData)); // A buffer reused for all fonts.
+    const auto fontData = zf4_alloc<FontData>(); // A buffer reused for all fonts.
 
     if (!fontData) {
         zf4_log_error("Failed to allocate memory for font data!");
@@ -142,7 +142,7 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
 
     bool success = true;
 
-    const cJSON* cjFont = NULL;
+    const cJSON* cjFont = nullptr;
 
     cJSON_ArrayForEach(cjFont, cjFonts) {
         const cJSON* const cjRelFilePath = cJSON_GetObjectItem(cjFont, "relFilePath");

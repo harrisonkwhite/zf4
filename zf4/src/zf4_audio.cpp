@@ -18,7 +18,7 @@ static void release_sound_src_by_index(ZF4SoundSrcManager* const manager, const 
 static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID) {
     assert(bufALID);
 
-    float* const buf = malloc(ZF4_MUSIC_BUF_SIZE);
+    const auto buf = zf4_alloc<ZF4Byte>(ZF4_MUSIC_BUF_SIZE);
 
     if (!buf) {
         return false;
@@ -28,7 +28,7 @@ static bool load_music_buf_data(ZF4MusicSrc* const src, const ALuint bufALID) {
 
     const long long totalBytesToRead = (long long)(sizeof(ZF4AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt);
     const int bytesToRead = (int)ZF4_MIN(ZF4_MUSIC_BUF_SIZE, totalBytesToRead - src->fsBytesRead);
-    const int bytesRead = (int)fread(buf, 1, bytesToRead, src->fs);
+    const int bytesRead = zf4_read_from_fs<ZF4Byte>(buf, src->fs, bytesToRead);
 
     if (bytesRead < bytesToRead) {
         if (ferror(src->fs)) {
@@ -63,14 +63,14 @@ static void clean_active_music_src(ZF4MusicSrcManager* const manager, const int 
 
     fclose(manager->srcs[index].fs);
 
-    memset(&manager->srcs[index], 0, sizeof(manager->srcs[index]));
+    zf4_zero_out(&manager->srcs[index]);
 }
 
 bool zf4_init_audio_system() {
     assert(!i_alDevice && !i_alContext);
 
     // Open a playback device for OpenAL.
-    i_alDevice = alcOpenDevice(NULL);
+    i_alDevice = alcOpenDevice(nullptr);
 
     if (!i_alDevice) {
         zf4_log_error("Failed to open a device for OpenAL!");
@@ -78,7 +78,7 @@ bool zf4_init_audio_system() {
     }
 
     // Create an OpenAL context.
-    i_alContext = alcCreateContext(i_alDevice, NULL);
+    i_alContext = alcCreateContext(i_alDevice, nullptr);
 
     if (!i_alContext) {
         zf4_log_error("Failed to create an OpenAL context!");
@@ -99,12 +99,12 @@ bool zf4_init_audio_system() {
 void zf4_clean_audio_system() {
     if (i_alContext) {
         alcDestroyContext(i_alContext);
-        i_alContext = NULL;
+        i_alContext = nullptr;
     }
 
     if (i_alDevice) {
         alcCloseDevice(i_alDevice);
-        i_alDevice = NULL;
+        i_alDevice = nullptr;
     }
 }
 
@@ -115,7 +115,7 @@ void zf4_clean_sound_srcs(ZF4SoundSrcManager* const manager) {
         }
     }
 
-    memset(manager, 0, sizeof(*manager));
+    zf4_zero_out(manager);
 }
 
 void zf4_handle_auto_release_sound_srcs(ZF4SoundSrcManager* const manager) {
@@ -149,7 +149,7 @@ ZF4AudioSrcID zf4_add_sound_src(ZF4SoundSrcManager* const manager, const int snd
 
     assert(false);
 
-    ZF4AudioSrcID emptyID = {0};
+    ZF4AudioSrcID emptyID = {};
     return emptyID;
 }
 
@@ -185,7 +185,7 @@ void zf4_clean_music_srcs(ZF4MusicSrcManager* const manager) {
         }
     }
 
-    memset(manager, 0, sizeof(*manager));
+    zf4_zero_out(manager);
 }
 
 bool zf4_refresh_music_src_bufs(ZF4MusicSrcManager* const manager) {

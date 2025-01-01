@@ -3,13 +3,13 @@
 #include <stdalign.h>
 
 static bool load_scene_ent(ZF4Scene* scene, ZF4Ent* ent) {
-    ent->compIndexes = zf4_push_to_mem_arena(&scene->memArena, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt(), alignof(int));
+    ent->compIndexes = scene->memArena.push<int>(zf4_get_component_type_cnt());
 
     if (!ent->compIndexes) {
         return false;
     }
 
-    ent->compSig = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()), alignof(ZF4Byte));
+    ent->compSig = scene->memArena.push<ZF4Byte>(ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()));
 
     if (!ent->compSig) {
         return false;
@@ -25,7 +25,7 @@ static bool load_scene_ents(ZF4Scene* scene) {
         //
         // Entities
         //
-        scene->ents = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->ents) * sceneTypeInfo->entLimit, alignof(ZF4Ent));
+        scene->ents = scene->memArena.push<ZF4Ent>(sceneTypeInfo->entLimit);
 
         if (!scene->ents) {
             return false;
@@ -37,13 +37,13 @@ static bool load_scene_ents(ZF4Scene* scene) {
             }
         }
 
-        scene->entActivity = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(sceneTypeInfo->entLimit), alignof(ZF4Byte));
+        scene->entActivity = scene->memArena.push<ZF4Byte>(ZF4_BITS_TO_BYTES(sceneTypeInfo->entLimit));
 
         if (!scene->entActivity) {
             return false;
         }
 
-        scene->entVersions = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->entVersions) * sceneTypeInfo->entLimit, alignof(int));
+        scene->entVersions = scene->memArena.push<int>(sceneTypeInfo->entLimit);
 
         if (!scene->entVersions) {
             return false;
@@ -52,19 +52,19 @@ static bool load_scene_ents(ZF4Scene* scene) {
         //
         // Components
         //
-        scene->compArrays = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compArrays) * zf4_get_component_type_cnt(), alignof(void*));
+        scene->compArrays = scene->memArena.push<void*>(zf4_get_component_type_cnt());
 
         if (!scene->compArrays) {
             return false;
         }
 
-        scene->compActivities = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compActivities) * zf4_get_component_type_cnt(), alignof(ZF4Byte*));
+        scene->compActivities = scene->memArena.push<ZF4Byte*>(zf4_get_component_type_cnt());
 
         if (!scene->compActivities) {
             return false;
         }
 
-        scene->compTypeLimits = zf4_push_to_mem_arena(&scene->memArena, sizeof(*scene->compTypeLimits) * zf4_get_component_type_cnt(), alignof(int));
+        scene->compTypeLimits = scene->memArena.push<int>(zf4_get_component_type_cnt());
 
         if (!scene->compTypeLimits) {
             return false;
@@ -72,17 +72,17 @@ static bool load_scene_ents(ZF4Scene* scene) {
 
         for (int i = 0; i < zf4_get_component_type_cnt(); ++i) {
             scene->compTypeLimits[i] = sceneTypeInfo->entLimit; // The default component type limit is the entity limit.
-            sceneTypeInfo->compTypeLimitLoader(&scene->compTypeLimits[i], i);
+            sceneTypeInfo->compTypeLimitLoader(&scene->compTypeLimits[i], i); // The limit may or may not be changed here.
 
             ZF4ComponentTypeInfo* compTypeInfo = zf4_get_component_type_info(i);
 
-            scene->compArrays[i] = zf4_push_to_mem_arena(&scene->memArena, compTypeInfo->size * scene->compTypeLimits[i], compTypeInfo->alignment);
+            scene->compArrays[i] = scene->memArena.push<ZF4Byte>(compTypeInfo->size * scene->compTypeLimits[i]);
 
             if (!scene->compArrays[i]) {
                 return false;
             }
 
-            scene->compActivities[i] = zf4_push_to_mem_arena(&scene->memArena, ZF4_BITS_TO_BYTES(scene->compTypeLimits[i]), alignof(ZF4Byte));
+            scene->compActivities[i] = scene->memArena.push<ZF4Byte>(ZF4_BITS_TO_BYTES(scene->compTypeLimits[i]));
 
             if (!scene->compActivities[i]) {
                 return false;
@@ -94,7 +94,7 @@ static bool load_scene_ents(ZF4Scene* scene) {
 }
 
 bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
-    assert(zf4_is_zero(scene, sizeof(*scene)));
+    assert(zf4_is_zero(scene));
 
     zf4_log("Loading scene of type index %d...", sceneTypeIndex);
 
@@ -102,12 +102,12 @@ bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
 
     ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(sceneTypeIndex);
 
-    if (!zf4_init_mem_arena(&scene->memArena, sceneTypeInfo->memArenaSize)) {
+    if (!scene->memArena.init(sceneTypeInfo->memArenaSize)) {
         zf4_log_error("Failed to initialise scene main memory arena!");
         return false;
     }
 
-    if (!zf4_init_mem_arena(&scene->scratchSpace, ZF4_SCENE_SCRATCH_SPACE_SIZE)) {
+    if (!scene->scratchSpace.init(ZF4_SCENE_SCRATCH_SPACE_SIZE)) {
         zf4_log_error("Failed to initialise scene scratch space memory arena!");
         return false;
     }
@@ -123,7 +123,7 @@ bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
     }
 
     if (sceneTypeInfo->userDataSize > 0) {
-        scene->userData = zf4_push_to_mem_arena(&scene->memArena, sceneTypeInfo->userDataSize, sceneTypeInfo->userDataAlignment);
+        scene->userData = scene->memArena.push(sceneTypeInfo->userDataSize, sceneTypeInfo->userDataAlignment);
 
         if (!scene->userData) {
             zf4_log_error("Failed to reserve memory for scene user data!");
@@ -136,9 +136,9 @@ bool zf4_load_scene(ZF4Scene* scene, int sceneTypeIndex) {
 
 void zf4_unload_scene(ZF4Scene* scene) {
     zf4_clean_renderer(&scene->renderer);
-    zf4_clean_mem_arena(&scene->scratchSpace);
-    zf4_clean_mem_arena(&scene->memArena);
-    memset(scene, 0, sizeof(*scene));
+    scene->scratchSpace.clean();
+    scene->memArena.clean();
+    zf4_zero_out(scene);
 }
 
 bool zf4_proc_scene_tick(ZF4Scene* scene) {
@@ -146,7 +146,7 @@ bool zf4_proc_scene_tick(ZF4Scene* scene) {
 
     zf4_empty_sprite_batches(&scene->renderer);
 
-    zf4_reset_mem_arena(&scene->scratchSpace);
+    scene->scratchSpace.reset();
 
     int sceneChangeIndex = -1;
 

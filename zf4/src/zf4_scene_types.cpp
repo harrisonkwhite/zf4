@@ -12,7 +12,7 @@ bool zf4_load_scene_types(int typeCnt, ZF4SceneTypeInfoLoader typeInfoLoader) {
 
     assert(typeCnt > 0);
 
-    i_sceneTypeInfos = calloc(typeCnt, sizeof(ZF4SceneTypeInfo));
+    i_sceneTypeInfos = zf4_alloc_zeroed<ZF4SceneTypeInfo>(typeCnt);
 
     if (!i_sceneTypeInfos) {
         return false;
@@ -22,7 +22,7 @@ bool zf4_load_scene_types(int typeCnt, ZF4SceneTypeInfoLoader typeInfoLoader) {
 
     for (int i = 0; i < typeCnt; i++) {
         typeInfoLoader(&i_sceneTypeInfos[i], i);
-        assert(!zf4_is_zero(&i_sceneTypeInfos[i], sizeof(i_sceneTypeInfos[i])));
+        assert(!zf4_is_zero(&i_sceneTypeInfos[i]));
     }
 
     return true;
@@ -33,7 +33,7 @@ void zf4_unload_scene_types() {
 
     if (i_sceneTypeInfos) {
         free(i_sceneTypeInfos);
-        i_sceneTypeInfos = NULL;
+        i_sceneTypeInfos = nullptr;
     }
 }
 

@@ -14,9 +14,10 @@ typedef struct {
 static ZF4Assets i_assets;
 
 bool zf4_load_assets() {
-    assert(zf4_is_zero(&i_assets, sizeof(i_assets)));
+    assert(zf4_is_zero(&i_assets));
 
-    if (!zf4_init_mem_arena(&i_assets.memArena, MEM_ARENA_SIZE)) {
+    if (!i_assets.memArena.init(MEM_ARENA_SIZE)) {
+        zf4_log_error("Failed to initialise the assets memory arena!");
         return false;
     }
 
@@ -69,9 +70,9 @@ void zf4_unload_assets() {
         glDeleteTextures(i_assets.textures.cnt, i_assets.textures.glIDs);
     }
 
-    zf4_clean_mem_arena(&i_assets.memArena);
+    i_assets.memArena.clean();
 
-    memset(&i_assets, 0, sizeof(i_assets));
+    zf4_zero_out(&i_assets);
 }
 
 const ZF4Textures* zf4_get_textures() {

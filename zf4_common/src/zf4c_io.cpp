@@ -1,8 +1,7 @@
 #include <zf4c_io.h>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdarg>
+#include <zf4c_mem.h>
 
 void zf4_log(const char* const format, ...) {
     va_list args;
@@ -28,7 +27,7 @@ char* zf4_get_file_contents(const char* const filename) {
     FILE* const fs = fopen(filename, "rb");
 
     if (!fs) {
-        return NULL;
+        return nullptr;
     }
 
     // Get the file size.
@@ -38,15 +37,15 @@ char* zf4_get_file_contents(const char* const filename) {
 
     // Allocate memory to store the file contents.
     const int contentsSize = fileSize + 1; // Accounts for '\0'.
-    char* const contents = malloc(contentsSize);
+    const auto contents = zf4_alloc<char>(contentsSize);
 
     if (!contents) {
         fclose(fs);
-        return NULL;
+        return nullptr;
     }
 
     // Read the contents into the buffer.
-    fread(contents, 1, contentsSize - 1, fs);
+    zf4_read_from_fs<char>(contents, fs, contentsSize - 1);
     contents[contentsSize - 1] = '\0';
 
     fclose(fs);

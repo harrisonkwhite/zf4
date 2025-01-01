@@ -16,7 +16,7 @@
 static ZF4QuadBuf gen_quad_buf(const int quadCnt, const bool sprite) {
     assert(quadCnt > 0);
 
-    ZF4QuadBuf buf = {0};
+    ZF4QuadBuf buf = {};
 
     const int vertCnt = sprite ? ZF4_SPRITE_QUAD_SHADER_PROG_VERT_CNT : ZF4_CHAR_QUAD_SHADER_PROG_VERT_CNT;
 
@@ -27,7 +27,7 @@ static ZF4QuadBuf gen_quad_buf(const int quadCnt, const bool sprite) {
     // Generate vertex buffer.
     glGenBuffers(1, &buf.vertBufGLID);
     glBindBuffer(GL_ARRAY_BUFFER, buf.vertBufGLID);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertCnt * 4 * quadCnt, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertCnt * 4 * quadCnt, nullptr, GL_DYNAMIC_DRAW);
 
     // Generate element buffer.
     {
@@ -94,13 +94,13 @@ static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const me
 
     // Reserve memory in the arena.
     if (props.spriteBatchCnt > 0) {
-        layer->spriteBatchQuadBufs = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchQuadBufs) * props.spriteBatchCnt, alignof(ZF4QuadBuf));
+        layer->spriteBatchQuadBufs = memArena->push<ZF4QuadBuf>(props.spriteBatchCnt);
 
         if (!layer->spriteBatchQuadBufs) {
             return false;
         }
 
-        layer->spriteBatchTransients = zf4_push_to_mem_arena(memArena, sizeof(*layer->spriteBatchTransients) * props.spriteBatchCnt, alignof(ZF4SpriteBatchTransients));
+        layer->spriteBatchTransients = memArena->push<ZF4SpriteBatchTransients>(props.spriteBatchCnt);
 
         if (!layer->spriteBatchTransients) {
             return false;
@@ -108,13 +108,13 @@ static bool load_render_layer(ZF4RenderLayer* const layer, ZF4MemArena* const me
     }
 
     if (props.charBatchCnt > 0) {
-        layer->charBatches = zf4_push_to_mem_arena(memArena, sizeof(*layer->charBatches) * props.charBatchCnt, alignof(ZF4CharBatch));
+        layer->charBatches = memArena->push<ZF4CharBatch>(props.charBatchCnt);
 
         if (!layer->charBatches) {
             return false;
         }
 
-        layer->charBatchActivityBitset = zf4_push_to_mem_arena(memArena, ZF4_BITS_TO_BYTES(props.charBatchCnt), 1);
+        layer->charBatchActivityBitset = memArena->push<ZF4Byte>(ZF4_BITS_TO_BYTES(props.charBatchCnt));
 
         if (!layer->charBatchActivityBitset) {
             return false;
@@ -150,7 +150,7 @@ static int add_tex_unit_to_sprite_batch(ZF4SpriteBatchTransients* const batchTra
 }
 
 static void init_camera_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* const cam) {
-    assert(zf4_is_zero(mat, sizeof(*mat)));
+    assert(zf4_is_zero(mat));
 
     mat->elems[0][0] = cam->scale;
     mat->elems[1][1] = cam->scale;
@@ -160,11 +160,11 @@ static void init_camera_view_matrix(ZF4Matrix4x4* const mat, const ZF4Camera* co
 }
 
 bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena, const int layerCnt, const int camLayerCnt, const ZF4RenderLayerPropsInitializer layerPropsInitializer) {
-    assert(zf4_is_zero(renderer, sizeof(*renderer)));
+    assert(zf4_is_zero(renderer));
     assert(layerCnt > 0);
     assert(camLayerCnt >= 0 && camLayerCnt <= layerCnt);
 
-    renderer->layers = zf4_push_to_mem_arena(memArena, sizeof(*renderer->layers) * layerCnt, alignof(ZF4RenderLayer));
+    renderer->layers = memArena->push<ZF4RenderLayer>(layerCnt);
 
     if (!renderer->layers) {
         return false;
@@ -174,9 +174,9 @@ bool zf4_load_renderer(ZF4Renderer* const renderer, ZF4MemArena* const memArena,
     renderer->camLayerCnt = camLayerCnt;
 
     for (int i = 0; i < layerCnt; ++i) {
-        ZF4RenderLayerProps props = {0};
+        ZF4RenderLayerProps props = {};
         layerPropsInitializer(&props, i);
-        assert(!zf4_is_zero(&props, sizeof(props)));
+        assert(!zf4_is_zero(&props));
 
         if (!load_render_layer(&renderer->layers[i], memArena, props)) {
             return false;
@@ -197,7 +197,7 @@ void zf4_clean_renderer(ZF4Renderer* const renderer) {
         }
     }
 
-    memset(renderer, 0, sizeof(*renderer));
+    zf4_zero_out(renderer);
 }
 
 void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* const shaderProgs) {
@@ -215,13 +215,13 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
         texUnitsInitialized = true;
     }
 
-    ZF4Matrix4x4 projMat = {0};
+    ZF4Matrix4x4 projMat = {};
     zf4_init_ortho_matrix_4x4(&projMat, 0.0f, (float)zf4_get_window_size().x, (float)zf4_get_window_size().y, 0.0f, -1.0f, 1.0f);
 
-    ZF4Matrix4x4 camViewMat = {0};
+    ZF4Matrix4x4 camViewMat = {};
     init_camera_view_matrix(&camViewMat, &renderer->cam);
 
-    ZF4Matrix4x4 defaultViewMat = {0};
+    ZF4Matrix4x4 defaultViewMat = {};
     zf4_init_identity_matrix_4x4(&defaultViewMat);
 
     for (int i = 0; i < renderer->layerCnt; ++i) {
@@ -251,7 +251,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
                 glBindTexture(GL_TEXTURE_2D, zf4_get_textures()->glIDs[batchTransData->texUnitTexIDs[k]]);
             }
 
-            glDrawElements(GL_TRIANGLES, 6 * batchTransData->slotsUsed, GL_UNSIGNED_SHORT, NULL);
+            glDrawElements(GL_TRIANGLES, 6 * batchTransData->slotsUsed, GL_UNSIGNED_SHORT, nullptr);
         }
 
         //
@@ -277,7 +277,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
             glBindTexture(GL_TEXTURE_2D, zf4_get_fonts()->texGLIDs[batch->displayProps.fontIndex]);
 
             glBindVertexArray(batch->quadBuf.vertArrayGLID);
-            glDrawElements(GL_TRIANGLES, 6 * batch->slotCnt, GL_UNSIGNED_SHORT, NULL);
+            glDrawElements(GL_TRIANGLES, 6 * batch->slotCnt, GL_UNSIGNED_SHORT, nullptr);
         }
     }
 }
@@ -285,7 +285,7 @@ void zf4_render_all(const ZF4Renderer* const renderer, const ZF4ShaderProgs* con
 void zf4_empty_sprite_batches(ZF4Renderer* const renderer) {
     for (int i = 0; i < renderer->layerCnt; ++i) {
         ZF4RenderLayer* const layer = &renderer->layers[i];
-        memset(layer->spriteBatchTransients, 0, sizeof(*layer->spriteBatchTransients) * layer->props.spriteBatchCnt);
+        zf4_zero_out(layer->spriteBatchTransients, layer->props.spriteBatchCnt);
         layer->spriteBatchesFilled = 0;
     }
 }
@@ -384,16 +384,20 @@ ZF4CharBatchID zf4_activate_any_char_batch(ZF4Renderer* const renderer, const in
 
     zf4_activate_bit(layer->charBatchActivityBitset, batchIndex);
 
-    layer->charBatches[batchIndex] = (ZF4CharBatch) {
+    layer->charBatches[batchIndex] = {
         .quadBuf = gen_quad_buf(slotCnt, false),
-        .slotCnt = slotCnt,
-        .displayProps = {
-            .fontIndex = fontIndex,
-            .blend = {1.0f, 1.0f, 1.0f, 1.0f}
-        }
+        .slotCnt = slotCnt
     };
 
-    return (ZF4CharBatchID) {layerIndex, batchIndex};
+    layer->charBatches[batchIndex].displayProps = {
+        .fontIndex = fontIndex,
+        .blend = {1.0f, 1.0f, 1.0f, 1.0f}
+    };
+
+    return {
+        .layerIndex = layerIndex,
+        .batchIndex = batchIndex
+    };
 }
 
 void zf4_deactivate_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID id) {
@@ -412,7 +416,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
     const ZF4Pt2D fontTexSize = zf4_get_fonts()->texSizes[batch->displayProps.fontIndex];
 
     ZF4Pt2D charDrawPositions[ZF4_CHAR_BATCH_SLOT_LIMIT];
-    ZF4Pt2D charDrawPosPen = {0};
+    ZF4Pt2D charDrawPosPen = {};
 
     int textLineWidths[ZF4_CHAR_BATCH_SLOT_LIMIT + 1];
     int textFirstLineMinOffs = 0;
@@ -476,7 +480,7 @@ void zf4_write_to_char_batch(ZF4Renderer* const renderer, const ZF4CharBatchID i
     zf4_clear_char_batch(renderer, id);
 
     const int vertsLen = CHAR_BATCH_SLOT_VERTS_CNT * textLen;
-    float* const verts = calloc(vertsLen, sizeof(*verts));
+    const auto verts = zf4_alloc_zeroed<float>(vertsLen);
 
     if (!verts) {
         return;
@@ -545,5 +549,5 @@ void zf4_clear_char_batch(const ZF4Renderer* const renderer, const ZF4CharBatchI
 
     glBindVertexArray(batch->quadBuf.vertArrayGLID);
     glBindBuffer(GL_ARRAY_BUFFER, batch->quadBuf.vertBufGLID);
-    glBufferData(GL_ARRAY_BUFFER, CHAR_BATCH_SLOT_VERTS_SIZE * batch->slotCnt, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, CHAR_BATCH_SLOT_VERTS_SIZE * batch->slotCnt, nullptr, GL_DYNAMIC_DRAW);
 }

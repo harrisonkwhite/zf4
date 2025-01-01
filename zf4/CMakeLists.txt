@@ -6,21 +6,21 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
-    src/zf4_game.c
-    src/zf4_window_state.c
-    src/zf4_window_logic.c
-    src/zf4_assets_state.c
-    src/zf4_assets_logic.c
-    src/zf4_shader_progs.c
-    src/zf4_renderer.c
-    src/zf4_sprites_state.c
-    src/zf4_sprites_logic.c
-    src/zf4_audio.c
-    src/zf4_rand.c
-    src/zf4_component_types.c
-    src/zf4_scene_types.c
-    src/zf4_ents.c
-    src/zf4_scenes.c
+    src/zf4_game.cpp
+    src/zf4_window_state.cpp
+    src/zf4_window_logic.cpp
+    src/zf4_assets_state.cpp
+    src/zf4_assets_logic.cpp
+    src/zf4_shader_progs.cpp
+    src/zf4_renderer.cpp
+    src/zf4_sprites_state.cpp
+    src/zf4_sprites_logic.cpp
+    src/zf4_audio.cpp
+    src/zf4_rand.cpp
+    src/zf4_component_types.cpp
+    src/zf4_scene_types.cpp
+    src/zf4_ents.cpp
+    src/zf4_scenes.cpp
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
     include/zf4.h

@@ -128,12 +128,12 @@ inline ZF4Vec2D zf4_get_camera_bottom_right(const ZF4Camera* const cam) {
 
 inline ZF4Vec2D zf4_camera_to_screen_pos(const ZF4Vec2D pos, const ZF4Camera* const cam) {
     const ZF4Vec2D topLeft = zf4_get_camera_top_left(cam);
-    return (ZF4Vec2D) { (pos.x - topLeft.x) * cam->scale, (pos.y - topLeft.y) * cam->scale };
+    return { (pos.x - topLeft.x) * cam->scale, (pos.y - topLeft.y) * cam->scale };
 }
 
 inline ZF4Vec2D zf4_screen_to_camera_pos(const ZF4Vec2D pos, const ZF4Camera* const cam) {
     const ZF4Vec2D topLeft = zf4_get_camera_top_left(cam);
-    return (ZF4Vec2D) { (pos.x / cam->scale) + topLeft.x, (pos.y / cam->scale) + topLeft.y };
+    return { (pos.x / cam->scale) + topLeft.x, (pos.y / cam->scale) + topLeft.y };
 }
 
 #endif

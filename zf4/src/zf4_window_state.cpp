@@ -68,7 +68,7 @@ bool zf4_init_window(const int width, const int height, const char* const title,
     glfwWindowHint(GLFW_RESIZABLE, resizable);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-    i_glfwWindow = glfwCreateWindow(width, height, title, NULL, NULL);
+    i_glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
     if (!i_glfwWindow) {
         zf4_log_error("Failed to create GLFW window!");
@@ -92,7 +92,7 @@ bool zf4_init_window(const int width, const int height, const char* const title,
 void zf4_clean_window() {
     if (i_glfwWindow) {
         glfwDestroyWindow(i_glfwWindow);
-        i_glfwWindow = NULL;
+        i_glfwWindow = nullptr;
     }
 }
 

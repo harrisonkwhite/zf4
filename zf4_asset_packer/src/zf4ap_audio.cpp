@@ -47,7 +47,7 @@ static bool write_audio_file_data(FILE* const outputFS, float* const samples, co
 }
 
 bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjSnds) {
-    float* const samples = malloc(sizeof(*samples) * ZF4_AUDIO_SAMPLES_PER_CHUNK);
+    const auto samples = zf4_alloc<float>(ZF4_AUDIO_SAMPLES_PER_CHUNK);
 
     if (!samples) {
         zf4_log_error("Failed to allocate memory for sound samples!");
@@ -56,7 +56,7 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
 
     bool success = true;
 
-    const cJSON* cjSndRelFilePath = NULL;
+    const cJSON* cjSndRelFilePath = nullptr;
 
     cJSON_ArrayForEach(cjSndRelFilePath, cjSnds) {
         if (!cJSON_IsString(cjSndRelFilePath)) {
@@ -84,7 +84,7 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
 }
 
 bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjMusic) {
-    float* const samples = malloc(sizeof(*samples) * ZF4_AUDIO_SAMPLES_PER_CHUNK);
+    const auto samples = zf4_alloc<float>(ZF4_AUDIO_SAMPLES_PER_CHUNK);
 
     if (!samples) {
         zf4_log_error("Failed to allocate memory for music samples!");
@@ -93,7 +93,7 @@ bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
 
     bool success = true;
 
-    const cJSON* cjMusicRelFilePath = NULL;
+    const cJSON* cjMusicRelFilePath = nullptr;
 
     cJSON_ArrayForEach(cjMusicRelFilePath, cjMusic) {
         if (!cJSON_IsString(cjMusicRelFilePath)) {

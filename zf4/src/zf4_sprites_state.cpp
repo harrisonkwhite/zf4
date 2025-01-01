@@ -11,7 +11,7 @@ bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader) {
     i_spriteCnt = cnt;
 
     if (cnt > 0) {
-        i_sprites = calloc(cnt, sizeof(*i_sprites));
+        i_sprites = zf4_alloc_zeroed<ZF4Sprite>(cnt);
 
         if (!i_sprites) {
             return false;
@@ -19,7 +19,7 @@ bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader) {
 
         for (int i = 0; i < cnt; ++i) {
             loader(&i_sprites[i], i);
-            assert(!zf4_is_zero(&i_sprites[i], sizeof(i_sprites[i])));
+            assert(!zf4_is_zero(&i_sprites[i]));
         }
     }
 
@@ -29,7 +29,7 @@ bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader) {
 void zf4_unload_sprites() {
     if (i_sprites) {
         free(i_sprites);
-        i_sprites = NULL;
+        i_sprites = nullptr;
     }
 
     i_spriteCnt = 0;
