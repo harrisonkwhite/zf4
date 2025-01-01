@@ -26,7 +26,7 @@ typedef void (*ZF4OnEntDestroy)(ZF4EntID entID, ZF4Scene* scene);
 typedef struct {
     ZF4Vec2D pos;
     int* compIndexes;
-    ZF4Byte* compSig;
+    ZF4Byte* compSig; // NOTE: Remove?
     int tag;
     ZF4OnEntDestroy onDestroy;
 } ZF4Ent;
@@ -99,6 +99,13 @@ bool zf4_does_ent_have_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* sc
 bool zf4_does_ent_have_component_signature(ZF4EntID entID, ZF4Byte* compSig, ZF4Scene* scene);
 int zf4_get_ents_with_component_signature(ZF4EntID* entIDs, int entIDLimit, ZF4Byte* compSig, ZF4Scene* scene);
 int zf4_get_ents_with_tag(ZF4EntID* entIDs, int entIDLimit, int tag, ZF4Scene* scene);
+
+inline ZF4EntID zf4_create_ent_id(int entIndex, ZF4Scene* scene) {
+    return (ZF4EntID) {
+        .index = entIndex,
+        .version = scene->entVersions[entIndex]
+    };
+}
 
 inline bool zf4_does_ent_exist(ZF4EntID entID, ZF4Scene* scene) {
     assert(entID.index >= 0 && entID.index < zf4_get_scene_type_info(scene->typeIndex)->entLimit);
