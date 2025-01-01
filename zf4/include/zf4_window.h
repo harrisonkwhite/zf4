@@ -1,115 +1,114 @@
-#ifndef ZF4_WINDOW_H
-#define ZF4_WINDOW_H
+#pragma once
 
-#include <stdbool.h>
+#include <cstdbool>
 #include <GLFW/glfw3.h>
 #include <zf4c_math.h>
 
-typedef enum {
-    ZF4_UNDEFINED_KEY_CODE = -1,
+namespace zf4 {
+    typedef enum {
+        UNDEFINED_KEY_CODE = -1,
 
-    ZF4_KEY_SPACE,
+        KEY_SPACE,
 
-    ZF4_KEY_0,
-    ZF4_KEY_1,
-    ZF4_KEY_2,
-    ZF4_KEY_3,
-    ZF4_KEY_4,
-    ZF4_KEY_5,
-    ZF4_KEY_6,
-    ZF4_KEY_7,
-    ZF4_KEY_8,
-    ZF4_KEY_9,
+        KEY_0,
+        KEY_1,
+        KEY_2,
+        KEY_3,
+        KEY_4,
+        KEY_5,
+        KEY_6,
+        KEY_7,
+        KEY_8,
+        KEY_9,
 
-    ZF4_KEY_A,
-    ZF4_KEY_B,
-    ZF4_KEY_C,
-    ZF4_KEY_D,
-    ZF4_KEY_E,
-    ZF4_KEY_F,
-    ZF4_KEY_G,
-    ZF4_KEY_H,
-    ZF4_KEY_I,
-    ZF4_KEY_J,
-    ZF4_KEY_K,
-    ZF4_KEY_L,
-    ZF4_KEY_M,
-    ZF4_KEY_N,
-    ZF4_KEY_O,
-    ZF4_KEY_P,
-    ZF4_KEY_Q,
-    ZF4_KEY_R,
-    ZF4_KEY_S,
-    ZF4_KEY_T,
-    ZF4_KEY_U,
-    ZF4_KEY_V,
-    ZF4_KEY_W,
-    ZF4_KEY_X,
-    ZF4_KEY_Y,
-    ZF4_KEY_Z,
+        KEY_A,
+        KEY_B,
+        KEY_C,
+        KEY_D,
+        KEY_E,
+        KEY_F,
+        KEY_G,
+        KEY_H,
+        KEY_I,
+        KEY_J,
+        KEY_K,
+        KEY_L,
+        KEY_M,
+        KEY_N,
+        KEY_O,
+        KEY_P,
+        KEY_Q,
+        KEY_R,
+        KEY_S,
+        KEY_T,
+        KEY_U,
+        KEY_V,
+        KEY_W,
+        KEY_X,
+        KEY_Y,
+        KEY_Z,
 
-    ZF4_KEY_ESCAPE,
-    ZF4_KEY_ENTER,
-    ZF4_KEY_TAB,
+        KEY_ESCAPE,
+        KEY_ENTER,
+        KEY_TAB,
 
-    ZF4_KEY_RIGHT,
-    ZF4_KEY_LEFT,
-    ZF4_KEY_DOWN,
-    ZF4_KEY_UP,
+        KEY_RIGHT,
+        KEY_LEFT,
+        KEY_DOWN,
+        KEY_UP,
 
-    ZF4_KEY_F1,
-    ZF4_KEY_F2,
-    ZF4_KEY_F3,
-    ZF4_KEY_F4,
-    ZF4_KEY_F5,
-    ZF4_KEY_F6,
-    ZF4_KEY_F7,
-    ZF4_KEY_F8,
-    ZF4_KEY_F9,
-    ZF4_KEY_F10,
-    ZF4_KEY_F11,
-    ZF4_KEY_F12,
+        KEY_F1,
+        KEY_F2,
+        KEY_F3,
+        KEY_F4,
+        KEY_F5,
+        KEY_F6,
+        KEY_F7,
+        KEY_F8,
+        KEY_F9,
+        KEY_F10,
+        KEY_F11,
+        KEY_F12,
 
-    ZF4_KEY_LEFT_SHIFT,
-    ZF4_KEY_LEFT_CONTROL,
-    ZF4_KEY_LEFT_ALT,
+        KEY_LEFT_SHIFT,
+        KEY_LEFT_CONTROL,
+        KEY_LEFT_ALT,
 
-    ZF4_NUM_KEY_CODES
-} ZF4KeyCode;
+        NUM_KEY_CODES
+    } KeyCode;
 
-typedef enum {
-    ZF4_UNDEFINED_MOUSE_BUTTON_CODE = -1,
+    typedef enum {
+        UNDEFINED_MOUSE_BUTTON_CODE = -1,
 
-    ZF4_MOUSE_BUTTON_LEFT,
-    ZF4_MOUSE_BUTTON_RIGHT,
-    ZF4_MOUSE_BUTTON_MID,
+        MOUSE_BUTTON_LEFT,
+        MOUSE_BUTTON_RIGHT,
+        MOUSE_BUTTON_MID,
 
-    ZF4_NUM_MOUSE_BUTTON_CODES
-} ZF4MouseButtonCode;
+        NUM_MOUSE_BUTTON_CODES
+    } MouseButtonCode;
 
-//
-// State
-//
-bool zf4_init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
-void zf4_clean_window();
-ZF4Pt2D zf4_get_window_size();
-void zf4_show_window();
-bool zf4_window_should_close();
-void zf4_swap_window_buffers();
+    //
+    // State
+    //
+    bool init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
+    void clean_window();
+    Pt2D get_window_size();
+    void show_window();
+    bool window_should_close();
+    void swap_window_buffers();
 
-void zf4_save_input_state();
-bool zf4_is_key_down(const ZF4KeyCode keyCode);
-bool zf4_is_key_pressed(const ZF4KeyCode keyCode);
-bool zf4_is_key_released(const ZF4KeyCode keyCode);
-bool zf4_is_mouse_button_down(const ZF4MouseButtonCode buttonCode);
-bool zf4_is_mouse_button_pressed(const ZF4MouseButtonCode buttonCode);
-bool zf4_is_mouse_button_released(const ZF4MouseButtonCode buttonCode);
-ZF4Vec2D zf4_get_mouse_pos();
+    void save_input_state();
+    bool is_key_down(const KeyCode keyCode);
+    bool is_key_pressed(const KeyCode keyCode);
+    bool is_key_released(const KeyCode keyCode);
+    bool is_mouse_button_down(const MouseButtonCode buttonCode);
+    bool is_mouse_button_pressed(const MouseButtonCode buttonCode);
+    bool is_mouse_button_released(const MouseButtonCode buttonCode);
+    Vec2D get_mouse_pos();
 
-//
-// Logic
-//
-ZF4KeyCode zf4_conv_glfw_key_code(const int keyCode);
-ZF4MouseButtonCode zf4_conv_glfw_mouse_button_code(const int buttonCode);
-
-#endif
+    //
+    // Logic
+    //
+    KeyCode conv_glfw_key_code(const int keyCode);
+    MouseButtonCode conv_glfw_mouse_button_code(const int buttonCode);
+}

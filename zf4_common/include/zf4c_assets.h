@@ -1,53 +1,52 @@
-#ifndef ZF4C_ASSETS_H
-#define ZF4C_ASSETS_H
+#pragma once
 
 #include <zf4c_math.h>
 
-#define ZF4_ASSETS_FILE_NAME "assets.dat"
 
-#define ZF4_TEX_WIDTH_LIMIT 2048
-#define ZF4_TEX_HEIGHT_LIMIT 2048
-#define ZF4_TEX_CHANNEL_CNT 4
-#define ZF4_TEX_PX_LIMIT (ZF4_TEX_WIDTH_LIMIT * ZF4_TEX_HEIGHT_LIMIT)
-#define ZF4_TEX_PX_DATA_SIZE_LIMIT (ZF4_TEX_CHANNEL_CNT * ZF4_TEX_PX_LIMIT)
+namespace zf4 {
+    const char* const gk_assetsFileName = "assets.dat";
 
-#define ZF4_FONT_CHAR_RANGE_BEGIN 32
-#define ZF4_FONT_CHAR_RANGE_SIZE 95
+    constexpr Pt2D gk_texSizeLimit = {2048, 2048};
+    constexpr int gk_texChannelCnt = 4;
+    constexpr int gk_texPxLimit = gk_texSizeLimit.x * gk_texSizeLimit.y;
+    constexpr int gk_texPxDataSizeLimit = gk_texChannelCnt * gk_texPxLimit;
 
-#define ZF4_AUDIO_SAMPLES_PER_CHUNK 44100
+    constexpr int gk_fontCharRangeBegin = 32;
+    constexpr int gk_fontCharRangeLen = 95;
 
-#define ZF4_SOUND_SAMPLE_LIMIT 441000
+    constexpr int gk_audioSamplesPerChunk = 44100;
 
-typedef float ZF4AudioSample;
+    constexpr int gk_soundSampleLimit = 441000;
 
-typedef enum {
-    ZF4_TEX_ASSET_TYPE,
-    ZF4_FONT_ASSET_TYPE,
-    ZF4_SOUND_ASSET_TYPE,
-    ZF4_MUSIC_ASSET_TYPE,
+    typedef float AudioSample;
 
-    ZF4_ASSET_TYPE_CNT
-} ZF4AssetType;
+    typedef enum {
+        TEX_ASSET_TYPE,
+        FONT_ASSET_TYPE,
+        SOUND_ASSET_TYPE,
+        MUSIC_ASSET_TYPE,
 
-typedef struct {
-    int horOffsets[ZF4_FONT_CHAR_RANGE_SIZE];
-    int verOffsets[ZF4_FONT_CHAR_RANGE_SIZE];
-    int horAdvances[ZF4_FONT_CHAR_RANGE_SIZE];
+        ASSET_TYPE_CNT
+    } AssetType;
 
-    ZF4Rect srcRects[ZF4_FONT_CHAR_RANGE_SIZE];
+    typedef struct {
+        int horOffsets[gk_fontCharRangeLen];
+        int verOffsets[gk_fontCharRangeLen];
+        int horAdvances[gk_fontCharRangeLen];
 
-    int kernings[ZF4_FONT_CHAR_RANGE_SIZE * ZF4_FONT_CHAR_RANGE_SIZE];
-} ZF4FontCharsArrangementInfo;
+        Rect srcRects[gk_fontCharRangeLen];
 
-typedef struct {
-    int lineHeight;
-    ZF4FontCharsArrangementInfo chars;
-} ZF4FontArrangementInfo;
+        int kernings[gk_fontCharRangeLen * gk_fontCharRangeLen];
+    } FontCharsArrangementInfo;
 
-typedef struct {
-    int channelCnt;
-    long long sampleCntPerChannel;
-    int sampleRate;
-} ZF4AudioInfo;
+    typedef struct {
+        int lineHeight;
+        FontCharsArrangementInfo chars;
+    } FontArrangementInfo;
 
-#endif
+    typedef struct {
+        int channelCnt;
+        long long sampleCntPerChannel;
+        int sampleRate;
+    } AudioInfo;
+}

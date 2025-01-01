@@ -4,9 +4,9 @@
 #include FT_FREETYPE_H
 
 typedef struct {
-    ZF4FontArrangementInfo arrangementInfo;
-    ZF4Pt2D texSize;
-    ZF4Byte texPxData[ZF4_TEX_PX_DATA_SIZE_LIMIT];
+    zf4::FontArrangementInfo arrangementInfo;
+    zf4::Pt2D texSize;
+    zf4::Byte texPxData[zf4::gk_texPxDataSizeLimit];
 } FontData;
 
 static inline int get_line_height(const FT_Face ftFace) {
@@ -16,8 +16,8 @@ static inline int get_line_height(const FT_Face ftFace) {
 static int calc_largest_bitmap_width(const FT_Face ftFace) {
     int width = 0;
 
-    for (int i = 0; i < ZF4_FONT_CHAR_RANGE_SIZE; i++) {
-        FT_Load_Glyph(ftFace, FT_Get_Char_Index(ftFace, ZF4_FONT_CHAR_RANGE_BEGIN + i), FT_LOAD_DEFAULT);
+    for (int i = 0; i < zf4::gk_fontCharRangeLen; i++) {
+        FT_Load_Glyph(ftFace, FT_Get_Char_Index(ftFace, zf4::gk_fontCharRangeBegin + i), FT_LOAD_DEFAULT);
         FT_Render_Glyph(ftFace->glyph, FT_RENDER_MODE_NORMAL);
 
         if ((int)ftFace->glyph->bitmap.width > width) {
@@ -28,23 +28,23 @@ static int calc_largest_bitmap_width(const FT_Face ftFace) {
     return width;
 }
 
-static ZF4Pt2D calc_font_tex_size(const FT_Face ftFace) {
+static zf4::Pt2D calc_font_tex_size(const FT_Face ftFace) {
     const int largestGlyphBitmapWidth = calc_largest_bitmap_width(ftFace);
-    const int idealTexWidth = largestGlyphBitmapWidth * ZF4_FONT_CHAR_RANGE_SIZE;
+    const int idealTexWidth = largestGlyphBitmapWidth * zf4::gk_fontCharRangeLen;
 
-    ZF4Pt2D texSize;
-    texSize.x = idealTexWidth < ZF4_TEX_WIDTH_LIMIT ? idealTexWidth : ZF4_TEX_WIDTH_LIMIT;
-    texSize.y = get_line_height(ftFace) * ((idealTexWidth / ZF4_TEX_WIDTH_LIMIT) + 1);
+    zf4::Pt2D texSize;
+    texSize.x = idealTexWidth < zf4::gk_texSizeLimit.x ? idealTexWidth : zf4::gk_texSizeLimit.x;
+    texSize.y = get_line_height(ftFace) * ((idealTexWidth / zf4::gk_texSizeLimit.x) + 1);
     return texSize;
 }
 
 static bool load_font_data(FontData* const fd, const FT_Library ftLib, const char* const filePath, const int ptSize) {
-    assert(zf4_is_zero(fd));
+    assert(zf4::is_zero(fd));
 
     FT_Face ftFace;
 
     if (FT_New_Face(ftLib, filePath, 0, &ftFace)) {
-        zf4_log_error("Failed to create a FreeType face object for font with file path %s.", filePath);
+        zf4::log_error("Failed to create a FreeType face object for font with file path %s.", filePath);
         return false;
     }
 
@@ -54,15 +54,15 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
 
     fd->texSize = calc_font_tex_size(ftFace);
 
-    if (fd->texSize.y > ZF4_TEX_HEIGHT_LIMIT) {
-        zf4_log_error("Font texture size is too large!");
+    if (fd->texSize.y > zf4::gk_texSizeLimit.y) {
+        zf4::log_error("Font texture size is too large!");
         FT_Done_Face(ftFace);
         return false;
     }
 
-    const int texPxDataSize = ZF4_TEX_CHANNEL_CNT * fd->texSize.x * fd->texSize.y;
+    const int texPxDataSize = zf4::gk_texChannelCnt * fd->texSize.x * fd->texSize.y;
 
-    for (int i = 0; i < texPxDataSize; i += ZF4_TEX_CHANNEL_CNT) {
+    for (int i = 0; i < texPxDataSize; i += zf4::gk_texChannelCnt) {
         // Initialise to transparent white.
         fd->texPxData[i + 0] = 255;
         fd->texPxData[i + 1] = 255;
@@ -70,16 +70,16 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
         fd->texPxData[i + 3] = 0;
     }
 
-    ZF4Pt2D charDrawPos = {}; // Where we are in the font texture.
+    zf4::Pt2D charDrawPos = {}; // Where we are in the font texture.
 
-    for (int i = 0; i < ZF4_FONT_CHAR_RANGE_SIZE; i++) {
-        FT_UInt ftCharIndex = FT_Get_Char_Index(ftFace, ZF4_FONT_CHAR_RANGE_BEGIN + i);
+    for (int i = 0; i < zf4::gk_fontCharRangeLen; i++) {
+        FT_UInt ftCharIndex = FT_Get_Char_Index(ftFace, zf4::gk_fontCharRangeBegin + i);
 
         FT_Load_Glyph(ftFace, ftCharIndex, FT_LOAD_DEFAULT);
         FT_Render_Glyph(ftFace->glyph, FT_RENDER_MODE_NORMAL);
 
         // If we cannot horizontally fit this character's texture pixel data, move to a new line.
-        if (charDrawPos.x + ftFace->glyph->bitmap.width > ZF4_TEX_WIDTH_LIMIT) {
+        if (charDrawPos.x + ftFace->glyph->bitmap.width > zf4::gk_texSizeLimit.x) {
             charDrawPos.x = 0;
             charDrawPos.y += fd->arrangementInfo.lineHeight;
         }
@@ -95,10 +95,10 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
         fd->arrangementInfo.chars.srcRects[i].height = ftFace->glyph->bitmap.rows;
 
         // Get kernings for all character pairings.
-        for (int j = 0; j < ZF4_FONT_CHAR_RANGE_SIZE; j++) {
+        for (int j = 0; j < zf4::gk_fontCharRangeLen; j++) {
             FT_Vector ftKerning;
-            FT_Get_Kerning(ftFace, FT_Get_Char_Index(ftFace, ZF4_FONT_CHAR_RANGE_BEGIN + j), ftCharIndex, FT_KERNING_DEFAULT, &ftKerning);
-            fd->arrangementInfo.chars.kernings[(ZF4_FONT_CHAR_RANGE_SIZE * i) + j] = ftKerning.x >> 6;
+            FT_Get_Kerning(ftFace, FT_Get_Char_Index(ftFace, zf4::gk_fontCharRangeBegin + j), ftCharIndex, FT_KERNING_DEFAULT, &ftKerning);
+            fd->arrangementInfo.chars.kernings[(zf4::gk_fontCharRangeLen * i) + j] = ftKerning.x >> 6;
         }
 
         // Set the pixel data (alpha values only) for the character.
@@ -109,7 +109,7 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
                 if (pxAlpha > 0) {
                     int pxX = fd->arrangementInfo.chars.srcRects[i].x + x;
                     int pxY = fd->arrangementInfo.chars.srcRects[i].y + y;
-                    int pxDataIndex = (pxY * fd->texSize.x * ZF4_TEX_CHANNEL_CNT) + (pxX * ZF4_TEX_CHANNEL_CNT);
+                    int pxDataIndex = (pxY * fd->texSize.x * zf4::gk_texChannelCnt) + (pxX * zf4::gk_texChannelCnt);
 
                     fd->texPxData[pxDataIndex + 3] = pxAlpha;
                 }
@@ -128,14 +128,14 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
     FT_Library ftLib;
 
     if (FT_Init_FreeType(&ftLib)) {
-        zf4_log_error("Failed to initialise FreeType!");
+        zf4::log_error("Failed to initialise FreeType!");
         return false;
     }
 
-    const auto fontData = zf4_alloc<FontData>(); // A buffer reused for all fonts.
+    const auto fontData = zf4::alloc<FontData>(); // A buffer reused for all fonts.
 
     if (!fontData) {
-        zf4_log_error("Failed to allocate memory for font data!");
+        zf4::log_error("Failed to allocate memory for font data!");
         FT_Done_FreeType(ftLib);
         return false;
     }
@@ -149,7 +149,7 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
         const cJSON* const cjPtSize = cJSON_GetObjectItem(cjFont, "ptSize");
 
         if (!cJSON_IsString(cjRelFilePath) || !cJSON_IsNumber(cjPtSize)) {
-            zf4_log_error("Invalid font entry in packing instructions JSON file!");
+            zf4::log_error("Invalid font entry in packing instructions JSON file!");
             success = false;
             break;
         }
@@ -169,7 +169,7 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
 
         fwrite(fontData, sizeof(*fontData), 1, outputFS);
 
-        zf4_log("Packed font with file path \"%s\" and point size %d.", srcAssetFilePathBuf, cjPtSize->valueint);
+        zf4::log("Packed font with file path \"%s\" and point size %d.", srcAssetFilePathBuf, cjPtSize->valueint);
     }
 
     free(fontData);

@@ -1,45 +1,44 @@
-#ifndef ZF4_ANIMS_H
-#define ZF4_ANIMS_H
+#pragma once
 
 #include <zf4c.h>
 
-typedef void (*ZF4SpriteSrcRectLoader)(ZF4Rect* const srcRect, const int frameIndex);
+namespace zf4 {
+    typedef void (*SpriteSrcRectLoader)(zf4::Rect* const srcRect, const int frameIndex);
 
-typedef struct {
-    int texIndex;
-    int frameCnt;
-    ZF4SpriteSrcRectLoader srcRectLoader;
-} ZF4Sprite;
+    typedef struct {
+        int texIndex;
+        int frameCnt;
+        SpriteSrcRectLoader srcRectLoader;
+    } Sprite;
 
-typedef void (*ZF4SpriteLoader)(ZF4Sprite* const sprite, const int index);
+    typedef void (*SpriteLoader)(Sprite* const sprite, const int index);
 
-typedef struct {
-    int spriteIndex;
-    int frameIndex;
-    int frameTime;
-    int frameInterval;
-} ZF4Anim;
+    typedef struct {
+        int spriteIndex;
+        int frameIndex;
+        int frameTime;
+        int frameInterval;
+    } Anim;
 
-//
-// State
-//
-bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader);
-void zf4_unload_sprites();
-const ZF4Sprite* zf4_get_sprite(const int index);
+    //
+    // State
+    //
+    bool load_sprites(const int cnt, const SpriteLoader loader);
+    void unload_sprites();
+    const Sprite* get_sprite(const int index);
 
-inline ZF4Rect zf4_get_sprite_src_rect(const int spriteIndex, const int frameIndex) {
-    ZF4Rect rect;
-    zf4_get_sprite(spriteIndex)->srcRectLoader(&rect, frameIndex);
-    return rect;
+    inline zf4::Rect get_sprite_src_rect(const int spriteIndex, const int frameIndex) {
+        zf4::Rect rect;
+        get_sprite(spriteIndex)->srcRectLoader(&rect, frameIndex);
+        return rect;
+    }
+
+    inline zf4::Rect get_anim_src_rect(const Anim* const anim) {
+        return get_sprite_src_rect(anim->spriteIndex, anim->frameIndex);
+    }
+
+    //
+    // Logic
+    //
+    void anim_tick(Anim* const anim);
 }
-
-inline ZF4Rect zf4_get_anim_src_rect(const ZF4Anim* const anim) {
-    return zf4_get_sprite_src_rect(anim->spriteIndex, anim->frameIndex);
-}
-
-//
-// Logic
-//
-void zf4_anim_tick(ZF4Anim* const anim);
-
-#endif

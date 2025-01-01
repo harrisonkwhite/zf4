@@ -1,143 +1,145 @@
 #include <zf4_scenes.h>
 
-bool zf4_spawn_ent(ZF4EntID* const entID, const ZF4Vec2D pos, const ZF4Scene* const scene) {
-    assert(zf4_is_zero(entID));
+namespace zf4 {
+    bool spawn_ent(EntID* const entID, const Vec2D pos, const Scene* const scene) {
+        assert(is_zero(entID));
 
-    const ZF4SceneTypeInfo* const sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
+        const SceneTypeInfo* const sceneTypeInfo = get_scene_type_info(scene->typeIndex);
 
-    entID->index = zf4_get_first_inactive_bit_index(scene->entActivity, sceneTypeInfo->entLimit);
+        entID->index = get_first_inactive_bit_index(scene->entActivity, sceneTypeInfo->entLimit);
 
-    if (entID->index == -1) {
-        return false;
-    }
-
-    zf4_activate_bit(scene->entActivity, entID->index);
-
-    ZF4Ent* ent = &scene->ents[entID->index];
-
-    ent->pos = pos;
-    memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * zf4_get_component_type_cnt());
-    memset(ent->compSig, 0, sizeof(*ent->compSig) * ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()));
-    ent->tag = -1;
-    ent->onDestroy = nullptr;
-
-    ++scene->entVersions[entID->index];
-    entID->version = scene->entVersions[entID->index];
-
-    return true;
-}
-
-void zf4_destroy_ent(ZF4EntID entID, ZF4Scene* scene) {
-    ZF4Ent* ent = zf4_get_ent(entID, scene);
-
-    if (ent->onDestroy) {
-        ent->onDestroy(entID, scene);
-    }
-
-    zf4_deactivate_bit(scene->entActivity, entID.index);
-    
-    for (int i = 0; i < zf4_get_component_type_cnt(); ++i) {
-        int compIndex = ent->compIndexes[i];
-
-        if (compIndex != -1) {
-            zf4_deactivate_bit(scene->compActivities[i], compIndex);
-        }
-    }
-}
-
-void* zf4_get_ent_component(ZF4EntID entID, int compTypeIndex, ZF4Scene* scene) {
-    assert(zf4_does_ent_have_component(entID, compTypeIndex, scene));
-    int compIndex = scene->ents[entID.index].compIndexes[compTypeIndex];
-    int compSize = zf4_get_component_type_info(compTypeIndex)->size;
-    return (ZF4Byte*)scene->compArrays[compTypeIndex] + (compIndex * compSize);
-}
-
-bool zf4_add_component_to_ent(int compTypeIndex, ZF4EntID entID, ZF4Scene* scene) {
-    assert(!zf4_does_ent_have_component(entID, compTypeIndex, scene));
-
-    // Find and use the first inactive component of the type.
-    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
-    int compIndex = zf4_get_first_inactive_bit_index(scene->compActivities[compTypeIndex], sceneTypeInfo->entLimit);
-
-    if (compIndex == -1) {
-        return false;
-    }
-
-    zf4_activate_bit(scene->compActivities[compTypeIndex], compIndex);
-
-    // Update the component index of the entity.
-    ZF4Ent* ent = &scene->ents[entID.index];
-    ent->compIndexes[compTypeIndex] = compIndex;
-    zf4_activate_bit(ent->compSig, compTypeIndex);
-    
-    // Clear the component data, and run the defaults loader function if defined.
-    ZF4ComponentTypeInfo* compTypeInfo = zf4_get_component_type_info(compTypeIndex);
-    void* comp = zf4_get_ent_component(entID, compTypeIndex, scene);
-    memset(comp, 0, compTypeInfo->size);
-
-    if (compTypeInfo->defaultsLoader) {
-        compTypeInfo->defaultsLoader(comp);
-    }
-
-    return true;
-}
-
-bool zf4_does_ent_have_component_signature(ZF4EntID entID, ZF4Byte* compSig, ZF4Scene* scene) {
-    ZF4Ent* ent = zf4_get_ent(entID, scene);
-
-    for (int j = 0; j < ZF4_BITS_TO_BYTES(zf4_get_component_type_cnt()); ++j) {
-        if ((ent->compSig[j] & compSig[j]) != compSig[j]) {
+        if (entID->index == -1) {
             return false;
         }
+
+        activate_bit(scene->entActivity, entID->index);
+
+        Ent* ent = &scene->ents[entID->index];
+
+        ent->pos = pos;
+        memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * get_component_type_cnt());
+        memset(ent->compSig, 0, sizeof(*ent->compSig) * bits_to_bytes(get_component_type_cnt()));
+        ent->tag = -1;
+        ent->onDestroy = nullptr;
+
+        ++scene->entVersions[entID->index];
+        entID->version = scene->entVersions[entID->index];
+
+        return true;
     }
 
-    return true;
-}
+    void destroy_ent(EntID entID, Scene* scene) {
+        Ent* ent = get_ent(entID, scene);
 
-int zf4_get_ents_with_component_signature(ZF4EntID* entIDs, int entIDLimit, ZF4Byte* compSig, ZF4Scene* scene) {
-    assert(entIDLimit > 0);
-
-    int entCnt = 0;
-
-    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
-
-    for (int i = 0; i < sceneTypeInfo->entLimit && entCnt < entIDLimit; ++i) {
-        ZF4EntID entID = {i, scene->entVersions[i]};
-
-        if (!zf4_does_ent_exist(entID, scene)) {
-            continue;
+        if (ent->onDestroy) {
+            ent->onDestroy(entID, scene);
         }
 
-        if (zf4_does_ent_have_component_signature(entID, compSig, scene)) {
-            entIDs[entCnt] = entID;
-            ++entCnt;
-        }
-    }
+        deactivate_bit(scene->entActivity, entID.index);
 
-    return entCnt;
-}
+        for (int i = 0; i < get_component_type_cnt(); ++i) {
+            int compIndex = ent->compIndexes[i];
 
-int zf4_get_ents_with_tag(ZF4EntID* entIDs, int entIDLimit, int tag, ZF4Scene* scene) {
-    assert(entIDLimit > 0);
-
-    int entCnt = 0;
-
-    ZF4SceneTypeInfo* sceneTypeInfo = zf4_get_scene_type_info(scene->typeIndex);
-
-    for (int i = 0; i < sceneTypeInfo->entLimit && entCnt < entIDLimit; ++i) {
-        ZF4EntID entID = {i, scene->entVersions[i]};
-        
-        if (!zf4_does_ent_exist(entID, scene)) {
-            continue;
-        }
-        
-        ZF4Ent* ent = zf4_get_ent(entID, scene);
-
-        if (ent->tag == tag) {
-            entIDs[entCnt] = entID;
-            ++entCnt;
+            if (compIndex != -1) {
+                deactivate_bit(scene->compActivities[i], compIndex);
+            }
         }
     }
 
-    return entCnt;
+    void* get_ent_component(EntID entID, int compTypeIndex, Scene* scene) {
+        assert(does_ent_have_component(entID, compTypeIndex, scene));
+        int compIndex = scene->ents[entID.index].compIndexes[compTypeIndex];
+        int compSize = get_component_type_info(compTypeIndex)->size;
+        return (Byte*)scene->compArrays[compTypeIndex] + (compIndex * compSize);
+    }
+
+    bool add_component_to_ent(int compTypeIndex, EntID entID, Scene* scene) {
+        assert(!does_ent_have_component(entID, compTypeIndex, scene));
+
+        // Find and use the first inactive component of the type.
+        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
+        int compIndex = get_first_inactive_bit_index(scene->compActivities[compTypeIndex], sceneTypeInfo->entLimit);
+
+        if (compIndex == -1) {
+            return false;
+        }
+
+        activate_bit(scene->compActivities[compTypeIndex], compIndex);
+
+        // Update the component index of the entity.
+        Ent* ent = &scene->ents[entID.index];
+        ent->compIndexes[compTypeIndex] = compIndex;
+        activate_bit(ent->compSig, compTypeIndex);
+
+        // Clear the component data, and run the defaults loader function if defined.
+        ComponentTypeInfo* compTypeInfo = get_component_type_info(compTypeIndex);
+        void* comp = get_ent_component(entID, compTypeIndex, scene);
+        memset(comp, 0, compTypeInfo->size);
+
+        if (compTypeInfo->defaultsLoader) {
+            compTypeInfo->defaultsLoader(comp);
+        }
+
+        return true;
+    }
+
+    bool does_ent_have_component_signature(EntID entID, Byte* compSig, Scene* scene) {
+        Ent* ent = get_ent(entID, scene);
+
+        for (int j = 0; j < bits_to_bytes(get_component_type_cnt()); ++j) {
+            if ((ent->compSig[j] & compSig[j]) != compSig[j]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    int get_ents_with_component_signature(EntID* entIDs, int entIDLimit, Byte* compSig, Scene* scene) {
+        assert(entIDLimit > 0);
+
+        int entCnt = 0;
+
+        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
+
+        for (int i = 0; i < sceneTypeInfo->entLimit && entCnt < entIDLimit; ++i) {
+            EntID entID = {i, scene->entVersions[i]};
+
+            if (!does_ent_exist(entID, scene)) {
+                continue;
+            }
+
+            if (does_ent_have_component_signature(entID, compSig, scene)) {
+                entIDs[entCnt] = entID;
+                ++entCnt;
+            }
+        }
+
+        return entCnt;
+    }
+
+    int get_ents_with_tag(EntID* entIDs, int entIDLimit, int tag, Scene* scene) {
+        assert(entIDLimit > 0);
+
+        int entCnt = 0;
+
+        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
+
+        for (int i = 0; i < sceneTypeInfo->entLimit && entCnt < entIDLimit; ++i) {
+            EntID entID = {i, scene->entVersions[i]};
+
+            if (!does_ent_exist(entID, scene)) {
+                continue;
+            }
+
+            Ent* ent = get_ent(entID, scene);
+
+            if (ent->tag == tag) {
+                entIDs[entCnt] = entID;
+                ++entCnt;
+            }
+        }
+
+        return entCnt;
+    }
 }

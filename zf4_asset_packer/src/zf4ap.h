@@ -1,14 +1,13 @@
-#ifndef ZF4AP_H
-#define ZF4AP_H
+#pragma once
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdbool>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #include <cjson/cJSON.h>
-#include <assert.h>
 #include <zf4c.h>
 
-#define SRC_ASSET_FILE_PATH_BUF_SIZE 256
+constexpr int gk_srcAssetFilePathBufSize = 256;
 
 typedef bool (*AssetTypePacker)(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjAssets);
 
@@ -27,5 +26,3 @@ bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const 
 bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjFonts);
 bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjSnds);
 bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjMusic);
-
-#endif

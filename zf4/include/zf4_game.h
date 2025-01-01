@@ -1,26 +1,25 @@
-#ifndef ZF4_GAME_H
-#define ZF4_GAME_H
+#pragma once
 
 #include <zf4_sprites.h>
 #include <zf4_scenes.h>
 
-typedef struct {
-    int windowInitWidth;
-    int windowInitHeight;
-    const char* windowTitle;
-    bool windowResizable;
-    bool windowHideCursor;
+namespace zf4 {
+    typedef struct {
+        int windowInitWidth;
+        int windowInitHeight;
+        const char* windowTitle;
+        bool windowResizable;
+        bool windowHideCursor;
 
-    int spriteCnt;
-    ZF4SpriteLoader spriteLoader;
+        int spriteCnt;
+        SpriteLoader spriteLoader;
 
-    int componentTypeCnt;
-    ZF4ComponentTypeInfoLoader componentTypeInfoLoader;
+        int componentTypeCnt;
+        ComponentTypeInfoLoader componentTypeInfoLoader;
 
-    int sceneTypeCnt;
-    ZF4SceneTypeInfoLoader sceneTypeInfoLoader;
-} ZF4UserGameInfo;
+        int sceneTypeCnt;
+        SceneTypeInfoLoader sceneTypeInfoLoader;
+    } UserGameInfo;
 
-void zf4_start_game(const ZF4UserGameInfo* const userInfo);
-
-#endif
+    void start_game(const UserGameInfo* const userInfo);
+}

@@ -7,7 +7,7 @@ bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const 
 
     cJSON_ArrayForEach(cjTexRelFilePath, cjTextures) {
         if (!cJSON_IsString(cjTexRelFilePath)) {
-            zf4_log_error("Failed to get texture file path from packing instructions JSON file!");
+            zf4::log_error("Failed to get texture file path from packing instructions JSON file!");
             return false;
         }
 
@@ -16,18 +16,18 @@ bool pack_textures(FILE* const outputFS, char* const srcAssetFilePathBuf, const 
         }
 
         // Load and write the size and pixel data of the texture.
-        ZF4Pt2D texSize;
-        stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, nullptr, ZF4_TEX_CHANNEL_CNT);
+        zf4::Pt2D texSize;
+        stbi_uc* const texPxData = stbi_load(srcAssetFilePathBuf, &texSize.x, &texSize.y, nullptr, zf4::gk_texChannelCnt);
 
         if (!texPxData) {
-            zf4_log_error("Failed to load texture with file path \"%s\"!", srcAssetFilePathBuf);
+            zf4::log_error("Failed to load texture with file path \"%s\"!", srcAssetFilePathBuf);
             return false;
         }
 
         fwrite(&texSize, sizeof(texSize), 1, outputFS);
-        fwrite(texPxData, sizeof(*texPxData), texSize.x * texSize.y * ZF4_TEX_CHANNEL_CNT, outputFS);
+        fwrite(texPxData, sizeof(*texPxData), texSize.x * texSize.y * zf4::gk_texChannelCnt, outputFS);
 
-        zf4_log("Packed texture with file path \"%s\".", srcAssetFilePathBuf);
+        zf4::log("Packed texture with file path \"%s\".", srcAssetFilePathBuf);
 
         stbi_image_free(texPxData);
     }

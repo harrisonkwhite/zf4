@@ -1,47 +1,49 @@
 #include <zf4_scenes.h>
 
-#include <stdlib.h>
+#include <cstdlib>
 
-static int i_sceneTypeCnt;
-static ZF4SceneTypeInfo* i_sceneTypeInfos;
+namespace zf4 {
+    static int i_sceneTypeCnt;
+    static SceneTypeInfo* i_sceneTypeInfos;
 
-bool zf4_load_scene_types(int typeCnt, ZF4SceneTypeInfoLoader typeInfoLoader) {
-    if (typeCnt == 0) {
+    bool load_scene_types(int typeCnt, SceneTypeInfoLoader typeInfoLoader) {
+        if (typeCnt == 0) {
+            return true;
+        }
+
+        assert(typeCnt > 0);
+
+        i_sceneTypeInfos = alloc_zeroed<SceneTypeInfo>(typeCnt);
+
+        if (!i_sceneTypeInfos) {
+            return false;
+        }
+
+        i_sceneTypeCnt = typeCnt;
+
+        for (int i = 0; i < typeCnt; i++) {
+            typeInfoLoader(&i_sceneTypeInfos[i], i);
+            assert(!is_zero(&i_sceneTypeInfos[i]));
+        }
+
         return true;
     }
 
-    assert(typeCnt > 0);
+    void unload_scene_types() {
+        i_sceneTypeCnt = 0;
 
-    i_sceneTypeInfos = zf4_alloc_zeroed<ZF4SceneTypeInfo>(typeCnt);
-
-    if (!i_sceneTypeInfos) {
-        return false;
+        if (i_sceneTypeInfos) {
+            free(i_sceneTypeInfos);
+            i_sceneTypeInfos = nullptr;
+        }
     }
 
-    i_sceneTypeCnt = typeCnt;
-
-    for (int i = 0; i < typeCnt; i++) {
-        typeInfoLoader(&i_sceneTypeInfos[i], i);
-        assert(!zf4_is_zero(&i_sceneTypeInfos[i]));
+    int get_scene_type_cnt() {
+        return i_sceneTypeCnt;
     }
 
-    return true;
-}
-
-void zf4_unload_scene_types() {
-    i_sceneTypeCnt = 0;
-
-    if (i_sceneTypeInfos) {
-        free(i_sceneTypeInfos);
-        i_sceneTypeInfos = nullptr;
+    SceneTypeInfo* get_scene_type_info(int typeIndex) {
+        assert(typeIndex >= 0 && typeIndex < i_sceneTypeCnt);
+        return &i_sceneTypeInfos[typeIndex];
     }
-}
-
-int zf4_get_scene_type_cnt() {
-    return i_sceneTypeCnt;
-}
-
-ZF4SceneTypeInfo* zf4_get_scene_type_info(int typeIndex) {
-    assert(typeIndex >= 0 && typeIndex < i_sceneTypeCnt);
-    return &i_sceneTypeInfos[typeIndex];
 }

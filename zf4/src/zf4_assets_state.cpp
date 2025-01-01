@@ -1,92 +1,94 @@
 #include <zf4_assets.h>
 
-#define MEM_ARENA_SIZE ZF4_MEGABYTES(2)
+namespace zf4 {
+    static constexpr int ik_memArenaSize = megabytes_to_bytes(2);
 
-typedef struct {
-    ZF4MemArena memArena;
+    struct Assets {
+        MemArena memArena;
 
-    ZF4Textures textures;
-    ZF4Fonts fonts;
-    ZF4Sounds sounds;
-    ZF4Music music;
-} ZF4Assets;
+        Textures textures;
+        Fonts fonts;
+        Sounds sounds;
+        Music music;
+    };
 
-static ZF4Assets i_assets;
+    static Assets i_assets;
 
-bool zf4_load_assets() {
-    assert(zf4_is_zero(&i_assets));
+    bool load_assets() {
+        assert(is_zero(&i_assets));
 
-    if (!i_assets.memArena.init(MEM_ARENA_SIZE)) {
-        zf4_log_error("Failed to initialise the assets memory arena!");
-        return false;
-    }
+        if (!i_assets.memArena.init(ik_memArenaSize)) {
+            log_error("Failed to initialise the assets memory arena!");
+            return false;
+        }
 
-    FILE* const fs = fopen(ZF4_ASSETS_FILE_NAME, "rb");
+        FILE* const fs = fopen(gk_assetsFileName, "rb");
 
-    if (!fs) {
-        zf4_log_error("Failed to open \"%s\"!", ZF4_ASSETS_FILE_NAME);
-        return false;
-    }
+        if (!fs) {
+            log_error("Failed to open \"%s\"!", gk_assetsFileName);
+            return false;
+        }
 
-    if (!zf4_load_textures(&i_assets.textures, &i_assets.memArena, fs)) {
-        zf4_log_error("Failed to load textures!");
+        if (!load_textures(&i_assets.textures, &i_assets.memArena, fs)) {
+            log_error("Failed to load textures!");
+            fclose(fs);
+            return false;
+        }
+
+        if (!load_fonts(&i_assets.fonts, &i_assets.memArena, fs)) {
+            log_error("Failed to load fonts!");
+            fclose(fs);
+            return false;
+        }
+
+        if (!load_sounds(&i_assets.sounds, &i_assets.memArena, fs)) {
+            log_error("Failed to load sounds!");
+            fclose(fs);
+            return false;
+        }
+
+        if (!load_music(&i_assets.music, &i_assets.memArena, fs)) {
+            log_error("Failed to load music!");
+            fclose(fs);
+            return false;
+        }
+
         fclose(fs);
-        return false;
+
+        return true;
     }
 
-    if (!zf4_load_fonts(&i_assets.fonts, &i_assets.memArena, fs)) {
-        zf4_log_error("Failed to load fonts!");
-        fclose(fs);
-        return false;
+    void unload_assets() {
+        if (i_assets.sounds.cnt > 0) {
+            alDeleteBuffers(i_assets.sounds.cnt, i_assets.sounds.bufALIDs);
+        }
+
+        if (i_assets.fonts.cnt > 0) {
+            glDeleteTextures(i_assets.fonts.cnt, i_assets.fonts.texGLIDs);
+        }
+
+        if (i_assets.textures.cnt > 0) {
+            glDeleteTextures(i_assets.textures.cnt, i_assets.textures.glIDs);
+        }
+
+        i_assets.memArena.clean();
+
+        zero_out(&i_assets);
     }
 
-    if (!zf4_load_sounds(&i_assets.sounds, &i_assets.memArena, fs)) {
-        zf4_log_error("Failed to load sounds!");
-        fclose(fs);
-        return false;
+    const Textures* get_textures() {
+        return &i_assets.textures;
     }
 
-    if (!zf4_load_music(&i_assets.music, &i_assets.memArena, fs)) {
-        zf4_log_error("Failed to load music!");
-        fclose(fs);
-        return false;
+    const Fonts* get_fonts() {
+        return &i_assets.fonts;
     }
 
-    fclose(fs);
-
-    return true;
-}
-
-void zf4_unload_assets() {
-    if (i_assets.sounds.cnt > 0) {
-        alDeleteBuffers(i_assets.sounds.cnt, i_assets.sounds.bufALIDs);
+    const Sounds* get_sounds() {
+        return &i_assets.sounds;
     }
 
-    if (i_assets.fonts.cnt > 0) {
-        glDeleteTextures(i_assets.fonts.cnt, i_assets.fonts.texGLIDs);
+    const Music* get_music() {
+        return &i_assets.music;
     }
-
-    if (i_assets.textures.cnt > 0) {
-        glDeleteTextures(i_assets.textures.cnt, i_assets.textures.glIDs);
-    }
-
-    i_assets.memArena.clean();
-
-    zf4_zero_out(&i_assets);
-}
-
-const ZF4Textures* zf4_get_textures() {
-    return &i_assets.textures;
-}
-
-const ZF4Fonts* zf4_get_fonts() {
-    return &i_assets.fonts;
-}
-
-const ZF4Sounds* zf4_get_sounds() {
-    return &i_assets.sounds;
-}
-
-const ZF4Music* zf4_get_music() {
-    return &i_assets.music;
 }

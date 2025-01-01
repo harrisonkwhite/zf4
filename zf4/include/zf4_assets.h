@@ -1,55 +1,54 @@
-#ifndef ZF4_ASSETS_H
-#define ZF4_ASSETS_H
+#pragma once
 
-#include <stdbool.h>
-#include <stdio.h>
+#include <cstdbool>
+#include <cstdio>
 #include <glad/glad.h>
 #include <AL/al.h>
 #include <zf4c.h>
 
-typedef struct {
-    GLuint* glIDs;
-    ZF4Pt2D* sizes;
-    int cnt;
-} ZF4Textures;
+namespace zf4 {
+    typedef struct {
+        GLuint* glIDs;
+        Pt2D* sizes;
+        int cnt;
+    } Textures;
 
-typedef struct {
-    ZF4FontArrangementInfo* arrangementInfos;
+    typedef struct {
+        FontArrangementInfo* arrangementInfos;
 
-    GLuint* texGLIDs;
-    ZF4Pt2D* texSizes;
+        GLuint* texGLIDs;
+        Pt2D* texSizes;
 
-    int cnt;
-} ZF4Fonts;
+        int cnt;
+    } Fonts;
 
-typedef struct {
-    GLuint* bufALIDs;
-    int cnt;
-} ZF4Sounds;
+    typedef struct {
+        GLuint* bufALIDs;
+        int cnt;
+    } Sounds;
 
-typedef struct {
-    ZF4AudioInfo* infos;
-    int* sampleDataFilePositions;
-    int cnt;
-} ZF4Music;
+    typedef struct {
+        AudioInfo* infos;
+        int* sampleDataFilePositions;
+        int cnt;
+    } Music;
 
-//
-// State
-//
-bool zf4_load_assets();
-void zf4_unload_assets();
+    //
+    // State
+    //
+    bool load_assets();
+    void unload_assets();
 
-const ZF4Textures* zf4_get_textures();
-const ZF4Fonts* zf4_get_fonts();
-const ZF4Sounds* zf4_get_sounds();
-const ZF4Music* zf4_get_music();
+    const Textures* get_textures();
+    const Fonts* get_fonts();
+    const Sounds* get_sounds();
+    const Music* get_music();
 
-//
-// Logic
-//
-bool zf4_load_textures(ZF4Textures* const textures, ZF4MemArena* const memArena, FILE* const fs);
-bool zf4_load_fonts(ZF4Fonts* const fonts, ZF4MemArena* const memArena, FILE* const fs);
-bool zf4_load_sounds(ZF4Sounds* const snds, ZF4MemArena* const memArena, FILE* const fs);
-bool zf4_load_music(ZF4Music* const music, ZF4MemArena* const memArena, FILE* const fs);
-
-#endif
+    //
+    // Logic
+    //
+    bool load_textures(Textures* const textures, MemArena* const memArena, FILE* const fs);
+    bool load_fonts(Fonts* const fonts, MemArena* const memArena, FILE* const fs);
+    bool load_sounds(Sounds* const snds, MemArena* const memArena, FILE* const fs);
+    bool load_music(Music* const music, MemArena* const memArena, FILE* const fs);
+}

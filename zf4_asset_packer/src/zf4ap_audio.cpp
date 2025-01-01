@@ -7,24 +7,24 @@ static bool write_audio_file_data(FILE* const outputFS, float* const samples, co
     SNDFILE* const sf = sf_open(filePath, SFM_READ, &sfInfo);
 
     if (!sf) {
-        zf4_log_error("Failed to open audio file with path \"%s\"!", filePath);
+        zf4::log_error("Failed to open audio file with path \"%s\"!", filePath);
         return false;
     }
 
-    const ZF4AudioInfo audioInfo = {
+    const zf4::AudioInfo audioInfo = {
         .channelCnt = sfInfo.channels,
         .sampleCntPerChannel = sfInfo.frames,
         .sampleRate = sfInfo.samplerate
     };
 
     if (audioInfo.channelCnt != 1 && audioInfo.channelCnt != 2) {
-        zf4_log_error("Audio file with path \"%s\" has an unsupported channel count of %d.", filePath, audioInfo.channelCnt);
+        zf4::log_error("Audio file with path \"%s\" has an unsupported channel count of %d.", filePath, audioInfo.channelCnt);
         sf_close(sf);
         return false;
     }
 
-    if (snd && audioInfo.sampleCntPerChannel * audioInfo.channelCnt > ZF4_SOUND_SAMPLE_LIMIT) {
-        zf4_log_error("Sound file with path \"%s\" exceeds the sample limit of %d!", filePath, ZF4_SOUND_SAMPLE_LIMIT);
+    if (snd && audioInfo.sampleCntPerChannel * audioInfo.channelCnt > zf4::gk_soundSampleLimit) {
+        zf4::log_error("Sound file with path \"%s\" exceeds the sample limit of %d!", filePath, zf4::gk_soundSampleLimit);
         sf_close(sf);
         return false;
     }
@@ -33,10 +33,10 @@ static bool write_audio_file_data(FILE* const outputFS, float* const samples, co
 
     sf_count_t samplesRead;
 
-    while ((samplesRead = sf_read_float(sf, samples, ZF4_AUDIO_SAMPLES_PER_CHUNK)) > 0) {
+    while ((samplesRead = sf_read_float(sf, samples, zf4::gk_audioSamplesPerChunk)) > 0) {
         fwrite(samples, sizeof(*samples), samplesRead, outputFS);
 
-        if (samplesRead < ZF4_AUDIO_SAMPLES_PER_CHUNK) {
+        if (samplesRead < zf4::gk_audioSamplesPerChunk) {
             break;
         }
     }
@@ -47,10 +47,10 @@ static bool write_audio_file_data(FILE* const outputFS, float* const samples, co
 }
 
 bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjSnds) {
-    const auto samples = zf4_alloc<float>(ZF4_AUDIO_SAMPLES_PER_CHUNK);
+    const auto samples = zf4::alloc<float>(zf4::gk_audioSamplesPerChunk);
 
     if (!samples) {
-        zf4_log_error("Failed to allocate memory for sound samples!");
+        zf4::log_error("Failed to allocate memory for sound samples!");
         return false;
     }
 
@@ -60,7 +60,7 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
 
     cJSON_ArrayForEach(cjSndRelFilePath, cjSnds) {
         if (!cJSON_IsString(cjSndRelFilePath)) {
-            zf4_log_error("Failed to get sound file path from packing instructions JSON file!");
+            zf4::log_error("Failed to get sound file path from packing instructions JSON file!");
             success = false;
             break;
         }
@@ -75,7 +75,7 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
             break;
         }
 
-        zf4_log("Packed sound with file path \"%s\".", srcAssetFilePathBuf);
+        zf4::log("Packed sound with file path \"%s\".", srcAssetFilePathBuf);
     }
 
     free(samples);
@@ -84,10 +84,10 @@ bool pack_sounds(FILE* const outputFS, char* const srcAssetFilePathBuf, const in
 }
 
 bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjMusic) {
-    const auto samples = zf4_alloc<float>(ZF4_AUDIO_SAMPLES_PER_CHUNK);
+    const auto samples = zf4::alloc<float>(zf4::gk_audioSamplesPerChunk);
 
     if (!samples) {
-        zf4_log_error("Failed to allocate memory for music samples!");
+        zf4::log_error("Failed to allocate memory for music samples!");
         return false;
     }
 
@@ -97,7 +97,7 @@ bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
 
     cJSON_ArrayForEach(cjMusicRelFilePath, cjMusic) {
         if (!cJSON_IsString(cjMusicRelFilePath)) {
-            zf4_log_error("Failed to get music file path from packing instructions JSON file!");
+            zf4::log_error("Failed to get music file path from packing instructions JSON file!");
             success = false;
             break;
         }
@@ -112,7 +112,7 @@ bool pack_music(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
             break;
         }
 
-        zf4_log("Packed music with file path \"%s\".", srcAssetFilePathBuf);
+        zf4::log("Packed music with file path \"%s\".", srcAssetFilePathBuf);
     }
 
     free(samples);

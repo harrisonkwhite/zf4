@@ -1,42 +1,44 @@
 #include <zf4_sprites.h>
 
-#include <stdlib.h>
+#include <cstdlib>
 
-static ZF4Sprite* i_sprites;
-static int i_spriteCnt;
+namespace zf4 {
+    static Sprite* i_sprites;
+    static int i_spriteCnt;
 
-bool zf4_load_sprites(const int cnt, const ZF4SpriteLoader loader) {
-    assert(!i_sprites);
+    bool load_sprites(const int cnt, const SpriteLoader loader) {
+        assert(!i_sprites);
 
-    i_spriteCnt = cnt;
+        i_spriteCnt = cnt;
 
-    if (cnt > 0) {
-        i_sprites = zf4_alloc_zeroed<ZF4Sprite>(cnt);
+        if (cnt > 0) {
+            i_sprites = alloc_zeroed<Sprite>(cnt);
 
-        if (!i_sprites) {
-            return false;
+            if (!i_sprites) {
+                return false;
+            }
+
+            for (int i = 0; i < cnt; ++i) {
+                loader(&i_sprites[i], i);
+                assert(!is_zero(&i_sprites[i]));
+            }
         }
 
-        for (int i = 0; i < cnt; ++i) {
-            loader(&i_sprites[i], i);
-            assert(!zf4_is_zero(&i_sprites[i]));
+        return true;
+    }
+
+    void unload_sprites() {
+        if (i_sprites) {
+            free(i_sprites);
+            i_sprites = nullptr;
         }
+
+        i_spriteCnt = 0;
     }
 
-    return true;
-}
-
-void zf4_unload_sprites() {
-    if (i_sprites) {
-        free(i_sprites);
-        i_sprites = nullptr;
+    const Sprite* get_sprite(const int index) {
+        assert(i_sprites);
+        assert(index >= 0 && index < i_spriteCnt);
+        return &i_sprites[index];
     }
-
-    i_spriteCnt = 0;
-}
-
-const ZF4Sprite* zf4_get_sprite(const int index) {
-    assert(i_sprites);
-    assert(index >= 0 && index < i_spriteCnt);
-    return &i_sprites[index];
 }

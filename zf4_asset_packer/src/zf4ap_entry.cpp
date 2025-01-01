@@ -2,7 +2,7 @@
 
 int main(const int argCnt, const char* const* args) {
     if (argCnt != 3) {
-        zf4_log_error("Invalid number of command-line arguments! Expected a source directory and an output directory.");
+        zf4::log_error("Invalid number of command-line arguments! Expected a source directory and an output directory.");
         return EXIT_FAILURE;
     }
 
