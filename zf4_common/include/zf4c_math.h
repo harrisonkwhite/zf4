@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cmath>
-#include <cstdbool>
 
 namespace zf4 {
     constexpr float gk_pi = 3.14159265359f;
@@ -10,7 +9,7 @@ namespace zf4 {
         float x, y;
     };
 
-    typedef union {
+    union Vec3D {
         struct {
             float x, y, z;
         };
@@ -18,9 +17,9 @@ namespace zf4 {
         struct {
             float r, g, b;
         };
-    } Vec3D;
+    };
 
-    typedef union {
+    union Vec4D {
         struct {
             float x, y, z, w;
         };
@@ -28,25 +27,25 @@ namespace zf4 {
         struct {
             float r, g, b, a;
         };
-    } Vec4D;
+    };
 
-    typedef struct {
+    struct Pt2D {
         int x, y;
-    } Pt2D;
+    };
 
-    typedef struct {
+    struct Rect {
         int x, y;
         int width, height;
-    } Rect;
+    };
 
-    typedef struct {
+    struct RectF {
         float x, y;
         float width, height;
-    } RectF;
+    };
 
-    typedef struct {
+    struct Matrix4x4 {
         float elems[4][4];
-    } Matrix4x4;
+    };
 
     void init_identity_matrix_4x4(Matrix4x4* const mat);
     void init_ortho_matrix_4x4(Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);

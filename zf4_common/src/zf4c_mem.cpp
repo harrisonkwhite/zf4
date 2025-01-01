@@ -32,46 +32,46 @@ namespace zf4 {
     bool MemArena::init(const int size) {
         assert(is_zero(this));
 
-        bytes = alloc_zeroed<Byte>(size);
+        m_bytes = alloc_zeroed<Byte>(size);
 
-        if (!bytes) {
+        if (!m_bytes) {
             return false;
         }
 
-        this->size = size;
+        this->m_size = size;
 
         return true;
     }
 
     void MemArena::clean() {
-        if (bytes) {
-            std::free(bytes);
+        if (m_bytes) {
+            std::free(m_bytes);
         }
 
         zero_out(this);
     }
 
     Byte* MemArena::push(const int size, const int alignment) {
-        assert(bytes);
+        assert(m_bytes);
         assert(size > 0);
         assert(is_power_of_two(alignment));
 
-        const int offsAligned = align_forward(offs, alignment);
+        const int offsAligned = align_forward(m_offs, alignment);
         const int offsNext = offsAligned + size;
 
-        if (offsNext > this->size) {
+        if (offsNext > this->m_size) {
             return nullptr;
         }
 
-        offs = offsNext;
+        m_offs = offsNext;
 
-        return bytes + offsAligned;
+        return m_bytes + offsAligned;
     }
 
     void MemArena::reset() {
-        assert(bytes);
+        assert(m_bytes);
 
-        std::memset(bytes, 0, offs);
-        offs = 0;
+        std::memset(m_bytes, 0, m_offs);
+        m_offs = 0;
     }
 }

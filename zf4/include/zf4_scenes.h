@@ -1,14 +1,13 @@
 #pragma once
 
-#include <cstdbool>
 #include <zf4c.h>
 #include <zf4_renderer.h>
 
 namespace zf4 {
     constexpr int gk_sceneScratchSpaceSize = megabytes_to_bytes(2);
 
-    typedef void (*ComponentTypeLimitLoader)(int* typeLimit, int typeIndex);
-    typedef void (*ComponentDefaultsLoader)(Byte* const comp);
+    using ComponentTypeLimitLoader = void (*)(int* const typeLimit, const int typeIndex);
+    using ComponentDefaultsLoader = void (*)(Byte* const comp);
 
     struct ComponentTypeInfo {
         int size;
@@ -17,7 +16,7 @@ namespace zf4 {
         ComponentDefaultsLoader defaultsLoader;
     };
 
-    typedef void (*ComponentTypeInfoLoader)(ComponentTypeInfo* typeInfo, int typeIndex);
+    using ComponentTypeInfoLoader = void (*)(ComponentTypeInfo* const typeInfo, const int typeIndex);
 
     struct EntID {
         int index;
@@ -25,7 +24,7 @@ namespace zf4 {
     };
 
     struct Scene;
-    typedef void (*OnEntDestroy)(EntID entID, Scene* scene);
+    using OnEntDestroy = void (*)(const EntID entID, Scene* const scene);
 
     struct Ent {
         Vec2D pos;
@@ -77,8 +76,8 @@ namespace zf4 {
         void* userData;
     };
 
-    typedef bool (*SceneInit)(Scene* const scene);
-    typedef bool (*SceneTick)(Scene* const scene, int* const sceneChangeIndex);
+    using SceneInit = bool (*)(Scene* const scene);
+    using SceneTick = bool (*)(Scene* const scene, int* const sceneChangeIndex);
 
     struct SceneTypeInfo {
         int memArenaSize;
@@ -97,7 +96,7 @@ namespace zf4 {
         int userDataAlignment;
     };
 
-    typedef void (*SceneTypeInfoLoader)(SceneTypeInfo* typeInfo, int typeIndex);
+    using SceneTypeInfoLoader = void (*)(SceneTypeInfo* const typeInfo, const int typeIndex);
 
     bool load_component_types(int typeCnt, ComponentTypeInfoLoader typeInfoLoader);
     void unload_component_types();

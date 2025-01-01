@@ -2,7 +2,6 @@
 
 #include <zf4c_math.h>
 
-
 namespace zf4 {
     const char* const gk_assetsFileName = "assets.dat";
 
@@ -18,18 +17,18 @@ namespace zf4 {
 
     constexpr int gk_soundSampleLimit = 441000;
 
-    typedef float AudioSample;
+    using AudioSample = float;
 
-    typedef enum {
+    enum AssetType {
         TEX_ASSET_TYPE,
         FONT_ASSET_TYPE,
         SOUND_ASSET_TYPE,
         MUSIC_ASSET_TYPE,
 
         ASSET_TYPE_CNT
-    } AssetType;
+    };
 
-    typedef struct {
+    struct FontCharsArrangementInfo {
         int horOffsets[gk_fontCharRangeLen];
         int verOffsets[gk_fontCharRangeLen];
         int horAdvances[gk_fontCharRangeLen];
@@ -37,16 +36,16 @@ namespace zf4 {
         Rect srcRects[gk_fontCharRangeLen];
 
         int kernings[gk_fontCharRangeLen * gk_fontCharRangeLen];
-    } FontCharsArrangementInfo;
+    };
 
-    typedef struct {
+    struct FontArrangementInfo {
         int lineHeight;
         FontCharsArrangementInfo chars;
-    } FontArrangementInfo;
+    };
 
-    typedef struct {
+    struct AudioInfo {
         int channelCnt;
         long long sampleCntPerChannel;
         int sampleRate;
-    } AudioInfo;
+    };
 }

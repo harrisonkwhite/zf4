@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdbool>
 #include <glad/glad.h>
 
 namespace zf4 {

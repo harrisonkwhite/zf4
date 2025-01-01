@@ -10,31 +10,31 @@ namespace zf4 {
     constexpr int gk_charBatchSlotLimit = 1024;
     constexpr int gk_texUnitLimit = 16;
 
-    typedef enum {
+    enum FontHorAlign {
         FONT_HOR_ALIGN_LEFT,
         FONT_HOR_ALIGN_CENTER,
         FONT_HOR_ALIGN_RIGHT
-    } FontHorAlign;
+    };
 
-    typedef enum {
+    enum FontVerAlign {
         FONT_VER_ALIGN_TOP,
         FONT_VER_ALIGN_CENTER,
         FONT_VER_ALIGN_BOTTOM
-    } FontVerAlign;
+    };
 
-    typedef struct {
+    struct QuadBuf {
         GLuint vertArrayGLID;
         GLuint vertBufGLID;
         GLuint elemBufGLID;
-    } QuadBuf;
+    };
 
-    typedef struct {
+    struct SpriteBatchTransients {
         int slotsUsed;
         int texUnitTexIDs[gk_texUnitLimit];
         int texUnitsInUse;
-    } SpriteBatchTransients;
+    };
 
-    typedef struct {
+    struct SpriteBatchWriteInfo {
         int texIndex;
         Vec2D pos;
         Rect srcRect;
@@ -42,34 +42,34 @@ namespace zf4 {
         float rot;
         Vec2D scale;
         float alpha;
-    } SpriteBatchWriteInfo;
+    };
 
-    typedef struct {
+    struct CharBatchDisplayProps {
         int fontIndex;
         Vec2D pos;
         float rot;
         Vec4D blend;
-    } CharBatchDisplayProps;
+    };
 
-    typedef struct {
+    struct CharBatch {
         QuadBuf quadBuf;
         int slotCnt;
         CharBatchDisplayProps displayProps;
-    } CharBatch;
+    };
 
-    typedef struct {
+    struct CharBatchID {
         int layerIndex;
         int batchIndex;
-    } CharBatchID;
+    };
 
-    typedef struct {
+    struct RenderLayerProps {
         int spriteBatchCnt;
         int charBatchCnt;
-    } RenderLayerProps;
+    };
 
-    typedef void (*RenderLayerPropsInitializer)(RenderLayerProps* const props, const int layerIndex);
+    using RenderLayerPropsInitializer = void (*)(RenderLayerProps* const props, const int layerIndex);
 
-    typedef struct {
+    struct RenderLayer {
         QuadBuf* spriteBatchQuadBufs;
         SpriteBatchTransients* spriteBatchTransients;
         int spriteBatchesFilled;
@@ -78,20 +78,20 @@ namespace zf4 {
         Byte* charBatchActivityBitset;
 
         RenderLayerProps props;
-    } RenderLayer;
+    };
 
-    typedef struct {
+    struct Camera {
         Vec2D pos;
         float scale;
-    } Camera;
+    };
 
-    typedef struct {
+    struct Renderer {
         RenderLayer* layers;
         int layerCnt;
         int camLayerCnt;
         Vec3D bgColor;
         Camera cam;
-    } Renderer;
+    };
 
     bool load_renderer(Renderer* const renderer, MemArena* const memArena, const int layerCnt, const int camLayerCnt, const RenderLayerPropsInitializer layerPropsInitializer);
     void clean_renderer(Renderer* const renderer);

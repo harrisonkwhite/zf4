@@ -3,11 +3,11 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-typedef struct {
+struct FontData {
     zf4::FontArrangementInfo arrangementInfo;
     zf4::Pt2D texSize;
     zf4::Byte texPxData[zf4::gk_texPxDataSizeLimit];
-} FontData;
+};
 
 static inline int get_line_height(const FT_Face ftFace) {
     return ftFace->size->metrics.height >> 6;

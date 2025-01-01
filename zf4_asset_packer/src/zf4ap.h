@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdbool>
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -9,13 +8,13 @@
 
 constexpr int gk_srcAssetFilePathBufSize = 256;
 
-typedef bool (*AssetTypePacker)(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjAssets);
+using AssetTypePacker = bool (*)(FILE* const outputFS, char* const srcAssetFilePathBuf, const int srcAssetFilePathStartLen, const cJSON* const cjAssets);
 
-typedef struct {
+struct AssetPacker {
     FILE* outputFS;
     char* instrsFileChars;
     cJSON* instrsCJ;
-} AssetPacker;
+};
 
 bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const char* const outputDir);
 void clean_asset_packer(AssetPacker* const packer, const bool packingSuccess);

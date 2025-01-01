@@ -1,37 +1,36 @@
 #pragma once
 
-#include <cstdbool>
 #include <cstdio>
 #include <glad/glad.h>
 #include <AL/al.h>
 #include <zf4c.h>
 
 namespace zf4 {
-    typedef struct {
+    struct Textures {
         GLuint* glIDs;
         Pt2D* sizes;
         int cnt;
-    } Textures;
+    };
 
-    typedef struct {
+    struct Fonts {
         FontArrangementInfo* arrangementInfos;
 
         GLuint* texGLIDs;
         Pt2D* texSizes;
 
         int cnt;
-    } Fonts;
+    };
 
-    typedef struct {
+    struct Sounds {
         GLuint* bufALIDs;
         int cnt;
-    } Sounds;
+    };
 
-    typedef struct {
+    struct Music {
         AudioInfo* infos;
         int* sampleDataFilePositions;
         int cnt;
-    } Music;
+    };
 
     //
     // State

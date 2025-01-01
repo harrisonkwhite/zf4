@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <cstdlib>
-#include <cstdbool>
 #include <cstring>
 #include <type_traits>
 
@@ -21,9 +20,9 @@ namespace zf4 {
         void reset();
 
     private:
-        Byte* bytes;
-        int size;
-        int offs;
+        Byte* m_bytes;
+        int m_size;
+        int m_offs;
     };
 
     int get_first_active_bit_index(const Byte* const bytes, const int bitCnt);

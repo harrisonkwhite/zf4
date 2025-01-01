@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdio>
-#include <cstdbool>
 #include <AL/al.h>
 #include <zf4c.h>
 #include <zf4_assets.h>
@@ -12,34 +11,32 @@ namespace zf4 {
     constexpr int gk_musicSrcLimit = 16;
     constexpr int gk_musicBufCnt = 4; // Number of buffers that can concurrently hold parts of a music piece's sample data.
     constexpr int gk_musicBufSampleCnt = 88200;
-    constexpr int gk_musicBufSize = sizeof(AudioSample) * gk_musicBufSampleCnt;
+    constexpr long long gk_musicBufSize = sizeof(AudioSample) * gk_musicBufSampleCnt;
 
-    typedef struct {
+    struct AudioSrcID {
         int index;
         int version;
-    } AudioSrcID;
+    };
 
-    typedef struct {
+    struct SoundSrcManager {
         ALuint alIDs[gk_soundSrcLimit];
         int versions[gk_soundSrcLimit];
         Byte autoReleaseBitset[bits_to_bytes(gk_soundSrcLimit)]; // Indicates which sources need to be automatically released when finished (due to not them not being referenced).
-    } SoundSrcManager;
+    };
 
-    typedef struct {
+    struct MusicSrc {
         int musicIndex;
-
         ALuint alID;
         ALuint bufALIDs[gk_musicBufCnt];
-
         FILE* fs;
         int fsBytesRead;
-    } MusicSrc;
+    };
 
-    typedef struct {
+    struct MusicSrcManager {
         MusicSrc srcs[gk_musicSrcLimit];
         Byte activityBitset[bits_to_bytes(gk_musicSrcLimit)];
         int versions[gk_musicSrcLimit];
-    } MusicSrcManager;
+    };
 
     bool init_audio_system();
     void clean_audio_system();

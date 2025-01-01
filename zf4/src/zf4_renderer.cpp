@@ -57,31 +57,31 @@ namespace zf4 {
         const int vertsStride = sizeof(float) * vertCnt;
 
         if (sprite) {
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 0));
+            glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
             glEnableVertexAttribArray(0);
 
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 2));
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
             glEnableVertexAttribArray(1);
 
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 4));
+            glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
             glEnableVertexAttribArray(2);
 
-            glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 6));
+            glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
             glEnableVertexAttribArray(3);
 
-            glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 7));
+            glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
             glEnableVertexAttribArray(4);
 
-            glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 8));
+            glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
             glEnableVertexAttribArray(5);
 
-            glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 10));
+            glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
             glEnableVertexAttribArray(6);
         } else {
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 0));
+            glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
             glEnableVertexAttribArray(0);
 
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertsStride, (const void*)(sizeof(float) * 2));
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
             glEnableVertexAttribArray(1);
         }
 
@@ -217,7 +217,7 @@ namespace zf4 {
         }
 
         Matrix4x4 projMat = {};
-        init_ortho_matrix_4x4(&projMat, 0.0f, (float)get_window_size().x, (float)get_window_size().y, 0.0f, -1.0f, 1.0f);
+        init_ortho_matrix_4x4(&projMat, 0.0f, get_window_size().x, get_window_size().y, 0.0f, -1.0f, 1.0f);
 
         Matrix4x4 camViewMat = {};
         init_camera_view_matrix(&camViewMat, &renderer->cam);
@@ -231,10 +231,10 @@ namespace zf4 {
             //
             glUseProgram(shaderProgs->spriteQuad.glID);
 
-            glUniformMatrix4fv(shaderProgs->spriteQuad.projUniLoc, 1, GL_FALSE, (const float*)projMat.elems);
+            glUniformMatrix4fv(shaderProgs->spriteQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(projMat.elems));
 
             const Matrix4x4* const viewMat = i < renderer->camLayerCnt ? &camViewMat : &defaultViewMat;
-            glUniformMatrix4fv(shaderProgs->spriteQuad.viewUniLoc, 1, GL_FALSE, (const float*)viewMat->elems);
+            glUniformMatrix4fv(shaderProgs->spriteQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(viewMat->elems));
 
             glUniform1iv(shaderProgs->spriteQuad.texturesUniLoc, gk_texUnitLimit, texUnits);
 
@@ -321,48 +321,48 @@ namespace zf4 {
             (0.0f - info->origin.y) * info->scale.y,
             info->pos.x,
             info->pos.y,
-            (float)info->srcRect.width,
-            (float)info->srcRect.height,
+            static_cast<float>(info->srcRect.width),
+            static_cast<float>(info->srcRect.height),
             info->rot,
-            (float)texUnit,
-            (float)info->srcRect.x / texSize.x,
-            (float)info->srcRect.y / texSize.y,
+            static_cast<float>(texUnit),
+            static_cast<float>(info->srcRect.x) / texSize.x,
+            static_cast<float>(info->srcRect.y) / texSize.y,
             info->alpha,
 
             (1.0f - info->origin.x) * info->scale.x,
             (0.0f - info->origin.y) * info->scale.y,
             info->pos.x,
             info->pos.y,
-            (float)info->srcRect.width,
-            (float)info->srcRect.height,
+            static_cast<float>(info->srcRect.width),
+            static_cast<float>(info->srcRect.height),
             info->rot,
-            (float)texUnit,
-            (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
-            (float)info->srcRect.y / texSize.y,
+            static_cast<float>(texUnit),
+            static_cast<float>(info->srcRect.x + info->srcRect.width) / texSize.x,
+            static_cast<float>(info->srcRect.y) / texSize.y,
             info->alpha,
 
             (1.0f - info->origin.x) * info->scale.x,
             (1.0f - info->origin.y) * info->scale.y,
             info->pos.x,
             info->pos.y,
-            (float)info->srcRect.width,
-            (float)info->srcRect.height,
+            static_cast<float>(info->srcRect.width),
+            static_cast<float>(info->srcRect.height),
             info->rot,
-            (float)texUnit,
-            (float)(info->srcRect.x + info->srcRect.width) / texSize.x,
-            (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
+            static_cast<float>(texUnit),
+            static_cast<float>(info->srcRect.x + info->srcRect.width) / texSize.x,
+            static_cast<float>(info->srcRect.y + info->srcRect.height) / texSize.y,
             info->alpha,
 
             (0.0f - info->origin.x) * info->scale.x,
             (1.0f - info->origin.y) * info->scale.y,
             info->pos.x,
             info->pos.y,
-            (float)info->srcRect.width,
-            (float)info->srcRect.height,
+            static_cast<float>(info->srcRect.width),
+            static_cast<float>(info->srcRect.height),
             info->rot,
-            (float)texUnit,
-            (float)info->srcRect.x / texSize.x,
-            (float)(info->srcRect.y + info->srcRect.height) / texSize.y,
+            static_cast<float>(texUnit),
+            static_cast<float>(info->srcRect.x) / texSize.x,
+            static_cast<float>(info->srcRect.y + info->srcRect.height) / texSize.y,
             info->alpha
         };
 
@@ -410,7 +410,7 @@ namespace zf4 {
         RenderLayer* const layer = &renderer->layers[id.layerIndex];
         CharBatch* const batch = &layer->charBatches[id.batchIndex];
 
-        const int textLen = (int)strlen(text);
+        const int textLen = static_cast<int>(strlen(text));
         assert(textLen > 0 && textLen <= batch->slotCnt);
 
         const FontArrangementInfo* const fontArrangementInfo = &get_fonts()->arrangementInfos[batch->displayProps.fontIndex];
@@ -505,13 +505,13 @@ namespace zf4 {
             };
 
             const Vec2D charTexCoordsTopLeft = {
-                (float)fontArrangementInfo->chars.srcRects[charIndex].x / fontTexSize.x,
-                (float)fontArrangementInfo->chars.srcRects[charIndex].y / fontTexSize.y
+                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].x) / fontTexSize.x,
+                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].y) / fontTexSize.y
             };
 
             const Vec2D charTexCoordsBottomRight = {
-                (float)get_rect_right(&fontArrangementInfo->chars.srcRects[charIndex]) / fontTexSize.x,
-                (float)get_rect_bottom(&fontArrangementInfo->chars.srcRects[charIndex]) / fontTexSize.y
+                static_cast<float>(get_rect_right(&fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.x,
+                static_cast<float>(get_rect_bottom(&fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.y
             };
 
             float* const slotVerts = verts + (i * ik_charBatchSlotVertsCnt);

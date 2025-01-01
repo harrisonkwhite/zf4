@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <cassert>
-#include <cstdbool>
 
 namespace zf4 {
     static bool i_rngInitialized;

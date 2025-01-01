@@ -5,14 +5,14 @@
 #include <zf4c.h>
 
 namespace zf4 {
-    typedef unsigned long long KeysDownBitset;
-    typedef unsigned char MouseButtonsDownBitset;
+    using KeysDownBitset = unsigned long long;
+    using MouseButtonsDownBitset = unsigned char;
 
-    typedef struct {
+    struct InputState {
         KeysDownBitset keysDown;
         MouseButtonsDownBitset mouseButtonsDown;
         Vec2D mousePos;
-    } InputState;
+    };
 
     static GLFWwindow* i_glfwWindow;
     static Pt2D i_windowSize;
@@ -118,32 +118,32 @@ namespace zf4 {
     }
 
     bool is_key_down(const KeyCode keyCode) {
-        const KeysDownBitset keyBit = (KeysDownBitset)1 << keyCode;
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
         return i_inputState.keysDown & keyBit;
     }
 
     bool is_key_pressed(const KeyCode keyCode) {
-        const KeysDownBitset keyBit = (KeysDownBitset)1 << keyCode;
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
         return (i_inputState.keysDown & keyBit) && !(i_inputStateSaved.keysDown & keyBit);
     }
 
     bool is_key_released(const KeyCode keyCode) {
-        const KeysDownBitset keyBit = (KeysDownBitset)1 << keyCode;
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
         return !(i_inputState.keysDown & keyBit) && (i_inputStateSaved.keysDown & keyBit);
     }
 
     bool is_mouse_button_down(const MouseButtonCode buttonCode) {
-        const MouseButtonsDownBitset buttonBit = (MouseButtonsDownBitset)1 << buttonCode;
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
         return i_inputState.mouseButtonsDown & buttonBit;
     }
 
     bool is_mouse_button_pressed(const MouseButtonCode buttonCode) {
-        const MouseButtonsDownBitset buttonBit = (MouseButtonsDownBitset)1 << buttonCode;
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
         return (i_inputState.mouseButtonsDown & buttonBit) && !(i_inputStateSaved.mouseButtonsDown & buttonBit);
     }
 
     bool is_mouse_button_released(const MouseButtonCode buttonCode) {
-        const MouseButtonsDownBitset buttonBit = (MouseButtonsDownBitset)1 << buttonCode;
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
         return !(i_inputState.mouseButtonsDown & buttonBit) && (i_inputStateSaved.mouseButtonsDown & buttonBit);
     }
 

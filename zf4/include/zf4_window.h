@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cstdbool>
 #include <GLFW/glfw3.h>
 #include <zf4c_math.h>
 
 namespace zf4 {
-    typedef enum {
+    enum KeyCode {
         UNDEFINED_KEY_CODE = -1,
 
         KEY_SPACE,
@@ -75,9 +74,9 @@ namespace zf4 {
         KEY_LEFT_ALT,
 
         NUM_KEY_CODES
-    } KeyCode;
+    };
 
-    typedef enum {
+    enum MouseButtonCode {
         UNDEFINED_MOUSE_BUTTON_CODE = -1,
 
         MOUSE_BUTTON_LEFT,
@@ -85,7 +84,7 @@ namespace zf4 {
         MOUSE_BUTTON_MID,
 
         NUM_MOUSE_BUTTON_CODES
-    } MouseButtonCode;
+    };
 
     //
     // State

@@ -4,7 +4,7 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
-    typedef struct {
+    struct UserGameInfo {
         int windowInitWidth;
         int windowInitHeight;
         const char* windowTitle;
@@ -19,7 +19,7 @@ namespace zf4 {
 
         int sceneTypeCnt;
         SceneTypeInfoLoader sceneTypeInfoLoader;
-    } UserGameInfo;
+    };
 
     void start_game(const UserGameInfo* const userInfo);
 }

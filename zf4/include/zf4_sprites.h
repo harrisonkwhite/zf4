@@ -3,22 +3,22 @@
 #include <zf4c.h>
 
 namespace zf4 {
-    typedef void (*SpriteSrcRectLoader)(zf4::Rect* const srcRect, const int frameIndex);
+    using SpriteSrcRectLoader = void (*)(zf4::Rect* const srcRect, const int frameIndex);
 
-    typedef struct {
+    struct Sprite {
         int texIndex;
         int frameCnt;
         SpriteSrcRectLoader srcRectLoader;
-    } Sprite;
+    };
 
-    typedef void (*SpriteLoader)(Sprite* const sprite, const int index);
+    using SpriteLoader = void (*)(Sprite* const sprite, const int index);
 
-    typedef struct {
+    struct Anim {
         int spriteIndex;
         int frameIndex;
         int frameTime;
         int frameInterval;
-    } Anim;
+    };
 
     //
     // State

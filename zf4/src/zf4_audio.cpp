@@ -28,8 +28,8 @@ namespace zf4 {
 
         const AudioInfo* const musicInfo = &get_music()->infos[src->musicIndex];
 
-        const long long totalBytesToRead = (long long)(sizeof(AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt);
-        const int bytesToRead = (int)std::min((long long)gk_musicBufSize, totalBytesToRead - src->fsBytesRead);
+        const long long totalBytesToRead = sizeof(AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt;
+        const int bytesToRead = std::min(gk_musicBufSize, totalBytesToRead - src->fsBytesRead);
         const int bytesRead = read_from_fs<Byte>(buf, src->fs, bytesToRead);
 
         if (bytesRead < bytesToRead) {
