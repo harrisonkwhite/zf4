@@ -1,97 +1,6 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
-    static bool load_scene_ent(Scene* scene, Ent* ent) {
-        ent->compIndexes = scene->memArena.push<int>(get_component_type_cnt());
-
-        if (!ent->compIndexes) {
-            return false;
-        }
-
-        ent->compSig = scene->memArena.push<Byte>(bits_to_bytes(get_component_type_cnt()));
-
-        if (!ent->compSig) {
-            return false;
-        }
-
-        return true;
-    }
-
-    static bool load_scene_ents(Scene* scene) {
-        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
-
-        if (sceneTypeInfo->entLimit > 0) {
-            //
-            // Entities
-            //
-            scene->ents = scene->memArena.push<Ent>(sceneTypeInfo->entLimit);
-
-            if (!scene->ents) {
-                return false;
-            }
-
-            for (int i = 0; i < sceneTypeInfo->entLimit; ++i) {
-                if (!load_scene_ent(scene, &scene->ents[i])) {
-                    return false;
-                }
-            }
-
-            scene->entActivity = scene->memArena.push<Byte>(bits_to_bytes(sceneTypeInfo->entLimit));
-
-            if (!scene->entActivity) {
-                return false;
-            }
-
-            scene->entVersions = scene->memArena.push<int>(sceneTypeInfo->entLimit);
-
-            if (!scene->entVersions) {
-                return false;
-            }
-
-            //
-            // Components
-            //
-            scene->compArrays = scene->memArena.push<void*>(get_component_type_cnt());
-
-            if (!scene->compArrays) {
-                return false;
-            }
-
-            scene->compActivities = scene->memArena.push<Byte*>(get_component_type_cnt());
-
-            if (!scene->compActivities) {
-                return false;
-            }
-
-            scene->compTypeLimits = scene->memArena.push<int>(get_component_type_cnt());
-
-            if (!scene->compTypeLimits) {
-                return false;
-            }
-
-            for (int i = 0; i < get_component_type_cnt(); ++i) {
-                scene->compTypeLimits[i] = sceneTypeInfo->entLimit; // The default component type limit is the entity limit.
-                sceneTypeInfo->compTypeLimitLoader(&scene->compTypeLimits[i], i); // The limit may or may not be changed here.
-
-                ComponentTypeInfo* compTypeInfo = get_component_type_info(i);
-
-                scene->compArrays[i] = scene->memArena.push<Byte>(compTypeInfo->size * scene->compTypeLimits[i]);
-
-                if (!scene->compArrays[i]) {
-                    return false;
-                }
-
-                scene->compActivities[i] = scene->memArena.push<Byte>(bits_to_bytes(scene->compTypeLimits[i]));
-
-                if (!scene->compActivities[i]) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     bool load_scene(Scene* scene, int sceneTypeIndex) {
         assert(is_zero(scene));
 
@@ -116,8 +25,8 @@ namespace zf4 {
             return false;
         }
 
-        if (!load_scene_ents(scene)) {
-            log_error("Failed to load scene ents!");
+        if (!scene->entManager.load(sceneTypeInfo->entLimit, sceneTypeInfo->compTypeLimitLoader, &scene->memArena)) {
+            log_error("Failed to load the scene entity manager!");
             return false;
         }
 

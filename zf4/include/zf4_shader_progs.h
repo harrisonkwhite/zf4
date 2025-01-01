@@ -14,19 +14,19 @@ namespace zf4 {
         int texturesUniLoc;
     };
 
-    typedef struct {
+    struct CharQuadShaderProg {
         GLuint glID;
         int projUniLoc;
         int viewUniLoc;
         int posUniLoc;
         int rotUniLoc;
         int blendUniLoc;
-    } CharQuadShaderProg;
+    };
 
-    typedef struct {
+    struct ShaderProgs {
         SpriteQuadShaderProg spriteQuad;
         CharQuadShaderProg charQuad;
-    } ShaderProgs;
+    };
 
     void load_shader_progs(ShaderProgs* const progs);
     void unload_shader_progs(ShaderProgs* const progs);
