@@ -8,7 +8,7 @@
 namespace zf4 {
     struct Textures {
         GLuint* glIDs;
-        Pt2D* sizes;
+        Vec2DI* sizes;
         int cnt;
     };
 
@@ -16,7 +16,7 @@ namespace zf4 {
         FontArrangementInfo* arrangementInfos;
 
         GLuint* texGLIDs;
-        Pt2D* texSizes;
+        Vec2DI* texSizes;
 
         int cnt;
     };

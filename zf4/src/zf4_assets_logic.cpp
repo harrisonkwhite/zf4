@@ -6,7 +6,7 @@
 namespace zf4 {
     // TODO: Check for file read errors.
 
-    static void set_up_gl_tex(const GLuint glID, const Pt2D size, const unsigned char* const pxData) {
+    static void set_up_gl_tex(const GLuint glID, const Vec2DI size, const unsigned char* const pxData) {
         glBindTexture(GL_TEXTURE_2D, glID);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -24,7 +24,7 @@ namespace zf4 {
                 return false;
             }
 
-            textures->sizes = memArena->push<Pt2D>(textures->cnt);
+            textures->sizes = memArena->push<Vec2DI>(textures->cnt);
 
             if (!textures->sizes) {
                 return false;
@@ -42,7 +42,7 @@ namespace zf4 {
                 glGenTextures(textures->cnt, textures->glIDs);
 
                 for (int i = 0; i < textures->cnt; ++i) {
-                    read_from_fs<Pt2D>(&textures->sizes[i], fs);
+                    read_from_fs<Vec2DI>(&textures->sizes[i], fs);
                     read_from_fs<unsigned char>(pxData, fs, gk_texChannelCnt * textures->sizes[i].x * textures->sizes[i].y);
                     set_up_gl_tex(textures->glIDs[i], textures->sizes[i], pxData);
                 }
@@ -71,7 +71,7 @@ namespace zf4 {
                 return false;
             }
 
-            fonts->texSizes = memArena->push<Pt2D>(fonts->cnt);
+            fonts->texSizes = memArena->push<Vec2DI>(fonts->cnt);
 
             if (!fonts->texSizes) {
                 return false;
@@ -89,7 +89,7 @@ namespace zf4 {
 
             for (int i = 0; i < fonts->cnt; ++i) {
                 read_from_fs<FontArrangementInfo>(&fonts->arrangementInfos[i], fs);
-                read_from_fs<Pt2D>(&fonts->texSizes[i], fs);
+                read_from_fs<Vec2DI>(&fonts->texSizes[i], fs);
                 read_from_fs<unsigned char>(pxData, fs, gk_texPxDataSizeLimit);
                 set_up_gl_tex(fonts->texGLIDs[i], fonts->texSizes[i], pxData);
             }

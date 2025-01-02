@@ -5,7 +5,7 @@
 
 struct FontData {
     zf4::FontArrangementInfo arrangementInfo;
-    zf4::Pt2D texSize;
+    zf4::Vec2DI texSize;
     zf4::Byte texPxData[zf4::gk_texPxDataSizeLimit];
 };
 
@@ -28,11 +28,11 @@ static int calc_largest_bitmap_width(const FT_Face ftFace) {
     return width;
 }
 
-static zf4::Pt2D calc_font_tex_size(const FT_Face ftFace) {
+static zf4::Vec2DI calc_font_tex_size(const FT_Face ftFace) {
     const int largestGlyphBitmapWidth = calc_largest_bitmap_width(ftFace);
     const int idealTexWidth = largestGlyphBitmapWidth * zf4::gk_fontCharRangeLen;
 
-    zf4::Pt2D texSize;
+    zf4::Vec2DI texSize;
     texSize.x = idealTexWidth < zf4::gk_texSizeLimit.x ? idealTexWidth : zf4::gk_texSizeLimit.x;
     texSize.y = get_line_height(ftFace) * ((idealTexWidth / zf4::gk_texSizeLimit.x) + 1);
     return texSize;
@@ -70,7 +70,7 @@ static bool load_font_data(FontData* const fd, const FT_Library ftLib, const cha
         fd->texPxData[i + 3] = 0;
     }
 
-    zf4::Pt2D charDrawPos = {}; // Where we are in the font texture.
+    zf4::Vec2DI charDrawPos = {}; // Where we are in the font texture.
 
     for (int i = 0; i < zf4::gk_fontCharRangeLen; i++) {
         FT_UInt ftCharIndex = FT_Get_Char_Index(ftFace, zf4::gk_fontCharRangeBegin + i);

@@ -202,7 +202,7 @@ namespace zf4 {
     }
 
     void render_all(const Renderer* const renderer, const ShaderProgs* const shaderProgs) {
-        glClearColor(renderer->bgColor.r, renderer->bgColor.g, renderer->bgColor.b, 1.0f);
+        glClearColor(renderer->bgColor.x, renderer->bgColor.y, renderer->bgColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         static int texUnits[gk_texUnitLimit];
@@ -291,7 +291,7 @@ namespace zf4 {
         }
     }
 
-    void write_to_sprite_batch(Renderer* const renderer, const int layerIndex, const SpriteBatchWriteInfo* const info) {
+    void write_to_sprite_batch(Renderer* const renderer, const int layerIndex, const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
         assert(layerIndex >= 0 && layerIndex < renderer->layerCnt);
 
         RenderLayer* const layer = &renderer->layers[layerIndex];
@@ -301,11 +301,11 @@ namespace zf4 {
 
         int texUnit;
 
-        if (batchTransData->slotsUsed == gk_spriteBatchSlotLimit || (texUnit = add_tex_unit_to_sprite_batch(batchTransData, info->texIndex)) == -1) {
+        if (batchTransData->slotsUsed == gk_spriteBatchSlotLimit || (texUnit = add_tex_unit_to_sprite_batch(batchTransData, texIndex)) == -1) {
             ++layer->spriteBatchesFilled;
 
             if (layer->spriteBatchesFilled < layer->props.spriteBatchCnt) {
-                write_to_sprite_batch(renderer, layerIndex, info);
+                write_to_sprite_batch(renderer, layerIndex, texIndex, pos, srcRect, origin, rot, scale, alpha);
             } else {
                 assert(false);
             }
@@ -314,56 +314,56 @@ namespace zf4 {
         }
 
         const int slotIndex = batchTransData->slotsUsed;
-        const Pt2D texSize = get_textures()->sizes[info->texIndex];
+        const Vec2DI texSize = get_textures()->sizes[texIndex];
 
         const float verts[] = {
-            (0.0f - info->origin.x) * info->scale.x,
-            (0.0f - info->origin.y) * info->scale.y,
-            info->pos.x,
-            info->pos.y,
-            static_cast<float>(info->srcRect.width),
-            static_cast<float>(info->srcRect.height),
-            info->rot,
+            (0.0f - origin.x) * scale.x,
+            (0.0f - origin.y) * scale.y,
+            pos.x,
+            pos.y,
+            static_cast<float>(srcRect.width),
+            static_cast<float>(srcRect.height),
+            rot,
             static_cast<float>(texUnit),
-            static_cast<float>(info->srcRect.x) / texSize.x,
-            static_cast<float>(info->srcRect.y) / texSize.y,
-            info->alpha,
+            static_cast<float>(srcRect.x) / texSize.x,
+            static_cast<float>(srcRect.y) / texSize.y,
+            alpha,
 
-            (1.0f - info->origin.x) * info->scale.x,
-            (0.0f - info->origin.y) * info->scale.y,
-            info->pos.x,
-            info->pos.y,
-            static_cast<float>(info->srcRect.width),
-            static_cast<float>(info->srcRect.height),
-            info->rot,
+            (1.0f - origin.x) * scale.x,
+            (0.0f - origin.y) * scale.y,
+            pos.x,
+            pos.y,
+            static_cast<float>(srcRect.width),
+            static_cast<float>(srcRect.height),
+            rot,
             static_cast<float>(texUnit),
-            static_cast<float>(info->srcRect.x + info->srcRect.width) / texSize.x,
-            static_cast<float>(info->srcRect.y) / texSize.y,
-            info->alpha,
+            static_cast<float>(srcRect.x + srcRect.width) / texSize.x,
+            static_cast<float>(srcRect.y) / texSize.y,
+            alpha,
 
-            (1.0f - info->origin.x) * info->scale.x,
-            (1.0f - info->origin.y) * info->scale.y,
-            info->pos.x,
-            info->pos.y,
-            static_cast<float>(info->srcRect.width),
-            static_cast<float>(info->srcRect.height),
-            info->rot,
+            (1.0f - origin.x) * scale.x,
+            (1.0f - origin.y) * scale.y,
+            pos.x,
+            pos.y,
+            static_cast<float>(srcRect.width),
+            static_cast<float>(srcRect.height),
+            rot,
             static_cast<float>(texUnit),
-            static_cast<float>(info->srcRect.x + info->srcRect.width) / texSize.x,
-            static_cast<float>(info->srcRect.y + info->srcRect.height) / texSize.y,
-            info->alpha,
+            static_cast<float>(srcRect.x + srcRect.width) / texSize.x,
+            static_cast<float>(srcRect.y + srcRect.height) / texSize.y,
+            alpha,
 
-            (0.0f - info->origin.x) * info->scale.x,
-            (1.0f - info->origin.y) * info->scale.y,
-            info->pos.x,
-            info->pos.y,
-            static_cast<float>(info->srcRect.width),
-            static_cast<float>(info->srcRect.height),
-            info->rot,
+            (0.0f - origin.x) * scale.x,
+            (1.0f - origin.y) * scale.y,
+            pos.x,
+            pos.y,
+            static_cast<float>(srcRect.width),
+            static_cast<float>(srcRect.height),
+            rot,
             static_cast<float>(texUnit),
-            static_cast<float>(info->srcRect.x) / texSize.x,
-            static_cast<float>(info->srcRect.y + info->srcRect.height) / texSize.y,
-            info->alpha
+            static_cast<float>(srcRect.x) / texSize.x,
+            static_cast<float>(srcRect.y + srcRect.height) / texSize.y,
+            alpha
         };
 
         const QuadBuf* const batchQuadBuf = &layer->spriteBatchQuadBufs[batchIndex];
@@ -414,10 +414,10 @@ namespace zf4 {
         assert(textLen > 0 && textLen <= batch->slotCnt);
 
         const FontArrangementInfo* const fontArrangementInfo = &get_fonts()->arrangementInfos[batch->displayProps.fontIndex];
-        const Pt2D fontTexSize = get_fonts()->texSizes[batch->displayProps.fontIndex];
+        const Vec2DI fontTexSize = get_fonts()->texSizes[batch->displayProps.fontIndex];
 
-        Pt2D charDrawPositions[gk_charBatchSlotLimit];
-        Pt2D charDrawPosPen = {};
+        Vec2DI charDrawPositions[gk_charBatchSlotLimit];
+        Vec2DI charDrawPosPen = {};
 
         int textLineWidths[gk_charBatchSlotLimit + 1];
         int textFirstLineMinOffs = 0;

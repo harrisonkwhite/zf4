@@ -37,7 +37,7 @@ namespace zf4 {
     struct SpriteBatchWriteInfo {
         int texIndex;
         Vec2D pos;
-        Rect srcRect;
+        RectI srcRect;
         Vec2D origin;
         float rot;
         Vec2D scale;
@@ -98,7 +98,7 @@ namespace zf4 {
     void render_all(const Renderer* const renderer, const ShaderProgs* const shaderProgs);
 
     void empty_sprite_batches(Renderer* const renderer);
-    void write_to_sprite_batch(Renderer* const renderer, const int layerIndex, const SpriteBatchWriteInfo* const info);
+    void write_to_sprite_batch(Renderer* const renderer, const int layerIndex, const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
 
     CharBatchID activate_any_char_batch(Renderer* const renderer, const int layerIndex, const int slotCnt, const int fontIndex);
     void deactivate_char_batch(Renderer* const renderer, const CharBatchID id);

@@ -3,7 +3,7 @@
 #include <zf4c.h>
 
 namespace zf4 {
-    using SpriteSrcRectLoader = void (*)(zf4::Rect* const srcRect, const int frameIndex);
+    using SpriteSrcRectLoader = void (*)(zf4::RectI* const srcRect, const int frameIndex);
 
     struct Sprite {
         int texIndex;
@@ -27,13 +27,13 @@ namespace zf4 {
     void unload_sprites();
     const Sprite* get_sprite(const int index);
 
-    inline zf4::Rect get_sprite_src_rect(const int spriteIndex, const int frameIndex) {
-        zf4::Rect rect;
+    inline zf4::RectI get_sprite_src_rect(const int spriteIndex, const int frameIndex) {
+        zf4::RectI rect;
         get_sprite(spriteIndex)->srcRectLoader(&rect, frameIndex);
         return rect;
     }
 
-    inline zf4::Rect get_anim_src_rect(const Anim* const anim) {
+    inline zf4::RectI get_anim_src_rect(const Anim* const anim) {
         return get_sprite_src_rect(anim->spriteIndex, anim->frameIndex);
     }
 

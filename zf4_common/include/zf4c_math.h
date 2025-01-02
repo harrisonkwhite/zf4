@@ -6,7 +6,8 @@ namespace zf4 {
     constexpr float gk_pi = 3.14159265359f;
 
     struct Vec2D {
-        float x, y;
+        float x;
+        float y;
 
         constexpr Vec2D operator+(const Vec2D& other) const {
             return {x + other.x, y + other.y};
@@ -57,38 +58,173 @@ namespace zf4 {
         }
     };
 
-    union Vec3D {
-        struct {
-            float x, y, z;
-        };
+    struct Vec2DI {
+        int x;
+        int y;
 
-        struct {
-            float r, g, b;
-        };
+        operator Vec2D() const {
+            return {static_cast<float>(x), static_cast<float>(y)};
+        }
     };
 
-    union Vec4D {
-        struct {
-            float x, y, z, w;
-        };
+    struct Vec3D {
+        float x;
+        float y;
+        float z;
 
-        struct {
-            float r, g, b, a;
-        };
+        constexpr Vec3D operator+(const Vec3D& other) const {
+            return {x + other.x, y + other.y, z + other.z};
+        }
+
+        constexpr Vec3D operator-(const Vec3D& other) const {
+            return {x - other.x, y - other.y, z - other.z};
+        }
+
+        constexpr Vec3D operator*(const float scalar) const {
+            return {x * scalar, y * scalar, z * scalar};
+        }
+
+        constexpr Vec3D operator/(const float scalar) const {
+            return {x / scalar, y / scalar, z / scalar};
+        }
+
+        Vec3D& operator+=(const Vec3D& other) {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            return *this;
+        }
+
+        Vec3D& operator-=(const Vec3D& other) {
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
+            return *this;
+        }
+
+        Vec3D& operator*=(const float scalar) {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
+            return *this;
+        }
+
+        Vec3D& operator/=(const float scalar) {
+            x /= scalar;
+            y /= scalar;
+            z /= scalar;
+            return *this;
+        }
+
+        constexpr bool operator==(const Vec3D& other) const {
+            return x == other.x && y == other.y && z == other.z;
+        }
+
+        constexpr bool operator!=(const Vec3D& other) const {
+            return x != other.x || y != other.y || z != other.z;
+        }
     };
 
-    struct Pt2D {
-        int x, y;
+    struct Vec3DI {
+        int x;
+        int y;
+        int z;
+
+        operator Vec3D() const {
+            return {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)};
+        }
+    };
+
+    struct Vec4D {
+        float x;
+        float y;
+        float z;
+        float w;
+
+        constexpr Vec4D operator+(const Vec4D& other) const {
+            return {x + other.x, y + other.y, z + other.z, w + other.w};
+        }
+
+        constexpr Vec4D operator-(const Vec4D& other) const {
+            return {x - other.x, y - other.y, z - other.z, w - other.w};
+        }
+
+        constexpr Vec4D operator*(const float scalar) const {
+            return {x * scalar, y * scalar, z * scalar, w * scalar};
+        }
+
+        constexpr Vec4D operator/(const float scalar) const {
+            return {x / scalar, y / scalar, z / scalar, w / scalar};
+        }
+
+        Vec4D& operator+=(const Vec4D& other) {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            w += other.w;
+            return *this;
+        }
+
+        Vec4D& operator-=(const Vec4D& other) {
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
+            w -= other.w;
+            return *this;
+        }
+
+        Vec4D& operator*=(const float scalar) {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
+            w *= scalar;
+            return *this;
+        }
+
+        Vec4D& operator/=(const float scalar) {
+            x /= scalar;
+            y /= scalar;
+            z /= scalar;
+            w /= scalar;
+            return *this;
+        }
+
+        constexpr bool operator==(const Vec4D& other) const {
+            return x == other.x && y == other.y && z == other.z && w == other.w;
+        }
+
+        constexpr bool operator!=(const Vec4D& other) const {
+            return x != other.x || y != other.y || z != other.z || w != other.w;
+        }
+    };
+
+    struct Vec4DI {
+        int x;
+        int y;
+        int z;
+        int w;
+
+        operator Vec4D() const {
+            return {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), static_cast<float>(w)};
+        }
     };
 
     struct Rect {
-        int x, y;
-        int width, height;
+        float x;
+        float y;
+        float width;
+        float height;
     };
 
-    struct RectF {
-        float x, y;
-        float width, height;
+    struct RectI {
+        int x;
+        int y;
+        int width;
+        int height;
+
+        operator Rect() const {
+            return {static_cast<float>(x), static_cast<float>(y), static_cast<float>(width), static_cast<float>(height)};
+        }
     };
 
     struct Matrix4x4 {
@@ -106,8 +242,24 @@ namespace zf4 {
         return {lerp(a.x, b.x, t), lerp(a.y, b.y, t)};
     }
 
+    constexpr Vec3D lerp(const Vec3D a, const Vec3D b, const float t) {
+        return {lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t)};
+    }
+
+    constexpr Vec4D lerp(const Vec4D a, const Vec4D b, const float t) {
+        return {lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), lerp(a.w, b.w, t)};
+    }
+
     inline float calc_mag(const Vec2D vec) {
         return sqrtf((vec.x * vec.x) + (vec.y * vec.y));
+    }
+
+    inline float calc_mag(const Vec3D vec) {
+        return sqrtf((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
+    }
+
+    inline float calc_mag(const Vec4D vec) {
+        return sqrtf((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z) + (vec.w * vec.w));
     }
 
     inline Vec2D calc_normal(const Vec2D vec) {
@@ -115,7 +267,25 @@ namespace zf4 {
         return {vec.x / mag, vec.y / mag};
     }
 
+    inline Vec3D calc_normal(const Vec3D vec) {
+        const float mag = calc_mag(vec);
+        return {vec.x / mag, vec.y / mag, vec.z / mag};
+    }
+
+    inline Vec4D calc_normal(const Vec4D vec) {
+        const float mag = calc_mag(vec);
+        return {vec.x / mag, vec.y / mag, vec.z / mag, vec.w / mag};
+    }
+
     inline float calc_dist(const Vec2D a, const Vec2D b) {
+        return calc_mag(b - a);
+    }
+
+    inline float calc_dist(const Vec3D a, const Vec3D b) {
+        return calc_mag(b - a);
+    }
+
+    inline float calc_dist(const Vec4D a, const Vec4D b) {
         return calc_mag(b - a);
     }
 
@@ -128,51 +298,51 @@ namespace zf4 {
         return dirVec * len;
     }
 
-    constexpr Pt2D get_rect_pos(const Rect& rect) {
+    constexpr Vec2D get_rect_pos(const Rect& rect) {
         return {rect.x, rect.y};
     }
 
-    constexpr Vec2D get_rect_pos(const RectF& rect) {
+    constexpr Vec2DI get_rect_pos(const RectI& rect) {
         return {rect.x, rect.y};
     }
 
-    constexpr Pt2D get_rect_size(const Rect& rect) {
+    constexpr Vec2D get_rect_size(const Rect& rect) {
         return {rect.width, rect.height};
     }
 
-    constexpr Vec2D get_rect_size(const RectF& rect) {
+    constexpr Vec2DI get_rect_size(const RectI& rect) {
         return {rect.width, rect.height};
     }
 
-    constexpr Pt2D get_rect_center(const Rect& rect) {
-        return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)};
-    }
-
-    constexpr Vec2D get_rect_center(const RectF& rect) {
+    constexpr Vec2D get_rect_center(const Rect& rect) {
         return {rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)};
     }
 
-    constexpr int get_rect_right(const Rect& rect) {
+    constexpr Vec2DI get_rect_center(const RectI& rect) {
+        return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)};
+    }
+
+    constexpr float get_rect_right(const Rect& rect) {
         return rect.x + rect.width;
     }
 
-    constexpr float get_rect_right(const RectF& rect) {
+    constexpr int get_rect_right(const RectI& rect) {
         return rect.x + rect.width;
     }
 
-    constexpr int get_rect_bottom(const Rect& rect) {
+    constexpr float get_rect_bottom(const Rect& rect) {
         return rect.y + rect.height;
     }
 
-    constexpr float get_rect_bottom(const RectF& rect) {
+    constexpr int get_rect_bottom(const RectI& rect) {
         return rect.y + rect.height;
     }
 
-    constexpr bool do_rects_intersect(const Rect& a, const Rect& b) {
+    constexpr bool do_rect_intersect(const Rect& a, const Rect& b) {
         return a.x < get_rect_right(b) && get_rect_right(a) > b.x && a.y < get_rect_bottom(b) && get_rect_bottom(a) > b.y;
     }
 
-    constexpr bool do_rect_intersect(const RectF& a, const RectF& b) {
+    constexpr bool do_rects_intersect(const RectI& a, const RectI& b) {
         return a.x < get_rect_right(b) && get_rect_right(a) > b.x && a.y < get_rect_bottom(b) && get_rect_bottom(a) > b.y;
     }
 }

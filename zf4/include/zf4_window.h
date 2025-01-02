@@ -91,7 +91,7 @@ namespace zf4 {
     //
     bool init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
     void clean_window();
-    Pt2D get_window_size();
+    Vec2DI get_window_size();
     void show_window();
     bool window_should_close();
     void swap_window_buffers();

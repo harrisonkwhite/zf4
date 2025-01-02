@@ -5,7 +5,7 @@
 namespace zf4 {
     const char* const gk_assetsFileName = "assets.dat";
 
-    constexpr Pt2D gk_texSizeLimit = {2048, 2048};
+    constexpr Vec2DI gk_texSizeLimit = {2048, 2048};
     constexpr int gk_texChannelCnt = 4;
     constexpr int gk_texPxLimit = gk_texSizeLimit.x * gk_texSizeLimit.y;
     constexpr int gk_texPxDataSizeLimit = gk_texChannelCnt * gk_texPxLimit;
@@ -33,7 +33,7 @@ namespace zf4 {
         int verOffsets[gk_fontCharRangeLen];
         int horAdvances[gk_fontCharRangeLen];
 
-        Rect srcRects[gk_fontCharRangeLen];
+        RectI srcRects[gk_fontCharRangeLen];
 
         int kernings[gk_fontCharRangeLen * gk_fontCharRangeLen];
     };

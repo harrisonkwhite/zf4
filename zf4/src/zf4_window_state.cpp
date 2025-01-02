@@ -15,7 +15,7 @@ namespace zf4 {
     };
 
     static GLFWwindow* i_glfwWindow;
-    static Pt2D i_windowSize;
+    static Vec2DI i_windowSize;
     static InputState i_inputState;
     static InputState i_inputStateSaved;
 
@@ -97,7 +97,7 @@ namespace zf4 {
         }
     }
 
-    Pt2D get_window_size() {
+    Vec2DI get_window_size() {
         return i_windowSize;
     }
 
