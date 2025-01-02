@@ -260,8 +260,8 @@ namespace zf4 {
             //
             glUseProgram(shaderProgs->charQuad.glID);
 
-            glUniformMatrix4fv(shaderProgs->charQuad.projUniLoc, 1, false, (const float*)projMat.elems);
-            glUniformMatrix4fv(shaderProgs->charQuad.viewUniLoc, 1, false, (const float*)viewMat->elems);
+            glUniformMatrix4fv(shaderProgs->charQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(projMat.elems));
+            glUniformMatrix4fv(shaderProgs->charQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(viewMat->elems));
 
             for (int j = 0; j < layer->props.charBatchCnt; ++j) {
                 if (!is_bit_active(layer->charBatchActivityBitset, j)) {
@@ -270,9 +270,9 @@ namespace zf4 {
 
                 const CharBatch* const batch = &layer->charBatches[j];
 
-                glUniform2fv(shaderProgs->charQuad.posUniLoc, 1, (const float*)&batch->displayProps.pos);
+                glUniform2fv(shaderProgs->charQuad.posUniLoc, 1, reinterpret_cast<const float*>(&batch->displayProps.pos));
                 glUniform1f(shaderProgs->charQuad.rotUniLoc, batch->displayProps.rot);
-                glUniform4fv(shaderProgs->charQuad.blendUniLoc, 1, (const float*)&batch->displayProps.blend);
+                glUniform4fv(shaderProgs->charQuad.blendUniLoc, 1, reinterpret_cast<const float*>(&batch->displayProps.blend));
 
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, get_fonts()->texGLIDs[batch->displayProps.fontIndex]);
