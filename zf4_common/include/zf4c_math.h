@@ -106,7 +106,7 @@ namespace zf4 {
         return {lerp(a.x, b.x, t), lerp(a.y, b.y, t)};
     }
 
-    inline Vec2D calc_mag(const Vec2D vec) {
+    inline float calc_mag(const Vec2D vec) {
         return sqrtf((vec.x * vec.x) + (vec.y * vec.y));
     }
 
