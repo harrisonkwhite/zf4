@@ -510,8 +510,8 @@ namespace zf4 {
             };
 
             const Vec2D charTexCoordsBottomRight = {
-                static_cast<float>(get_rect_right(&fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.x,
-                static_cast<float>(get_rect_bottom(&fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.y
+                static_cast<float>(get_rect_right(fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.x,
+                static_cast<float>(get_rect_bottom(fontArrangementInfo->chars.srcRects[charIndex])) / fontTexSize.y
             };
 
             float* const slotVerts = verts + (i * ik_charBatchSlotVertsCnt);
