@@ -50,6 +50,13 @@ namespace zf4 {
             return false;
         }
 
+        m_activity = memArena->push<Byte>(bits_to_bytes(len));
+
+        if (!m_activity) {
+            m_elems = nullptr;
+            return false;
+        }
+
         m_len = len;
 
         return true;
