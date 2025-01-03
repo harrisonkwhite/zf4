@@ -17,12 +17,6 @@ namespace zf4 {
                 return false;
             }
 
-            m_entTags = memArena->push<int>(entLimit);
-
-            if (!m_entTags) {
-                return false;
-            }
-
             m_entCompIndexes = memArena->push<int*>(entLimit);
 
             if (!m_entCompIndexes) {
@@ -37,6 +31,18 @@ namespace zf4 {
                 }
 
                 // WARNING: These are zero!
+            }
+
+            m_entTags = memArena->push<int>(entLimit);
+
+            if (!m_entTags) {
+                return false;
+            }
+
+            m_entFlags = memArena->push<Byte>(entLimit);
+
+            if (!m_entFlags) {
+                return false;
             }
 
             m_entActivity = memArena->push<Byte>(bits_to_bytes(entLimit));
@@ -132,27 +138,6 @@ namespace zf4 {
                 deactivate_bit(m_compActivities[i], compIndex);
             }
         }
-    }
-
-    int EntityManager::get_ents_with_tag(const int tag, EntID* const entIDs, const int entIDLimit) const {
-        assert(entIDLimit > 0);
-
-        int entCnt = 0;
-
-        for (int i = 0; i < m_entLimit && entCnt < entIDLimit; ++i) {
-            const EntID entID = {i, m_entVersions[i]};
-
-            if (!does_ent_exist(entID)) {
-                continue;
-            }
-
-            if (m_entTags[entID.index] == tag) {
-                entIDs[entCnt] = entID;
-                ++entCnt;
-            }
-        }
-
-        return entCnt;
     }
 
     Byte* EntityManager::get_ent_component(const EntID entID, const int compTypeIndex) {
