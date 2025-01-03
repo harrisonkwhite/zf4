@@ -302,15 +302,7 @@ namespace zf4 {
         return {rect.x, rect.y};
     }
 
-    constexpr Vec2DI get_rect_pos(const RectI& rect) {
-        return {rect.x, rect.y};
-    }
-
     constexpr Vec2D get_rect_size(const Rect& rect) {
-        return {rect.width, rect.height};
-    }
-
-    constexpr Vec2DI get_rect_size(const RectI& rect) {
         return {rect.width, rect.height};
     }
 
@@ -318,15 +310,7 @@ namespace zf4 {
         return {rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)};
     }
 
-    constexpr Vec2DI get_rect_center(const RectI& rect) {
-        return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)};
-    }
-
     constexpr float get_rect_right(const Rect& rect) {
-        return rect.x + rect.width;
-    }
-
-    constexpr int get_rect_right(const RectI& rect) {
         return rect.x + rect.width;
     }
 
@@ -334,15 +318,7 @@ namespace zf4 {
         return rect.y + rect.height;
     }
 
-    constexpr int get_rect_bottom(const RectI& rect) {
-        return rect.y + rect.height;
-    }
-
-    constexpr bool do_rect_intersect(const Rect& a, const Rect& b) {
-        return a.x < get_rect_right(b) && get_rect_right(a) > b.x && a.y < get_rect_bottom(b) && get_rect_bottom(a) > b.y;
-    }
-
-    constexpr bool do_rects_intersect(const RectI& a, const RectI& b) {
+    constexpr bool do_rects_intersect(const Rect& a, const Rect& b) {
         return a.x < get_rect_right(b) && get_rect_right(a) > b.x && a.y < get_rect_bottom(b) && get_rect_bottom(a) > b.y;
     }
 }
