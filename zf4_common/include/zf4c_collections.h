@@ -4,6 +4,33 @@
 
 namespace zf4 {
     template<SimpleType T>
+    class Array {
+    public:
+        bool init(MemArena* const memArena, const int len);
+
+        int get_len() const {
+            assert(m_elems);
+            return m_len;
+        }
+
+        T& operator[](const int index) {
+            assert(m_elems);
+            assert(index >= 0 && index < m_len);
+            return m_elems[index];
+        }
+
+        const T& operator[](const int index) const {
+            assert(m_elems);
+            assert(index >= 0 && index < m_len);
+            return m_elems[index];
+        }
+
+    private:
+        T* m_elems;
+        int m_len;
+    };
+
+    template<SimpleType T>
     class ActivityArray {
     public:
         bool init(MemArena* const memArena, const int len);
@@ -12,10 +39,12 @@ namespace zf4 {
         void deactivate(const int index);
 
         int get_len() const {
+            assert(m_elems);
             return m_len;
         }
 
         bool is_active(const int index) const {
+            assert(m_elems);
             assert(index >= 0 && index < m_len);
             return is_bit_active(m_activity, index);
         }
@@ -39,6 +68,21 @@ namespace zf4 {
         int m_len;
         Byte* m_activity;
     };
+
+    template<SimpleType T>
+    inline bool Array<T>::init(MemArena* const memArena, const int len) {
+        assert(is_zero(this));
+
+        m_elems = memArena->push<T>(len);
+
+        if (!m_elems) {
+            return false;
+        }
+
+        m_len = len;
+
+        return true;
+    }
 
     template<SimpleType T>
     inline bool ActivityArray<T>::init(MemArena* const memArena, const int len) {
@@ -74,6 +118,8 @@ namespace zf4 {
 
     template<SimpleType T>
     inline int ActivityArray<T>::activate_first_inactive() {
+        assert(m_elems);
+
         const int index = get_first_inactive_bit_index(m_activity, m_len);
 
         if (index != -1) {
