@@ -1,7 +1,7 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
-    bool load_scene(Scene* scene, int sceneTypeIndex) {
+    bool load_scene(Scene* const scene, const int sceneTypeIndex) {
         assert(is_zero(scene));
 
         log("Loading scene of type index %d...", sceneTypeIndex);
@@ -42,14 +42,14 @@ namespace zf4 {
         return sceneTypeInfo->init(scene);
     }
 
-    void unload_scene(Scene* scene) {
+    void unload_scene(Scene* const scene) {
         clean_renderer(&scene->renderer);
         scene->scratchSpace.clean();
         scene->memArena.clean();
         zero_out(scene);
     }
 
-    bool proc_scene_tick(Scene* scene) {
+    bool proc_scene_tick(Scene* const scene) {
         SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
 
         empty_sprite_batches(&scene->renderer);

@@ -11,24 +11,32 @@ namespace zf4 {
             //
             // Entities
             //
-            m_ents = memArena->push<Ent>(entLimit);
+            m_entPositions = memArena->push<Vec2D>(entLimit);
 
-            if (!m_ents) {
+            if (!m_entPositions) {
+                return false;
+            }
+
+            m_entTags = memArena->push<int>(entLimit);
+
+            if (!m_entTags) {
+                return false;
+            }
+
+            m_entCompIndexes = memArena->push<int*>(entLimit);
+
+            if (!m_entCompIndexes) {
                 return false;
             }
 
             for (int i = 0; i < entLimit; ++i) {
-                m_ents[i].compIndexes = memArena->push<int>(get_component_type_cnt());
+                m_entCompIndexes[i] = memArena->push<int>(get_component_type_cnt());
 
-                if (!m_ents[i].compIndexes) {
+                if (!m_entCompIndexes[i]) {
                     return false;
                 }
 
-                m_ents[i].compSig = memArena->push<Byte>(bits_to_bytes(get_component_type_cnt()));
-
-                if (!m_ents[i].compSig) {
-                    return false;
-                }
+                // WARNING: These are zero!
             }
 
             m_entActivity = memArena->push<Byte>(bits_to_bytes(entLimit));
@@ -68,7 +76,7 @@ namespace zf4 {
                 m_compTypeLimits[i] = entLimit; // The default component type limit is the entity limit.
                 compTypeLimitLoader(&m_compTypeLimits[i], i); // The limit may or may not be changed here.
 
-                ComponentTypeInfo* compTypeInfo = get_component_type_info(i);
+                const ComponentTypeInfo* compTypeInfo = get_component_type_info(i);
 
                 m_compArrays[i] = memArena->push<Byte>(compTypeInfo->size * m_compTypeLimits[i]);
 
@@ -98,13 +106,12 @@ namespace zf4 {
 
         activate_bit(m_entActivity, entID->index);
 
-        Ent* ent = &m_ents[entID->index];
+        m_entPositions[entID->index] = pos;
+        m_entTags[entID->index] = -1;
 
-        ent->pos = pos;
-        memset(ent->compIndexes, -1, sizeof(*ent->compIndexes) * get_component_type_cnt());
-        memset(ent->compSig, 0, sizeof(*ent->compSig) * bits_to_bytes(get_component_type_cnt()));
-        ent->tag = -1;
-        ent->onDestroy = nullptr;
+        for (int i = 0; i < get_component_type_cnt(); ++i) {
+            m_entCompIndexes[entID->index][i] = -1;
+        }
 
         ++m_entVersions[entID->index];
         entID->version = m_entVersions[entID->index];
@@ -115,16 +122,11 @@ namespace zf4 {
     void EntityManager::destroy_ent(const EntID entID, Scene* const scene) {
         assert(does_ent_exist(entID));
 
-        const Ent* const ent = &m_ents[entID.index];
-
-        if (ent->onDestroy) {
-            ent->onDestroy(entID, scene);
-        }
-
         deactivate_bit(m_entActivity, entID.index);
 
+        // Deactivate the entity's components.
         for (int i = 0; i < get_component_type_cnt(); ++i) {
-            int compIndex = ent->compIndexes[i];
+            const int compIndex = m_entCompIndexes[entID.index][i];
 
             if (compIndex != -1) {
                 deactivate_bit(m_compActivities[i], compIndex);
@@ -144,9 +146,7 @@ namespace zf4 {
                 continue;
             }
 
-            const Ent* const ent = &m_ents[entID.index];
-
-            if (ent->tag == tag) {
+            if (m_entTags[entID.index] == tag) {
                 entIDs[entCnt] = entID;
                 ++entCnt;
             }
@@ -160,7 +160,7 @@ namespace zf4 {
         assert(compTypeIndex >= 0 && compTypeIndex < get_component_type_cnt());
         assert(does_ent_have_component(entID, compTypeIndex));
 
-        const int compIndex = m_ents[entID.index].compIndexes[compTypeIndex];
+        const int compIndex = m_entCompIndexes[entID.index][compTypeIndex];
         const int compSize = get_component_type_info(compTypeIndex)->size;
         return m_compArrays[compTypeIndex] + (compIndex * compSize);
     }
@@ -179,13 +179,10 @@ namespace zf4 {
 
         activate_bit(m_compActivities[compTypeIndex], compIndex);
 
-        // Update the component index of the entity.
-        Ent* const ent = &m_ents[entID.index];
-        ent->compIndexes[compTypeIndex] = compIndex;
-        activate_bit(ent->compSig, compTypeIndex);
+        m_entCompIndexes[entID.index][compTypeIndex] = compIndex;
 
         // Clear the component data, and run the defaults loader function if defined.
-        ComponentTypeInfo* const compTypeInfo = get_component_type_info(compTypeIndex);
+        const auto compTypeInfo = get_component_type_info(compTypeIndex);
 
         Byte* const comp = get_ent_component(entID, compTypeIndex);
 

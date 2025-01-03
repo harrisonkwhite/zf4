@@ -6,7 +6,7 @@ namespace zf4 {
     static int i_sceneTypeCnt;
     static SceneTypeInfo* i_sceneTypeInfos;
 
-    bool load_scene_types(int typeCnt, SceneTypeInfoLoader typeInfoLoader) {
+    bool load_scene_types(const int typeCnt, const SceneTypeInfoLoader typeInfoLoader) {
         if (typeCnt == 0) {
             return true;
         }
@@ -42,7 +42,7 @@ namespace zf4 {
         return i_sceneTypeCnt;
     }
 
-    SceneTypeInfo* get_scene_type_info(int typeIndex) {
+    SceneTypeInfo* get_scene_type_info(const int typeIndex) {
         assert(typeIndex >= 0 && typeIndex < i_sceneTypeCnt);
         return &i_sceneTypeInfos[typeIndex];
     }

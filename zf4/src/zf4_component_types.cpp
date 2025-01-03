@@ -6,7 +6,7 @@ namespace zf4 {
     static int i_componentTypeCnt;
     static ComponentTypeInfo* i_componentTypeInfos;
 
-    bool load_component_types(int typeCnt, ComponentTypeInfoLoader typeInfoLoader) {
+    bool load_component_types(const int typeCnt, const ComponentTypeInfoLoader typeInfoLoader) {
         if (typeCnt == 0) {
             return true;
         }
@@ -42,7 +42,7 @@ namespace zf4 {
         return i_componentTypeCnt;
     }
 
-    ComponentTypeInfo* get_component_type_info(int typeIndex) {
+    const ComponentTypeInfo* get_component_type_info(const int typeIndex) {
         assert(typeIndex >= 0 && typeIndex < i_componentTypeCnt);
         return &i_componentTypeInfos[typeIndex];
     }

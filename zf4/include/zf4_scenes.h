@@ -23,16 +23,12 @@ namespace zf4 {
         int version;
     };
 
-    struct Scene;
-    using OnEntDestroy = void (*)(const EntID entID, Scene* const scene);
+    bool load_component_types(const int typeCnt, const ComponentTypeInfoLoader typeInfoLoader);
+    void unload_component_types();
+    int get_component_type_cnt();
+    const ComponentTypeInfo* get_component_type_info(const int typeIndex);
 
-    struct Ent {
-        Vec2D pos;
-        int* compIndexes;
-        Byte* compSig; // NOTE: Remove?
-        int tag;
-        OnEntDestroy onDestroy;
-    };
+    struct Scene;
 
     class EntityManager {
     public:
@@ -45,15 +41,56 @@ namespace zf4 {
         Byte* get_ent_component(const EntID entID, const int compTypeIndex);
         bool add_component_to_ent(const int compTypeIndex, const EntID entID);
 
-        inline bool does_ent_exist(const EntID entID) const;
-        inline Ent* get_ent(const EntID entID);
-        inline const Ent* get_ent(const EntID entID) const;
-        inline EntID create_ent_id(const int index) const;
-        inline bool does_ent_have_component(const EntID entID, const int compTypeIndex);
-        inline bool does_ent_have_tag(const EntID entID, const int tag);
+        inline int get_ent_limit() const {
+            return m_entLimit;
+        }
+
+        inline bool does_ent_exist(const EntID entID) const {
+            assert(entID.index >= 0 && entID.index < m_entLimit);
+            return is_bit_active(m_entActivity, entID.index) && m_entVersions[entID.index] == entID.version;
+        }
+
+        inline EntID create_ent_id(const int index) const {
+            assert(index >= 0 && index < m_entLimit);
+            return {index, m_entVersions[index]};
+        }
+
+        inline Vec2D& get_ent_pos(const EntID entID) {
+            assert(does_ent_exist(entID));
+            return m_entPositions[entID.index];
+        }
+
+        inline Vec2D get_ent_pos(const EntID entID) const {
+            assert(does_ent_exist(entID));
+            return m_entPositions[entID.index];
+        }
+
+        inline const Byte* get_ent_component(const EntID entID, const int compTypeIndex) const {
+            assert(does_ent_exist(entID));
+            return const_cast<EntityManager*>(this)->get_ent_component(entID, compTypeIndex);
+        }
+
+        inline bool does_ent_have_component(const EntID entID, const int compTypeIndex) const {
+            assert(does_ent_exist(entID));
+            assert(compTypeIndex >= 0 && compTypeIndex < get_component_type_cnt());
+            return m_entCompIndexes[entID.index][compTypeIndex] != -1;
+        }
+
+        inline bool does_ent_have_tag(const EntID entID, const int tag) const {
+            assert(does_ent_exist(entID));
+            return m_entTags[entID.index] == tag;
+        }
+
+        inline void set_ent_tag(const EntID entID, const int tag) {
+            assert(does_ent_exist(entID));
+            assert(tag >= 0);
+            m_entTags[entID.index] = tag;
+        }
 
     private:
-        Ent* m_ents;
+        Vec2D* m_entPositions;
+        int** m_entCompIndexes;
+        int* m_entTags;
         Byte* m_entActivity;
         int* m_entVersions; // TODO: Move into the entity struct.
         int m_entLimit;
@@ -98,48 +135,12 @@ namespace zf4 {
 
     using SceneTypeInfoLoader = void (*)(SceneTypeInfo* const typeInfo, const int typeIndex);
 
-    bool load_component_types(int typeCnt, ComponentTypeInfoLoader typeInfoLoader);
-    void unload_component_types();
-    int get_component_type_cnt();
-    ComponentTypeInfo* get_component_type_info(int typeIndex);
-
-    bool load_scene_types(int typeCnt, SceneTypeInfoLoader typeInfoLoader);
+    bool load_scene_types(const int typeCnt, const SceneTypeInfoLoader typeInfoLoader);
     void unload_scene_types();
     int get_scene_type_cnt();
-    SceneTypeInfo* get_scene_type_info(int typeIndex);
+    SceneTypeInfo* get_scene_type_info(const int typeIndex);
 
-    bool load_scene(Scene* scene, int typeIndex);
-    void unload_scene(Scene* scene);
-    bool proc_scene_tick(Scene* scene);
-
-    inline bool EntityManager::does_ent_exist(const EntID entID) const {
-        assert(entID.index >= 0 && entID.index < m_entLimit);
-        return is_bit_active(m_entActivity, entID.index) && m_entVersions[entID.index] == entID.version;
-    }
-
-    inline Ent* EntityManager::get_ent(const EntID entID) {
-        assert(does_ent_exist(entID));
-        return &m_ents[entID.index];
-    }
-
-    inline const Ent* EntityManager::get_ent(const EntID entID) const {
-        assert(does_ent_exist(entID));
-        return &m_ents[entID.index];
-    }
-
-    inline EntID EntityManager::create_ent_id(const int index) const {
-        assert(index >= 0 && index < m_entLimit);
-        return {index, m_entVersions[index]};
-    }
-
-    inline bool EntityManager::does_ent_have_component(const EntID entID, const int compTypeIndex) {
-        assert(does_ent_exist(entID));
-        assert(compTypeIndex >= 0 && compTypeIndex < get_component_type_cnt());
-        return get_ent(entID)->compIndexes[compTypeIndex] != -1;
-    }
-
-    inline bool EntityManager::does_ent_have_tag(const EntID entID, const int tag) {
-        assert(does_ent_exist(entID));
-        return get_ent(entID)->tag == tag;
-    }
+    bool load_scene(Scene* const scene, const int typeIndex);
+    void unload_scene(Scene* const scene);
+    bool proc_scene_tick(Scene* const scene);
 }
