@@ -14,24 +14,38 @@ namespace zf4 {
     static constexpr double ik_targTickDurLimitMult = 8.0; // The multiplier on the target tick duration which produces the maximum acceptable tick duration.
 
     struct Game {
+        MemArena memArena;
+
         ShaderProgs shaderProgs;
+
         SoundSrcManager sndSrcManager;
+
         MusicSrcManager musicSrcManager;
+
+        Array<Sprite> sprites;
+
         Scene scene;
     };
+
+    Game i_game;
 
     static double calc_valid_frame_dur(const double frameTime, const double frameTimeLast) {
         const double dur = frameTime - frameTimeLast;
         return dur >= 0.0 && dur <= ik_targTickDur * ik_targTickDurLimitMult ? dur : 0.0;
     }
 
-    static void run_game(Game* const game, const UserGameInfo* const userInfo) {
-        assert(is_zero(game));
+    static void run_game(const UserGameInfo* const userInfo) {
+        assert(is_zero(&i_game));
 
         //
         // Initialisation
         //
         log("Initialising...");
+
+        if (!i_game.memArena.init(megabytes_to_bytes(40))) {
+            log_error("Failed to initialise the memory arena!");
+            return;
+        }
 
         if (!glfwInit()) {
             log_error("Failed to initialise GLFW!");
@@ -58,9 +72,10 @@ namespace zf4 {
             return;
         }
 
-        load_shader_progs(&game->shaderProgs);
+        load_shader_progs(&i_game.shaderProgs);
 
-        if (!load_sprites(userInfo->spriteCnt, userInfo->spriteLoader)) {
+        if (!userInfo->spritesLoader(&i_game.sprites, &i_game.memArena)) {
+            log_error("Failed to load sprites!");
             return;
         }
 
@@ -74,7 +89,7 @@ namespace zf4 {
 
         init_rng();
 
-        if (!load_scene(&game->scene, 0)) { // We begin with the first scene.
+        if (!load_scene(&i_game.scene, 0)) { // We begin with the first scene.
             return;
         }
 
@@ -101,13 +116,13 @@ namespace zf4 {
                 int i = 0;
 
                 do {
-                    handle_auto_release_sound_srcs(&game->sndSrcManager);
+                    handle_auto_release_sound_srcs(&i_game.sndSrcManager);
 
-                    if (!refresh_music_src_bufs(&game->musicSrcManager)) {
+                    if (!refresh_music_src_bufs(&i_game.musicSrcManager)) {
                         return;
                     }
 
-                    if (!proc_scene_tick(&game->scene)) {
+                    if (!proc_scene_tick(&i_game.scene)) {
                         return;
                     }
 
@@ -118,7 +133,7 @@ namespace zf4 {
                 save_input_state();
             }
 
-            render_all(&game->scene.renderer, &game->shaderProgs);
+            render_all(&i_game.scene.renderer, &i_game.shaderProgs);
             swap_window_buffers();
 
             glfwPollEvents();
@@ -126,20 +141,26 @@ namespace zf4 {
     }
 
     void start_game(const UserGameInfo* const userInfo) {
-        Game game = {};
+        assert(zf4::is_zero(&i_game));
 
-        run_game(&game, userInfo);
+        run_game(userInfo);
 
-        unload_scene(&game.scene);
+        unload_scene(&i_game.scene);
         unload_scene_types();
         unload_component_types();
-        unload_sprites();
-        clean_music_srcs(&game.musicSrcManager);
-        clean_sound_srcs(&game.sndSrcManager);
-        unload_shader_progs(&game.shaderProgs);
+        clean_music_srcs(&i_game.musicSrcManager);
+        clean_sound_srcs(&i_game.sndSrcManager);
+        unload_shader_progs(&i_game.shaderProgs);
         unload_assets();
         clean_audio_system();
         clean_window();
         glfwTerminate();
+        i_game.memArena.clean();
+
+        i_game = {};
+    }
+
+    const Array<Sprite>& get_game_sprites() {
+        return i_game.sprites;
     }
 }

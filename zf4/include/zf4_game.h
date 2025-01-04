@@ -11,8 +11,7 @@ namespace zf4 {
         bool windowResizable;
         bool windowHideCursor;
 
-        int spriteCnt;
-        SpriteLoader spriteLoader;
+        SpritesLoader spritesLoader;
 
         int componentTypeCnt;
         ComponentTypeInfoLoader componentTypeInfoLoader;
@@ -22,4 +21,5 @@ namespace zf4 {
     };
 
     void start_game(const UserGameInfo* const userInfo);
+    const Array<Sprite>& get_game_sprites();
 }

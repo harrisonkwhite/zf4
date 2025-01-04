@@ -1,5 +1,6 @@
 #include <zf4_scenes.h>
 
+#include <zf4_game.h>
 #include <zf4_sprites.h>
 
 namespace zf4 {
@@ -153,7 +154,7 @@ namespace zf4 {
 
         const zf4::Rect& colliderOffs = m_entColliderOffsets[entID.index];
 
-        const zf4::Rect srcRect = get_sprite_src_rect(spriteIndex, 0); // TEMP: Using just the first frame for now.
+        const zf4::Rect srcRect = get_game_sprites()[spriteIndex].frames[0]; // TEMP: Using just the first frame for now.
         collider.width = (srcRect.width * scale.x) + colliderOffs.width;
         collider.height = (srcRect.height * scale.y) + colliderOffs.height;
 

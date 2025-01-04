@@ -13,8 +13,7 @@ add_library(zf4 STATIC
     src/zf4_assets_logic.cpp
     src/zf4_shader_progs.cpp
     src/zf4_renderer.cpp
-    src/zf4_sprites_state.cpp
-    src/zf4_sprites_logic.cpp
+    src/zf4_sprites.cpp
     src/zf4_audio.cpp
     src/zf4_rand.cpp
     src/zf4_component_types.cpp

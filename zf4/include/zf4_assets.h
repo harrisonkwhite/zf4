@@ -9,6 +9,7 @@ namespace zf4 {
     struct Textures {
         GLuint* glIDs;
         Vec2DI* sizes;
+        unsigned char** pxDatas;
         int cnt;
     };
 

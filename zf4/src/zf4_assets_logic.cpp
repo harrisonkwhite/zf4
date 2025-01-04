@@ -30,10 +30,9 @@ namespace zf4 {
                 return false;
             }
 
-            // Allocate memory for pixel data (reused for all textures).
-            const auto pxData = alloc<unsigned char>(gk_texPxDataSizeLimit);
+            textures->pxDatas = memArena->push<unsigned char*>(textures->cnt);
 
-            if (!pxData) {
+            if (!textures->pxDatas) {
                 return false;
             }
 
@@ -43,12 +42,19 @@ namespace zf4 {
 
                 for (int i = 0; i < textures->cnt; ++i) {
                     read_from_fs<Vec2DI>(&textures->sizes[i], fs);
-                    read_from_fs<unsigned char>(pxData, fs, gk_texChannelCnt * textures->sizes[i].x * textures->sizes[i].y);
-                    set_up_gl_tex(textures->glIDs[i], textures->sizes[i], pxData);
+
+                    const int pxDataSize = gk_texChannelCnt * textures->sizes[i].x * textures->sizes[i].y;
+                    textures->pxDatas[i] = memArena->push<unsigned char>(pxDataSize);
+
+                    if (!textures->pxDatas[i]) {
+                        return false;
+                    }
+
+                    read_from_fs<unsigned char>(textures->pxDatas[i], fs, pxDataSize);
+
+                    set_up_gl_tex(textures->glIDs[i], textures->sizes[i], textures->pxDatas[i]);
                 }
             }
-
-            free(pxData);
         }
 
         return true;
