@@ -36,7 +36,7 @@ namespace zf4 {
 
         bool spawn_ent(EntID* const entID, const Vec2D pos);
         void destroy_ent(const EntID entID, Scene* const scene);
-
+        Rect create_ent_collider(const EntID entID, const int spriteIndex, const Vec2D origin, const Vec2D scale, const Vec2D posOffs = {}) const;
         Byte* get_ent_component(const EntID entID, const int compTypeIndex);
         bool add_component_to_ent(const int compTypeIndex, const EntID entID);
 
@@ -62,6 +62,16 @@ namespace zf4 {
         inline Vec2D get_ent_pos(const EntID entID) const {
             assert(does_ent_exist(entID));
             return m_entPositions[entID.index];
+        }
+
+        inline Rect& get_ent_collider_offset(const EntID entID) {
+            assert(does_ent_exist(entID));
+            return m_entColliderOffsets[entID.index];
+        }
+
+        inline Rect get_ent_collider_offset(const EntID entID) const {
+            assert(does_ent_exist(entID));
+            return m_entColliderOffsets[entID.index];
         }
 
         inline const Byte* get_ent_component(const EntID entID, const int compTypeIndex) const {
@@ -100,6 +110,7 @@ namespace zf4 {
 
     private:
         Vec2D* m_entPositions;
+        Rect* m_entColliderOffsets;
         int** m_entCompIndexes;
         int* m_entTags;
         Byte* m_entFlags; // TEMP: For now we only allow 8 flags per entity.
