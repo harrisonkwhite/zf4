@@ -17,7 +17,6 @@ add_library(zf4 STATIC
     src/zf4_audio.cpp
     src/zf4_rand.cpp
     src/zf4_component_types.cpp
-    src/zf4_scene_types.cpp
     src/zf4_ents.cpp
     src/zf4_scenes.cpp
     ${PARENT_DIR}/vendor/glad/src/glad.c

@@ -25,6 +25,8 @@ namespace zf4 {
         Array<Sprite> sprites;
 
         Scene scene;
+
+        Array<SceneTypeInfo> sceneTypeInfos;
     };
 
     Game i_game;
@@ -83,13 +85,13 @@ namespace zf4 {
             return;
         }
 
-        if (!load_scene_types(userInfo->sceneTypeCnt, userInfo->sceneTypeInfoLoader)) {
+        if (!userInfo->sceneTypeInfosLoader(&i_game.sceneTypeInfos, &i_game.memArena)) {
             return;
         }
 
         init_rng();
 
-        if (!load_scene(&i_game.scene, 0)) { // We begin with the first scene.
+        if (!load_scene(&i_game.scene, 0, i_game.sceneTypeInfos)) { // We begin with the first scene.
             return;
         }
 
@@ -122,7 +124,7 @@ namespace zf4 {
                         return;
                     }
 
-                    if (!proc_scene_tick(&i_game.scene)) {
+                    if (!proc_scene_tick(&i_game.scene, i_game.sceneTypeInfos)) {
                         return;
                     }
 
@@ -146,7 +148,6 @@ namespace zf4 {
         run_game(userInfo);
 
         unload_scene(&i_game.scene);
-        unload_scene_types();
         unload_component_types();
         clean_music_srcs(&i_game.musicSrcManager);
         clean_sound_srcs(&i_game.sndSrcManager);

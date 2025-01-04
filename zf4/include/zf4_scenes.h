@@ -156,14 +156,9 @@ namespace zf4 {
         int userDataAlignment;
     };
 
-    using SceneTypeInfoLoader = void (*)(SceneTypeInfo* const typeInfo, const int typeIndex);
+    using SceneTypeInfosLoader = bool (*)(Array<SceneTypeInfo>* const typeInfos, MemArena* const memArena);
 
-    bool load_scene_types(const int typeCnt, const SceneTypeInfoLoader typeInfoLoader);
-    void unload_scene_types();
-    int get_scene_type_cnt();
-    SceneTypeInfo* get_scene_type_info(const int typeIndex);
-
-    bool load_scene(Scene* const scene, const int typeIndex);
+    bool load_scene(Scene* const scene, const int typeIndex, const Array<SceneTypeInfo>& sceneTypeInfos);
     void unload_scene(Scene* const scene);
-    bool proc_scene_tick(Scene* const scene);
+    bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos);
 }

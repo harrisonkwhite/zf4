@@ -1,14 +1,14 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
-    bool load_scene(Scene* const scene, const int sceneTypeIndex) {
+    bool load_scene(Scene* const scene, const int sceneTypeIndex, const Array<SceneTypeInfo>& sceneTypeInfos) {
         assert(is_zero(scene));
 
         log("Loading scene of type index %d...", sceneTypeIndex);
 
         scene->typeIndex = sceneTypeIndex;
 
-        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(sceneTypeIndex);
+        const SceneTypeInfo* const sceneTypeInfo = &sceneTypeInfos[sceneTypeIndex];
 
         if (!scene->memArena.init(sceneTypeInfo->memArenaSize)) {
             log_error("Failed to initialise scene main memory arena!");
@@ -49,16 +49,14 @@ namespace zf4 {
         zero_out(scene);
     }
 
-    bool proc_scene_tick(Scene* const scene) {
-        SceneTypeInfo* sceneTypeInfo = get_scene_type_info(scene->typeIndex);
-
+    bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos) {
         empty_sprite_batches(&scene->renderer);
 
         scene->scratchSpace.reset();
 
         int sceneChangeIndex = -1;
 
-        if (!sceneTypeInfo->tick(scene, &sceneChangeIndex)) {
+        if (!sceneTypeInfos[scene->typeIndex].tick(scene, &sceneChangeIndex)) {
             return false;
         }
 
@@ -67,7 +65,7 @@ namespace zf4 {
 
             unload_scene(scene);
 
-            if (!load_scene(scene, sceneChangeIndex)) {
+            if (!load_scene(scene, sceneChangeIndex, sceneTypeInfos)) {
                 return false;
             }
         }

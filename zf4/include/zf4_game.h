@@ -16,8 +16,7 @@ namespace zf4 {
         int componentTypeCnt;
         ComponentTypeInfoLoader componentTypeInfoLoader;
 
-        int sceneTypeCnt;
-        SceneTypeInfoLoader sceneTypeInfoLoader;
+        SceneTypeInfosLoader sceneTypeInfosLoader;
     };
 
     void start_game(const UserGameInfo* const userInfo);
