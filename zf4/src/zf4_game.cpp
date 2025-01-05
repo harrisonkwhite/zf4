@@ -11,7 +11,6 @@
 namespace zf4 {
     static constexpr int ik_targFPS = 60;
     static constexpr double ik_targTickDur = 1.0 / ik_targFPS; // In seconds.
-    static constexpr double ik_targTickDurLimitMult = 8.0; // The multiplier on the target tick duration which produces the maximum acceptable tick duration.
 
     struct Game {
         MemArena memArena;
@@ -30,11 +29,6 @@ namespace zf4 {
     };
 
     Game i_game;
-
-    static double calc_valid_frame_dur(const double frameTime, const double frameTimeLast) {
-        const double dur = frameTime - frameTimeLast;
-        return dur >= 0.0 && dur <= ik_targTickDur * ik_targTickDurLimitMult ? dur : 0.0;
-    }
 
     static void run_game(const UserGameInfo* const userInfo) {
         assert(is_zero(&i_game));
@@ -109,14 +103,10 @@ namespace zf4 {
             const double frameTimeLast = frameTime;
             frameTime = glfwGetTime();
 
-            const double frameDur = calc_valid_frame_dur(frameTime, frameTimeLast);
+            const double frameDur = frameTime - frameTimeLast;
             frameDurAccum += frameDur;
 
-            const int tickCnt = (int)(frameDurAccum / ik_targTickDur);
-
-            if (tickCnt > 0) {
-                int i = 0;
-
+            if (frameDurAccum >= ik_targTickDur) {
                 do {
                     handle_auto_release_sound_srcs(&i_game.sndSrcManager);
 
@@ -129,8 +119,7 @@ namespace zf4 {
                     }
 
                     frameDurAccum -= ik_targTickDur;
-                    ++i;
-                } while (i < tickCnt);
+                } while (frameDurAccum >= ik_targTickDur);
 
                 save_input_state();
             }
