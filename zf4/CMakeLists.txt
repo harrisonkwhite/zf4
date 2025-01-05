@@ -17,8 +17,8 @@ add_library(zf4 STATIC
     src/zf4_audio.cpp
     src/zf4_rand.cpp
     src/zf4_component_types.cpp
-    src/zf4_ents.cpp
     src/zf4_scenes.cpp
+    src/zf4_ecs.cpp
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
     include/zf4.h
@@ -31,6 +31,7 @@ add_library(zf4 STATIC
     include/zf4_audio.h
     include/zf4_rand.h
     include/zf4_scenes.h
+    include/zf4_ecs.h
     ${PARENT_DIR}/vendor/glad/include/glad/glad.h
     ${PARENT_DIR}/vendor/glad/include/KHR/khrplatform.h
 )

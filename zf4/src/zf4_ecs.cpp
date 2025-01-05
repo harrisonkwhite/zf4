@@ -1,4 +1,4 @@
-#include <zf4_scenes.h>
+#include <zf4_ecs.h>
 
 #include <zf4_game.h>
 #include <zf4_sprites.h>
@@ -134,7 +134,7 @@ namespace zf4 {
         return true;
     }
 
-    void EntityManager::destroy_ent(const EntID entID, Scene* const scene) {
+    void EntityManager::destroy_ent(const EntID entID) {
         assert(does_ent_exist(entID));
 
         deactivate_bit(m_entActivity, entID.index);
