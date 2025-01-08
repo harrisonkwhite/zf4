@@ -1,7 +1,7 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
-    bool load_scene(Scene* const scene, const int sceneTypeIndex, const Array<SceneTypeInfo>& sceneTypeInfos) {
+    bool load_scene(Scene* const scene, const int sceneTypeIndex, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
         assert(is_zero(scene));
 
         log("Loading scene of type index %d...", sceneTypeIndex);
@@ -20,11 +20,6 @@ namespace zf4 {
             return false;
         }
 
-        if (!load_renderer(&scene->renderer, &scene->memArena, sceneTypeInfo->renderLayerCnt, sceneTypeInfo->camRenderLayerCnt, sceneTypeInfo->renderLayerPropsInitializer)) {
-            log_error("Failed to load scene renderer!");
-            return false;
-        }
-
         if (!scene->entManager.load(sceneTypeInfo->entLimit, sceneTypeInfo->compTypeLimitLoader, &scene->memArena)) {
             log_error("Failed to load the scene entity manager!");
             return false;
@@ -39,24 +34,21 @@ namespace zf4 {
             }
         }
 
-        return sceneTypeInfo->init(scene);
+        return sceneTypeInfo->init(scene, gamePtrs);
     }
 
     void unload_scene(Scene* const scene) {
-        clean_renderer(&scene->renderer);
         scene->scratchSpace.clean();
         scene->memArena.clean();
         zero_out(scene);
     }
 
-    bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos) {
-        empty_sprite_batches(&scene->renderer);
-
+    bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
         scene->scratchSpace.reset();
 
         int sceneChangeIndex = -1;
 
-        if (!sceneTypeInfos[scene->typeIndex].tick(scene, &sceneChangeIndex)) {
+        if (!sceneTypeInfos[scene->typeIndex].tick(scene, &sceneChangeIndex, gamePtrs)) {
             return false;
         }
 
@@ -65,7 +57,7 @@ namespace zf4 {
 
             unload_scene(scene);
 
-            if (!load_scene(scene, sceneChangeIndex, sceneTypeInfos)) {
+            if (!load_scene(scene, sceneChangeIndex, sceneTypeInfos, gamePtrs)) {
                 return false;
             }
         }

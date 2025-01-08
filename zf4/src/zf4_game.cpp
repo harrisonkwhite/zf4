@@ -17,6 +17,8 @@ namespace zf4 {
 
         ShaderProgs shaderProgs;
 
+        Renderer renderer;
+
         SoundSrcManager sndSrcManager;
 
         MusicSrcManager musicSrcManager;
@@ -38,7 +40,7 @@ namespace zf4 {
         //
         log("Initialising...");
 
-        if (!i_game.memArena.init(megabytes_to_bytes(40))) {
+        if (!i_game.memArena.init(megabytes_to_bytes(256))) {
             log_error("Failed to initialise the memory arena!");
             return;
         }
@@ -70,6 +72,11 @@ namespace zf4 {
 
         load_shader_progs(&i_game.shaderProgs);
 
+        if (!i_game.renderer.init(&i_game.memArena)) {
+            log_error("Failed to initialise the renderer!");
+            return;
+        }
+
         if (!userInfo->spritesLoader(&i_game.sprites, &i_game.memArena)) {
             log_error("Failed to load sprites!");
             return;
@@ -85,7 +92,9 @@ namespace zf4 {
 
         init_rng();
 
-        if (!load_scene(&i_game.scene, 0, i_game.sceneTypeInfos)) { // We begin with the first scene.
+        const GamePtrs gamePtrs = {&i_game.renderer}; // TEMP
+
+        if (!load_scene(&i_game.scene, 0, i_game.sceneTypeInfos, gamePtrs)) { // We begin with the first scene.
             return;
         }
 
@@ -108,15 +117,19 @@ namespace zf4 {
 
             if (frameDurAccum >= ik_targTickDur) {
                 do {
+                    i_game.renderer.begin_writeup();
+
                     handle_auto_release_sound_srcs(&i_game.sndSrcManager);
 
                     if (!refresh_music_src_bufs(&i_game.musicSrcManager)) {
                         return;
                     }
 
-                    if (!proc_scene_tick(&i_game.scene, i_game.sceneTypeInfos)) {
+                    if (!proc_scene_tick(&i_game.scene, i_game.sceneTypeInfos, gamePtrs)) {
                         return;
                     }
+
+                    i_game.renderer.end_writeup();
 
                     frameDurAccum -= ik_targTickDur;
                 } while (frameDurAccum >= ik_targTickDur);
@@ -124,7 +137,8 @@ namespace zf4 {
                 save_input_state();
             }
 
-            render_all(&i_game.scene.renderer, &i_game.shaderProgs);
+            const SceneTypeInfo* const sceneTypeInfo = &i_game.sceneTypeInfos[i_game.scene.typeIndex];
+            i_game.renderer.render(sceneTypeInfo->bgColor, &i_game.shaderProgs);
             swap_window_buffers();
 
             glfwPollEvents();
@@ -140,6 +154,7 @@ namespace zf4 {
         unload_component_types();
         clean_music_srcs(&i_game.musicSrcManager);
         clean_sound_srcs(&i_game.sndSrcManager);
+        i_game.renderer.clean();
         unload_shader_progs(&i_game.shaderProgs);
         unload_assets();
         clean_audio_system();

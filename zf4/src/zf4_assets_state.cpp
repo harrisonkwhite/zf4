@@ -77,6 +77,7 @@ namespace zf4 {
     }
 
     const Textures* get_textures() {
+        // TODO: Don't do this! Check for out-of-range access!
         return &i_assets.textures;
     }
 

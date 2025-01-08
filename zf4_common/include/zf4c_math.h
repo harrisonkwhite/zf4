@@ -229,10 +229,18 @@ namespace zf4 {
 
     struct Matrix4x4 {
         float elems[4][4];
-    };
 
-    void init_identity_matrix_4x4(Matrix4x4* const mat);
-    void init_ortho_matrix_4x4(Matrix4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
+        static Matrix4x4 create_identity();
+        static Matrix4x4 create_ortho(const float left, const float right, const float bottom, const float top, const float near, const float far);
+
+        constexpr float* operator[](const int index) {
+            return elems[index];
+        }
+
+        constexpr const float* operator[](const int index) const {
+            return elems[index];
+        }
+    };
 
     constexpr float lerp(const float a, const float b, const float t) {
         return a + ((b - a) * t);

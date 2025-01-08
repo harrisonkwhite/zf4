@@ -31,6 +31,52 @@ namespace zf4 {
     };
 
     template<SimpleType T>
+    class List {
+    public:
+        bool init(MemArena* const memArena, const int lenLimit) {
+            assert(is_zero(this));
+
+            if (!m_array.init(memArena, lenLimit)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        void add(const T& elem) {
+            assert(m_len < m_array.get_len());
+            m_array[m_len] = elem;
+            ++m_len;
+        }
+
+        void clear() {
+            m_len = 0;
+        }
+
+        int get_len() const {
+            return m_len;
+        }
+
+        int get_len_limit() const {
+            return m_array.get_len();
+        }
+
+        T& operator[](const int index) {
+            assert(index >= 0 && index < m_len);
+            return m_array[index];
+        }
+
+        const T& operator[](const int index) const {
+            assert(index >= 0 && index < m_len);
+            return m_array[index];
+        }
+
+    private:
+        Array<T> m_array;
+        int m_len;
+    };
+
+    template<SimpleType T>
     class ActivityArray {
     public:
         bool init(MemArena* const memArena, const int len);

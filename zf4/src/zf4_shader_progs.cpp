@@ -47,7 +47,7 @@ namespace zf4 {
         return progGLID;
     }
 
-    static void load_sprite_quad_shader_prog(SpriteQuadShaderProg* const prog) {
+    static void load_textured_quad_shader_prog(TexturedQuadShaderProg* const prog) {
         assert(is_zero(prog));
 
         const char* const vertShaderSrc =
@@ -112,83 +112,16 @@ namespace zf4 {
         prog->texturesUniLoc = glGetUniformLocation(glID, "u_textures");
     }
 
-    static void load_char_quad_shader_prog(CharQuadShaderProg* const prog) {
-        assert(is_zero(prog));
-
-        const char* const vertShaderSrc =
-            "#version 430 core\n"
-            "\n"
-            "layout (location = 0) in vec2 a_vert;\n"
-            "layout (location = 1) in vec2 a_texCoord;\n"
-            "\n"
-            "out vec2 v_texCoord;\n"
-            "\n"
-            "uniform vec2 u_pos;\n"
-            "uniform float u_rot;\n"
-            "\n"
-            "uniform mat4 u_proj;\n"
-            "uniform mat4 u_view;\n"
-            "\n"
-            "void main()\n"
-            "{\n"
-            "    float rotCos = cos(u_rot);\n"
-            "    float rotSin = sin(u_rot);\n"
-            "\n"
-            "    mat4 model = mat4(\n"
-            "        vec4(rotCos, rotSin, 0.0f, 0.0f),\n"
-            "        vec4(-rotSin, rotCos, 0.0f, 0.0f),\n"
-            "        vec4(0.0f, 0.0f, 1.0f, 0.0f),\n"
-            "        vec4(u_pos.x, u_pos.y, 0.0f, 1.0f)\n"
-            "    );\n"
-            "\n"
-            "    gl_Position = u_proj * u_view * model * vec4(a_vert, 0.0f, 1.0f);\n"
-            "\n"
-            "    v_texCoord = a_texCoord;\n"
-            "}\n";
-
-        const char* const fragShaderSrc =
-            "#version 430 core\n"
-            "\n"
-            "in vec2 v_texCoord;\n"
-            "\n"
-            "out vec4 o_fragColor;\n"
-            "\n"
-            "uniform vec4 u_blend;\n"
-            "uniform sampler2D u_tex;\n"
-            "\n"
-            "void main()\n"
-            "{\n"
-            "    vec4 texColor = texture(u_tex, v_texCoord);\n"
-            "    o_fragColor = texColor * u_blend;\n"
-            "}\n";
-
-        const GLuint glID = create_shader_prog_from_srcs(vertShaderSrc, fragShaderSrc);
-        assert(glID);
-
-        prog->glID = glID;
-        prog->projUniLoc = glGetUniformLocation(glID, "u_proj");
-        prog->viewUniLoc = glGetUniformLocation(glID, "u_view");
-        prog->posUniLoc = glGetUniformLocation(glID, "u_pos");
-        prog->rotUniLoc = glGetUniformLocation(glID, "u_rot");
-        prog->blendUniLoc = glGetUniformLocation(glID, "u_blend");
-    }
-
     void load_shader_progs(ShaderProgs* const progs) {
         assert(is_zero(progs));
-
-        load_sprite_quad_shader_prog(&progs->spriteQuad);
-        load_char_quad_shader_prog(&progs->charQuad);
+        load_textured_quad_shader_prog(&progs->texturedQuad);
     }
 
     void unload_shader_progs(ShaderProgs* const progs) {
-        if (progs->spriteQuad.glID) {
-            glDeleteProgram(progs->charQuad.glID);
+        if (progs->texturedQuad.glID) {
+            glDeleteProgram(progs->texturedQuad.glID);
         }
 
-        if (progs->charQuad.glID) {
-            glDeleteProgram(progs->spriteQuad.glID);
-        }
-
-        memset(progs, 0, sizeof(*progs));
+        zero_out(progs);
     }
 }
