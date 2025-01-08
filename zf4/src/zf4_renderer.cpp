@@ -9,29 +9,17 @@ namespace zf4 {
         assert(is_zero(this));
 
         //
-        // Framebuffer
+        // Surfaces
         //
-        glGenFramebuffers(1, &m_fbGLID);
-        glBindFramebuffer(GL_FRAMEBUFFER, m_fbGLID);
-
-        glGenTextures(1, &m_fbTexGLID);
-        glBindTexture(GL_TEXTURE_2D, m_fbTexGLID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fbTexGLID, 0);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        if (!m_surfs.init(memArena, gk_renderSurfaceLimit)) {
             return false;
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glGenVertexArrays(1, &m_surfVertArrayGLID);
+        glBindVertexArray(m_surfVertArrayGLID);
 
-        glGenVertexArrays(1, &m_fbVertArrayGLID);
-        glBindVertexArray(m_fbVertArrayGLID);
-
-        glGenBuffers(1, &m_fbVertBufGLID);
-        glBindBuffer(GL_ARRAY_BUFFER, m_fbVertBufGLID);
+        glGenBuffers(1, &m_surfVertBufGLID);
+        glBindBuffer(GL_ARRAY_BUFFER, m_surfVertBufGLID);
 
         {
             const float verts[] = {
@@ -44,8 +32,8 @@ namespace zf4 {
             glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
         }
 
-        glGenBuffers(1, &m_fbElemBufGLID);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_fbElemBufGLID);
+        glGenBuffers(1, &m_surfElemBufGLID);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
 
         {
             const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
@@ -64,11 +52,6 @@ namespace zf4 {
         // Batches
         //
 
-        // Set up texture units.
-        for (int i = 0; i < gk_texUnitLimit; ++i) {
-            m_texUnits[i] = i;
-        }
-
         // Reserve memory for batch data.
         m_batchPermDatas = memArena->push<RenderBatchPermData>(gk_renderBatchLimit);
 
@@ -79,11 +62,6 @@ namespace zf4 {
         m_batchTransDatas = memArena->push<RenderBatchTransientData>(gk_renderBatchLimit);
 
         if (!m_batchTransDatas) {
-            return false;
-        }
-
-        //
-        if (!m_viewMatrixInfos.init(memArena, gk_viewMatrixLimit)) {
             return false;
         }
 
@@ -150,6 +128,16 @@ namespace zf4 {
 
         free(indices);
 
+        // Set up texture units.
+        for (int i = 0; i < gk_texUnitLimit; ++i) {
+            m_texUnits[i] = i;
+        }
+
+        //
+        // Instructions
+        //
+        m_renderInstrs.init(memArena, 256); // TEMP
+
         m_initialized = true;
 
         return true;
@@ -162,70 +150,120 @@ namespace zf4 {
             glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
         }
 
-        glDeleteFramebuffers(1, &m_fbGLID);
-        glDeleteTextures(1, &m_fbTexGLID);
-        glDeleteVertexArrays(1, &m_fbVertArrayGLID);
-        glDeleteBuffers(1, &m_fbVertBufGLID);
-        glDeleteBuffers(1, &m_fbElemBufGLID);
+        glDeleteVertexArrays(1, &m_surfVertArrayGLID);
+        glDeleteBuffers(1, &m_surfVertBufGLID);
+        glDeleteBuffers(1, &m_surfElemBufGLID);
+
+        for (int i = 0; i < m_surfs.get_len(); ++i) {
+            glDeleteFramebuffers(1, &m_surfs[i].framebufferGLID);
+            glDeleteTextures(1, &m_surfs[i].framebufferTexGLID);
+        }
 
         zero_out(this);
     }
 
-    void Renderer::render(const Vec3D& bgColor, const ShaderProgs* const shaderProgs) {
-        assert(m_initialized);
-        assert(!m_inWriteup);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, m_fbGLID);
-
+    void Renderer::render(const Vec3D& bgColor, const ShaderProgs& shaderProgs) {
         // Set the background.
         glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Prepare batch rendering.
-        glUseProgram(shaderProgs->texturedQuad.glID);
+        // Iterate through and execute render instructions.
+        Matrix4x4 viewMat = Matrix4x4::create_identity();
 
-        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(get_window_size().x), static_cast<float>(get_window_size().y), 0.0f, -1.0f, 1.0f);
-        glUniformMatrix4fv(shaderProgs->texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
+        for (int i = 0; i < m_renderInstrs.get_len(); ++i) {
+            const RenderInstr instr = m_renderInstrs[i];
 
-        const Matrix4x4 initViewMat = Matrix4x4::create_identity();
-        glUniformMatrix4fv(shaderProgs->texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&initViewMat));
+            switch (instr.type) {
+                case RenderInstrType::Clear:
+                    glClearColor(instr.data.clearData.color.x, instr.data.clearData.color.y, instr.data.clearData.color.z, instr.data.clearData.color.w);
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    break;
 
-        glUniform1iv(shaderProgs->texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
+                case RenderInstrType::SetViewMatrix:
+                    viewMat = instr.data.setViewMatrixData.mat;
+                    break;
 
-        // Render batches.
-        int viewMatIndex = 0;
+                case RenderInstrType::DrawBatch:
+                    {
+                        const int batchIndex = instr.data.drawBatchData.index;
+                        const RenderBatchTransientData& batchTransData = m_batchTransDatas[batchIndex];
+                        const RenderBatchPermData& batchPermData = m_batchPermDatas[batchIndex];
 
-        for (int i = 0; i <= m_batchWriteIndex; ++i) {
-            if (viewMatIndex < m_viewMatrixInfos.get_len() && m_viewMatrixInfos[viewMatIndex].beginBatchIndex == i) {
-                const Matrix4x4& viewMat = m_viewMatrixInfos[viewMatIndex].mat;
-                glUniformMatrix4fv(shaderProgs->texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(viewMat.elems));
-                ++viewMatIndex;
+                        // NOTE: At the moment we do a full reset of the context for each batch. Will optimise this later.
+                        glUseProgram(shaderProgs.texturedQuad.glID);
+
+                        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(get_window_size().x), static_cast<float>(get_window_size().y), 0.0f, -1.0f, 1.0f);
+                        glUniformMatrix4fv(shaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
+
+                        glUniformMatrix4fv(shaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
+
+                        glUniform1iv(shaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
+
+                        for (int j = 0; j < batchTransData.texUnitsInUseCnt; ++j) {
+                            glActiveTexture(GL_TEXTURE0 + j);
+                            glBindTexture(GL_TEXTURE_2D, batchTransData.texUnitTexGLIDs[j]);
+                        }
+
+                        glBindVertexArray(batchPermData.vertArrayGLID);
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData.elemBufGLID);
+                        glDrawElements(GL_TRIANGLES, 6 * batchTransData.slotsUsedCnt, GL_UNSIGNED_SHORT, nullptr);
+                    }
+
+                    break;
+
+                case RenderInstrType::SetSurface:
+                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[instr.data.setSurfaceData.index].framebufferGLID);
+                    break;
+
+                case RenderInstrType::UnsetSurface:
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                    break;
+
+                case RenderInstrType::DrawSurface:
+                    {
+                        const int surfIndex = instr.data.drawSurfaceData.index;
+                        const RenderSurface& surf = m_surfs[surfIndex];
+
+                        glUseProgram(shaderProgs.test.glID); // NOTE: Might have to pull this from the instruction data, perhaps even alongside a function pointer to set uniforms and so on.
+
+                        glActiveTexture(GL_TEXTURE0);
+                        glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
+
+                        glBindVertexArray(m_surfVertArrayGLID);
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+                    }
+
+                    break;
             }
+        }
 
-            const RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
-            const RenderBatchTransientData* const batchTransData = &m_batchTransDatas[i];
+        //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
-            for (int j = 0; j < batchTransData->texUnitsInUseCnt; ++j) {
-                glActiveTexture(GL_TEXTURE0 + j);
-                glBindTexture(GL_TEXTURE_2D, batchTransData->texUnitTexGLIDs[j]);
-            }
+    bool Renderer::add_surface() {
+        RenderSurface surf = {};
 
-            glBindVertexArray(batchPermData->vertArrayGLID);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
-            glDrawElements(GL_TRIANGLES, 6 * batchTransData->slotsUsedCnt, GL_UNSIGNED_SHORT, nullptr);
+        glGenFramebuffers(1, &surf.framebufferGLID);
+
+        glGenTextures(1, &surf.framebufferTexGLID);
+        glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, surf.framebufferGLID);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surf.framebufferTexGLID, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            return false;
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        // Render framebuffer.
-        glUseProgram(shaderProgs->test.glID);
+        m_surfs.add(surf);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_fbTexGLID);
-
-        glBindVertexArray(m_fbVertArrayGLID);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_fbElemBufGLID);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+        return true;
     }
 
     void Renderer::begin_writeup() {
@@ -235,7 +273,7 @@ namespace zf4 {
         zero_out(m_batchTransDatas, m_batchWriteIndex + 1);
         m_batchWriteIndex = 0;
 
-        m_viewMatrixInfos.clear();
+        m_renderInstrs.clear();
 
         m_inWriteup = true;
     }
@@ -255,6 +293,37 @@ namespace zf4 {
         }
 
         m_inWriteup = false;
+    }
+
+    void Renderer::clear(const Vec4D& color) {
+        assert(m_initialized);
+        assert(m_inWriteup);
+
+        if (!m_renderInstrs.is_full()) {
+            RenderInstr instr = {
+                .type = RenderInstrType::Clear
+            };
+            instr.data.clearData.color = color;
+            m_renderInstrs.add(instr);
+        } else {
+            assert(false);
+        }
+    }
+
+    void Renderer::set_view_matrix(const Matrix4x4& mat) {
+        assert(m_initialized);
+        assert(m_inWriteup);
+
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+            RenderInstr instr = {
+                .type = RenderInstrType::SetViewMatrix
+            };
+            instr.data.setViewMatrixData.mat = mat;
+            m_renderInstrs.add(instr);
+            ++m_batchWriteIndex;
+        } else {
+            assert(false);
+        }
     }
 
     void Renderer::write_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
@@ -385,19 +454,48 @@ namespace zf4 {
         }
     }
 
-    void Renderer::update_writeup_view_matrix(const Matrix4x4& mat) {
+    void Renderer::set_surface(const int index) {
         assert(m_initialized);
         assert(m_inWriteup);
-        assert(m_batchWriteIndex < gk_renderBatchLimit - 1);
+        assert(index >= 0 && index < m_surfs.get_len());
 
-        ++m_batchWriteIndex;
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+            RenderInstr instr = {
+                .type = RenderInstrType::SetSurface
+            };
+            instr.data.setSurfaceData.index = index;
+            m_renderInstrs.add(instr);
+            ++m_batchWriteIndex;
+        } else {
+            assert(false);
+        }
+    }
 
-        const RendererViewMatrixInfo info = {
-            .mat = mat,
-            .beginBatchIndex = m_batchWriteIndex
-        };
+    void Renderer::unset_surface() {
+        assert(m_initialized);
+        assert(m_inWriteup);
 
-        m_viewMatrixInfos.add(info);
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+            m_renderInstrs.add({.type = RenderInstrType::UnsetSurface});
+            ++m_batchWriteIndex;
+        } else {
+            assert(false);
+        }
+    }
+
+    void Renderer::draw_surface(const int index) {
+        assert(m_initialized);
+        assert(m_inWriteup);
+
+        if (!m_renderInstrs.is_full()) {
+            RenderInstr instr = {
+                .type = RenderInstrType::DrawSurface
+            };
+            instr.data.drawSurfaceData.index = index;
+            m_renderInstrs.add(instr);
+        } else {
+            assert(false);
+        }
     }
 
     int Renderer::add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {
@@ -498,5 +596,16 @@ namespace zf4 {
         slotVerts[43] = alpha;
 
         ++batchTransData->slotsUsedCnt;
+
+        // NOTE: Kind of hacky - change?
+        if (batchTransData->slotsUsedCnt == 1) {
+            RenderInstr instr = {
+                .type = RenderInstrType::DrawBatch
+            };
+
+            instr.data.drawBatchData.index = m_batchWriteIndex;
+
+            m_renderInstrs.add(instr);
+        }
     }
 }

@@ -61,6 +61,10 @@ namespace zf4 {
             return m_array.get_len();
         }
 
+        bool is_full() const {
+            return m_len == m_array.get_len();
+        }
+
         T& operator[](const int index) {
             assert(index >= 0 && index < m_len);
             return m_array[index];

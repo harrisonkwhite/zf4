@@ -138,7 +138,7 @@ namespace zf4 {
             }
 
             const SceneTypeInfo* const sceneTypeInfo = &i_game.sceneTypeInfos[i_game.scene.typeIndex];
-            i_game.renderer.render(sceneTypeInfo->bgColor, &i_game.shaderProgs);
+            i_game.renderer.render(sceneTypeInfo->bgColor, i_game.shaderProgs);
             swap_window_buffers();
 
             glfwPollEvents();
