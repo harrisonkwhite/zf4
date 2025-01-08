@@ -12,9 +12,9 @@ static const char* const ik_assetTypeArrayNames[] = {
     "music"
 };
 
-static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypeArrayNames) == zf4::ASSET_TYPE_CNT);
+static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypeArrayNames) == zf4::AssetTypeCnt);
 
-static const AssetTypePacker ik_assetTypePackers[zf4::ASSET_TYPE_CNT] = {
+static const AssetTypePacker ik_assetTypePackers[zf4::AssetTypeCnt] = {
     pack_textures,
     pack_fonts,
     pack_shaders,
@@ -22,7 +22,7 @@ static const AssetTypePacker ik_assetTypePackers[zf4::ASSET_TYPE_CNT] = {
     pack_music
 };
 
-static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypePackers) == zf4::ASSET_TYPE_CNT);
+static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypePackers) == zf4::AssetTypeCnt);
 
 static FILE* open_output_fs(const char* const outputDir) {
     // Determine the output file path.
@@ -94,7 +94,7 @@ bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const
     }
 
     // Perform packing for each asset type using the packing instructions file.
-    for (int i = 0; i < zf4::ASSET_TYPE_CNT; ++i) {
+    for (int i = 0; i < zf4::AssetTypeCnt; ++i) {
         cJSON* const cjAssets = cJSON_GetObjectItemCaseSensitive(packer->instrsCJ, ik_assetTypeArrayNames[i]);
 
         if (!cJSON_IsArray(cjAssets)) {

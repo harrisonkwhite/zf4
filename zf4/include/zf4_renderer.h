@@ -58,7 +58,8 @@ namespace zf4 {
     };
 
     struct DrawSurfaceRenderInstrData {
-        int index;
+        int surfIndex;
+        int shaderProgIndex;
     };
 
     union RenderInstrData {
@@ -103,7 +104,7 @@ namespace zf4 {
         void write_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::STR_HOR_ALIGN_CENTER, const StrVerAlign verAlign = zf4::StrVerAlign::STR_VER_ALIGN_CENTER);
         void set_surface(const int index);
         void unset_surface();
-        void draw_surface(const int index);
+        void draw_surface(const int index, const int shaderProgIndex);
 
     private:
         bool m_initialized;

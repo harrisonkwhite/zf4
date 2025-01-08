@@ -276,12 +276,11 @@ void main()
 
                 case RenderInstrType::DrawSurface:
                     {
-                        const int surfIndex = instr.data.drawSurfaceData.index;
-                        const RenderSurface& surf = m_surfs[surfIndex];
-
-                        glUseProgram(internalShaderProgs.test.glID); // NOTE: Might have to pull this from the instruction data, perhaps even alongside a function pointer to set uniforms and so on.
+                        const GLuint progGLID = AssetManager::get_shader_prog_gl_id(instr.data.drawSurfaceData.shaderProgIndex);
+                        glUseProgram(progGLID);
 
                         glActiveTexture(GL_TEXTURE0);
+                        const RenderSurface& surf = m_surfs[instr.data.drawSurfaceData.surfIndex];
                         glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
 
                         glBindVertexArray(m_surfVertArrayGLID);
@@ -540,7 +539,7 @@ void main()
         }
     }
 
-    void Renderer::draw_surface(const int index) {
+    void Renderer::draw_surface(const int surfIndex, const int shaderProgIndex) {
         assert(m_initialized);
         assert(m_inWriteup);
 
@@ -548,7 +547,10 @@ void main()
             RenderInstr instr = {
                 .type = RenderInstrType::DrawSurface
             };
-            instr.data.drawSurfaceData.index = index;
+
+            instr.data.drawSurfaceData.surfIndex = surfIndex;
+            instr.data.drawSurfaceData.shaderProgIndex = shaderProgIndex;
+            
             m_renderInstrs.add(instr);
         } else {
             assert(false);
