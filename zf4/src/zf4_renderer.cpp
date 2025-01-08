@@ -9,6 +9,62 @@ namespace zf4 {
         assert(is_zero(this));
 
         //
+        // Framebuffer
+        //
+        glGenFramebuffers(1, &m_fbGLID);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbGLID);
+
+        glGenTextures(1, &m_fbTexGLID);
+        glBindTexture(GL_TEXTURE_2D, m_fbTexGLID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fbTexGLID, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            return false;
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        glGenVertexArrays(1, &m_fbVertArrayGLID);
+        glBindVertexArray(m_fbVertArrayGLID);
+
+        glGenBuffers(1, &m_fbVertBufGLID);
+        glBindBuffer(GL_ARRAY_BUFFER, m_fbVertBufGLID);
+
+        {
+            const float verts[] = {
+                -1.0f, -1.0f, 0.0f, 0.0f,
+                1.0f, -1.0f, 1.0f, 0.0f,
+                1.0f, 1.0f, 1.0f, 1.0f,
+                -1.0f, 1.0f, 0.0f, 1.0f
+            };
+
+            glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+        }
+
+        glGenBuffers(1, &m_fbElemBufGLID);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_fbElemBufGLID);
+
+        {
+            const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+        }
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 0));
+
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 2));
+        glEnableVertexAttribArray(1);
+
+        glBindVertexArray(0);
+
+        //
+        // Batches
+        //
+
+        // Set up texture units.
         for (int i = 0; i < gk_texUnitLimit; ++i) {
             m_texUnits[i] = i;
         }
@@ -106,12 +162,20 @@ namespace zf4 {
             glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
         }
 
+        glDeleteFramebuffers(1, &m_fbGLID);
+        glDeleteTextures(1, &m_fbTexGLID);
+        glDeleteVertexArrays(1, &m_fbVertArrayGLID);
+        glDeleteBuffers(1, &m_fbVertBufGLID);
+        glDeleteBuffers(1, &m_fbElemBufGLID);
+
         zero_out(this);
     }
 
     void Renderer::render(const Vec3D& bgColor, const ShaderProgs* const shaderProgs) {
         assert(m_initialized);
         assert(!m_inWriteup);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbGLID);
 
         // Set the background.
         glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.0f);
@@ -150,6 +214,18 @@ namespace zf4 {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
             glDrawElements(GL_TRIANGLES, 6 * batchTransData->slotsUsedCnt, GL_UNSIGNED_SHORT, nullptr);
         }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // Render framebuffer.
+        glUseProgram(shaderProgs->test.glID);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_fbTexGLID);
+
+        glBindVertexArray(m_fbVertArrayGLID);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_fbElemBufGLID);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
     }
 
     void Renderer::begin_writeup() {

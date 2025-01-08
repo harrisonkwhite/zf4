@@ -112,12 +112,53 @@ namespace zf4 {
         prog->texturesUniLoc = glGetUniformLocation(glID, "u_textures");
     }
 
+    static void load_test_shader_prog(TestShaderProg* const prog) {
+        assert(is_zero(prog));
+
+        const char* const vertShaderSrc =
+            "#version 430 core\n"
+            "layout (location = 0) in vec2 a_vert;\n"
+            "layout (location = 1) in vec2 a_texCoord;\n"
+            "\n"
+            "out vec2 v_texCoord;\n"
+            "\n"
+            "void main()\n"
+            "{\n"
+            "    gl_Position = vec4(a_vert, 0.0f, 1.0f);\n"
+            "    v_texCoord = a_texCoord;\n"
+            "}\n";
+
+        const char* const fragShaderSrc =
+            "#version 430 core\n"
+            "\n"
+            "in vec2 v_texCoord;\n"
+            "out vec4 o_fragColor;\n"
+            "\n"
+            "uniform sampler2D u_tex;\n"
+            "\n"
+            "void main()\n"
+            "{\n"
+            "    vec4 texColor = texture(u_tex, v_texCoord);\n"
+            "    o_fragColor = vec4(texColor.r, texColor.g * 0.5f, texColor.b * 0.5f, texColor.a);\n"
+            "}\n";
+
+        const GLuint glID = create_shader_prog_from_srcs(vertShaderSrc, fragShaderSrc);
+        assert(glID);
+
+        prog->glID = glID;
+    }
+
     void load_shader_progs(ShaderProgs* const progs) {
         assert(is_zero(progs));
         load_textured_quad_shader_prog(&progs->texturedQuad);
+        load_test_shader_prog(&progs->test);
     }
 
     void unload_shader_progs(ShaderProgs* const progs) {
+        if (progs->test.glID) {
+            glDeleteProgram(progs->test.glID);
+        }
+        
         if (progs->texturedQuad.glID) {
             glDeleteProgram(progs->texturedQuad.glID);
         }

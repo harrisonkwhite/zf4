@@ -61,8 +61,14 @@ namespace zf4 {
         bool m_initialized;
         bool m_inWriteup;
 
-        int m_texUnits[gk_texUnitLimit]; // TODO: Rename.
+        GLuint m_fbGLID;
+        GLuint m_fbTexGLID;
+        GLuint m_fbVertArrayGLID;
+        GLuint m_fbVertBufGLID;
+        GLuint m_fbElemBufGLID;
 
+        int m_texUnits[gk_texUnitLimit]; // TODO: Rename.
+        
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when a writeup begins.
         int m_batchWriteIndex; // Index of the batch we are currently writing to.

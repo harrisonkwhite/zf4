@@ -12,8 +12,13 @@ namespace zf4 {
         int texturesUniLoc;
     };
 
+    struct TestShaderProg {
+        GLuint glID;
+    };
+
     struct ShaderProgs {
         TexturedQuadShaderProg texturedQuad;
+        TestShaderProg test;
     };
 
     void load_shader_progs(ShaderProgs* const progs);
