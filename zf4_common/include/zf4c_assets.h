@@ -13,6 +13,8 @@ namespace zf4 {
     constexpr int gk_fontCharRangeBegin = 32;
     constexpr int gk_fontCharRangeLen = 95;
 
+    constexpr int gk_shaderSrcLenLimit = 4095;
+
     constexpr int gk_audioSamplesPerChunk = 44100;
 
     constexpr int gk_soundSampleLimit = 441000;

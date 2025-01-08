@@ -5,6 +5,61 @@
 #include <zf4_assets.h>
 
 namespace zf4 {
+    const char* const ik_texturedQuadVertShaderSrc = R"(
+#version 430 core
+layout (location = 0) in vec2 a_vert;
+layout (location = 1) in vec2 a_pos;
+layout (location = 2) in vec2 a_size;
+layout (location = 3) in float a_rot;
+layout (location = 4) in float a_texIndex;
+layout (location = 5) in vec2 a_texCoord;
+layout (location = 6) in float a_alpha;
+
+out flat int v_texIndex;
+out vec2 v_texCoord;
+out float v_alpha;
+
+uniform mat4 u_view;
+uniform mat4 u_proj;
+
+void main()
+{
+    float rotCos = cos(a_rot);
+    float rotSin = -sin(a_rot);
+
+    mat4 model = mat4(
+        vec4(a_size.x * rotCos, a_size.x * rotSin, 0.0f, 0.0f),
+        vec4(a_size.y * -rotSin, a_size.y * rotCos, 0.0f, 0.0f),
+        vec4(0.0f, 0.0f, 1.0f, 0.0f),
+        vec4(a_pos.x, a_pos.y, 0.0f, 1.0f)
+    );
+
+    gl_Position = u_proj * u_view * model * vec4(a_vert, 0.0f, 1.0f);
+
+    v_texIndex = int(a_texIndex);
+    v_texCoord = a_texCoord;
+    v_alpha = a_alpha;
+}
+)";
+
+    const char* const ik_texturedQuadFragShaderSrc = R"(
+#version 430 core
+
+in flat int v_texIndex;
+in vec2 v_texCoord;
+in float v_alpha;
+
+out vec4 o_fragColor;
+
+uniform sampler2D u_textures[32];
+
+void main()
+{
+    vec4 texColor = texture(u_textures[v_texIndex], v_texCoord);
+    o_fragColor = texColor * vec4(1.0f, 1.0f, 1.0f, v_alpha);
+}
+)";
+
     bool Renderer::init(MemArena* const memArena) {
         assert(is_zero(this));
 
@@ -162,7 +217,7 @@ namespace zf4 {
         zero_out(this);
     }
 
-    void Renderer::render(const Vec3D& bgColor, const ShaderProgs& shaderProgs) {
+    void Renderer::render(const Vec3D& bgColor, const InternalShaderProgs& internalShaderProgs) {
         // Set the background.
         glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -190,14 +245,14 @@ namespace zf4 {
                         const RenderBatchPermData& batchPermData = m_batchPermDatas[batchIndex];
 
                         // NOTE: At the moment we do a full reset of the context for each batch. Will optimise this later.
-                        glUseProgram(shaderProgs.texturedQuad.glID);
+                        glUseProgram(internalShaderProgs.texturedQuad.glID);
 
                         const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(get_window_size().x), static_cast<float>(get_window_size().y), 0.0f, -1.0f, 1.0f);
-                        glUniformMatrix4fv(shaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
+                        glUniformMatrix4fv(internalShaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
 
-                        glUniformMatrix4fv(shaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
+                        glUniformMatrix4fv(internalShaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
 
-                        glUniform1iv(shaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
+                        glUniform1iv(internalShaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
 
                         for (int j = 0; j < batchTransData.texUnitsInUseCnt; ++j) {
                             glActiveTexture(GL_TEXTURE0 + j);
@@ -224,7 +279,7 @@ namespace zf4 {
                         const int surfIndex = instr.data.drawSurfaceData.index;
                         const RenderSurface& surf = m_surfs[surfIndex];
 
-                        glUseProgram(shaderProgs.test.glID); // NOTE: Might have to pull this from the instruction data, perhaps even alongside a function pointer to set uniforms and so on.
+                        glUseProgram(internalShaderProgs.test.glID); // NOTE: Might have to pull this from the instruction data, perhaps even alongside a function pointer to set uniforms and so on.
 
                         glActiveTexture(GL_TEXTURE0);
                         glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
@@ -238,7 +293,7 @@ namespace zf4 {
             }
         }
 
-        //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); // TEMP?
     }
 
     bool Renderer::add_surface() {
@@ -330,14 +385,14 @@ namespace zf4 {
         assert(m_initialized);
         assert(m_inWriteup);
 
-        const Vec2DI texSize = get_textures()->sizes[texIndex];
+        const Vec2DI texSize = AssetManager::get_tex_size(texIndex);
         const Rect texCoords = {
             static_cast<float>(srcRect.x) / texSize.x,
             static_cast<float>(srcRect.y) / texSize.y,
             static_cast<float>(srcRect.width) / texSize.x,
             static_cast<float>(srcRect.height) / texSize.y
         };
-        write(origin, scale, pos, get_rect_size(srcRect), rot, get_textures()->glIDs[texIndex], texCoords, alpha);
+        write(origin, scale, pos, get_rect_size(srcRect), rot, AssetManager::get_tex_gl_id(texIndex), texCoords, alpha);
     }
 
     void Renderer::write_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
@@ -367,23 +422,23 @@ namespace zf4 {
         bool strLastLineMaxHeightUpdated = false;
         int strLineCnter = 0;
 
-        const FontArrangementInfo* const fontArrangementInfo = &get_fonts()->arrangementInfos[fontIndex];
+        const FontArrangementInfo& fontArrangementInfo = AssetManager::get_font_arrangement_info(fontIndex);
 
         for (int i = 0; i < strLen; i++) {
             if (str[i] == '\n') {
                 strLineWidths[strLineCnter] = charDrawPosPen.x;
 
                 if (!strFirstLineMinOffsUpdated) {
-                    strFirstLineMinOffs = fontArrangementInfo->chars.verOffsets[0];
+                    strFirstLineMinOffs = fontArrangementInfo.chars.verOffsets[0];
                     strFirstLineMinOffsUpdated = true;
                 }
 
-                strLastLineMaxHeight = fontArrangementInfo->chars.verOffsets[0] + fontArrangementInfo->chars.srcRects[0].height;
+                strLastLineMaxHeight = fontArrangementInfo.chars.verOffsets[0] + fontArrangementInfo.chars.srcRects[0].height;
                 strLastLineMaxHeightUpdated = false;
 
                 strLineCnter++;
                 charDrawPosPen.x = 0;
-                charDrawPosPen.y += fontArrangementInfo->lineHeight;
+                charDrawPosPen.y += fontArrangementInfo.lineHeight;
                 continue;
             }
 
@@ -391,36 +446,38 @@ namespace zf4 {
 
             if (strLineCnter == 0) {
                 if (!strFirstLineMinOffsUpdated) {
-                    strFirstLineMinOffs = fontArrangementInfo->chars.verOffsets[strCharIndex];
+                    strFirstLineMinOffs = fontArrangementInfo.chars.verOffsets[strCharIndex];
                     strFirstLineMinOffsUpdated = true;
                 } else {
-                    strFirstLineMinOffs = std::min(fontArrangementInfo->chars.verOffsets[strCharIndex], strFirstLineMinOffs);
+                    strFirstLineMinOffs = std::min(fontArrangementInfo.chars.verOffsets[strCharIndex], strFirstLineMinOffs);
                 }
             }
 
             if (!strLastLineMaxHeightUpdated) {
-                strLastLineMaxHeight = fontArrangementInfo->chars.verOffsets[strCharIndex] + fontArrangementInfo->chars.srcRects[strCharIndex].height;
+                strLastLineMaxHeight = fontArrangementInfo.chars.verOffsets[strCharIndex] + fontArrangementInfo.chars.srcRects[strCharIndex].height;
                 strLastLineMaxHeightUpdated = true;
             } else {
-                strLastLineMaxHeight = std::max(fontArrangementInfo->chars.verOffsets[strCharIndex] + fontArrangementInfo->chars.srcRects[strCharIndex].height, strLastLineMaxHeight);
+                strLastLineMaxHeight = std::max(fontArrangementInfo.chars.verOffsets[strCharIndex] + fontArrangementInfo.chars.srcRects[strCharIndex].height, strLastLineMaxHeight);
             }
 
             if (i > 0) {
                 const int strCharIndexLast = str[i - 1] - gk_fontCharRangeBegin;
-                charDrawPosPen.x += fontArrangementInfo->chars.kernings[(strCharIndex * gk_fontCharRangeLen) + strCharIndexLast];
+                charDrawPosPen.x += fontArrangementInfo.chars.kernings[(strCharIndex * gk_fontCharRangeLen) + strCharIndexLast];
             }
 
-            charDrawPositions[i].x = charDrawPosPen.x + fontArrangementInfo->chars.horOffsets[strCharIndex];
-            charDrawPositions[i].y = charDrawPosPen.y + fontArrangementInfo->chars.verOffsets[strCharIndex];
+            charDrawPositions[i].x = charDrawPosPen.x + fontArrangementInfo.chars.horOffsets[strCharIndex];
+            charDrawPositions[i].y = charDrawPosPen.y + fontArrangementInfo.chars.verOffsets[strCharIndex];
 
-            charDrawPosPen.x += fontArrangementInfo->chars.horAdvances[strCharIndex];
+            charDrawPosPen.x += fontArrangementInfo.chars.horAdvances[strCharIndex];
         }
 
         strLineWidths[strLineCnter] = charDrawPosPen.x;
 
         // Write the characters.
         const int strHeight = strFirstLineMinOffs + charDrawPosPen.y + strLastLineMaxHeight;
-        const Vec2DI fontTexSize = get_fonts()->texSizes[fontIndex];
+        
+        const GLuint fontTexGLID = AssetManager::get_font_tex_gl_id(fontIndex);
+        const Vec2DI fontTexSize = AssetManager::get_font_tex_size(fontIndex);
 
         strLineCnter = 0;
 
@@ -441,16 +498,16 @@ namespace zf4 {
                 pos.y + charDrawPositions[i].y - (strHeight * verAlign * 0.5f)
             };
 
-            const Vec2D charSize = get_rect_size(fontArrangementInfo->chars.srcRects[charIndex]);
+            const Vec2D charSize = get_rect_size(fontArrangementInfo.chars.srcRects[charIndex]);
 
             const Rect charTexCoords = {
-                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].x) / fontTexSize.x,
-                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].y) / fontTexSize.y,
-                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].width) / fontTexSize.x,
-                static_cast<float>(fontArrangementInfo->chars.srcRects[charIndex].height) / fontTexSize.y
+                static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].x) / fontTexSize.x,
+                static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].y) / fontTexSize.y,
+                static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].width) / fontTexSize.x,
+                static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].height) / fontTexSize.y
             };
 
-            write({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, get_fonts()->texGLIDs[fontIndex], charTexCoords, 1.0f);
+            write({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f);
         }
     }
 

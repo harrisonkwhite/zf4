@@ -1,7 +1,8 @@
 #pragma once
 
+#include <glad/glad.h>
 #include <zf4c.h>
-#include <zf4_shader_progs.h>
+#include <zf4_assets.h>
 
 namespace zf4 {
     constexpr int gk_renderSurfaceLimit = 16; // NOTE: Kind of arbitrary?
@@ -90,7 +91,7 @@ namespace zf4 {
         bool init(MemArena* const memArena);
         void clean();
 
-        void render(const Vec3D& bgColor, const ShaderProgs& shaderProgs);
+        void render(const Vec3D& bgColor, const InternalShaderProgs& internalShaderProgs);
 
         bool add_surface();
 

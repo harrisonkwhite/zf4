@@ -9,9 +9,7 @@ add_library(zf4 STATIC
     src/zf4_game.cpp
     src/zf4_window_state.cpp
     src/zf4_window_logic.cpp
-    src/zf4_assets_state.cpp
-    src/zf4_assets_logic.cpp
-    src/zf4_shader_progs.cpp
+    src/zf4_assets.cpp
     src/zf4_renderer.cpp
     src/zf4_sprites.cpp
     src/zf4_audio.cpp
@@ -25,7 +23,6 @@ add_library(zf4 STATIC
     include/zf4_game.h
     include/zf4_window.h
     include/zf4_assets.h
-    include/zf4_shader_progs.h
     include/zf4_renderer.h
     include/zf4_sprites.h
     include/zf4_audio.h

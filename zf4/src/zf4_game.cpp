@@ -3,7 +3,6 @@
 #include <zf4c_mem.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
-#include <zf4_shader_progs.h>
 #include <zf4_renderer.h>
 #include <zf4_audio.h>
 #include <zf4_rand.h>
@@ -15,7 +14,7 @@ namespace zf4 {
     struct Game {
         MemArena memArena;
 
-        ShaderProgs shaderProgs;
+        InternalShaderProgs internalShaderProgs;
 
         Renderer renderer;
 
@@ -66,11 +65,11 @@ namespace zf4 {
             return;
         }
 
-        if (!load_assets()) {
+        if (!AssetManager::load(&i_game.memArena)) {
             return;
         }
 
-        load_shader_progs(&i_game.shaderProgs);
+        i_game.internalShaderProgs = load_internal_shader_progs();
 
         if (!i_game.renderer.init(&i_game.memArena)) {
             log_error("Failed to initialise the renderer!");
@@ -138,7 +137,7 @@ namespace zf4 {
             }
 
             const SceneTypeInfo* const sceneTypeInfo = &i_game.sceneTypeInfos[i_game.scene.typeIndex];
-            i_game.renderer.render(sceneTypeInfo->bgColor, i_game.shaderProgs);
+            i_game.renderer.render(sceneTypeInfo->bgColor, i_game.internalShaderProgs);
             swap_window_buffers();
 
             glfwPollEvents();
@@ -155,8 +154,7 @@ namespace zf4 {
         clean_music_srcs(&i_game.musicSrcManager);
         clean_sound_srcs(&i_game.sndSrcManager);
         i_game.renderer.clean();
-        unload_shader_progs(&i_game.shaderProgs);
-        unload_assets();
+        AssetManager::unload();
         clean_audio_system();
         clean_window();
         glfwTerminate();

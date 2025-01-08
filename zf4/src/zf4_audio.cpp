@@ -26,9 +26,9 @@ namespace zf4 {
             return false;
         }
 
-        const AudioInfo* const musicInfo = &get_music()->infos[src->musicIndex];
+        const AudioInfo& musicInfo = AssetManager::get_music_info(src->musicIndex);
 
-        const long long totalBytesToRead = sizeof(AudioSample) * musicInfo->sampleCntPerChannel * musicInfo->channelCnt;
+        const long long totalBytesToRead = sizeof(AudioSample) * musicInfo.sampleCntPerChannel * musicInfo.channelCnt;
         const int bytesToRead = std::min(gk_musicBufSize, totalBytesToRead - src->fsBytesRead);
         const int bytesRead = read_from_fs<Byte>(buf, src->fs, bytesToRead);
 
@@ -43,11 +43,11 @@ namespace zf4 {
 
         if (src->fsBytesRead == totalBytesToRead) {
             src->fsBytesRead = 0;
-            fseek(src->fs, get_music()->sampleDataFilePositions[src->musicIndex], SEEK_SET);
+            fseek(src->fs, AssetManager::get_music_sample_data_file_pos(src->musicIndex), SEEK_SET);
         }
 
-        const ALenum format = musicInfo->channelCnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;
-        alBufferData(bufALID, format, buf, bytesToRead, musicInfo->sampleRate);
+        const ALenum format = musicInfo.channelCnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;
+        alBufferData(bufALID, format, buf, bytesToRead, musicInfo.sampleRate);
 
         free(buf);
 
@@ -140,7 +140,7 @@ namespace zf4 {
         for (int i = 0; i < gk_soundSrcLimit; ++i) {
             if (!manager->alIDs[i]) {
                 alGenSources(1, &manager->alIDs[i]);
-                alSourcei(manager->alIDs[i], AL_BUFFER, get_sounds()->bufALIDs[sndIndex]);
+                alSourcei(manager->alIDs[i], AL_BUFFER, AssetManager::get_sound_buf_al_id(sndIndex));
 
                 ++manager->versions[i];
 
@@ -260,7 +260,7 @@ namespace zf4 {
             return false;
         }
 
-        fseek(src->fs, get_music()->sampleDataFilePositions[src->musicIndex], SEEK_SET);
+        fseek(src->fs, AssetManager::get_music_sample_data_file_pos(src->musicIndex), SEEK_SET);
 
         for (int i = 0; i < gk_musicBufCnt; ++i) {
             if (!load_music_buf_data(src, src->bufALIDs[i])) {
