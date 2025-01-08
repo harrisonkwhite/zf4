@@ -11,6 +11,7 @@ add_executable(zf4_asset_packer
 	src/zf4ap.cpp
 	src/zf4ap_textures.cpp
 	src/zf4ap_fonts.cpp
+	src/zf4ap_shaders.cpp
 	src/zf4ap_audio.cpp
 	${PARENT_DIR}/vendor/stb_image/src/stb_image.cpp
 

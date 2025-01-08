@@ -341,6 +341,7 @@ namespace zf4 {
     static TexturedQuadShaderProg load_textured_quad_shader_prog() {
         const char* const vertShaderSrc =
             "#version 430 core\n"
+            "\n"
             "layout (location = 0) in vec2 a_vert;\n"
             "layout (location = 1) in vec2 a_pos;\n"
             "layout (location = 2) in vec2 a_size;\n"
@@ -356,8 +357,7 @@ namespace zf4 {
             "uniform mat4 u_view;\n"
             "uniform mat4 u_proj;\n"
             "\n"
-            "void main()\n"
-            "{\n"
+            "void main() {\n"
             "    float rotCos = cos(a_rot);\n"
             "    float rotSin = -sin(a_rot);\n"
             "\n"
@@ -386,8 +386,7 @@ namespace zf4 {
             "\n"
             "uniform sampler2D u_textures[32];\n"
             "\n"
-            "void main()\n"
-            "{\n"
+            "void main() {\n"
             "    vec4 texColor = texture(u_textures[v_texIndex], v_texCoord);\n"
             "    o_fragColor = texColor * vec4(1.0f, 1.0f, 1.0f, v_alpha);\n"
             "}\n";
@@ -408,13 +407,13 @@ namespace zf4 {
     static TestShaderProg load_test_shader_prog() {
         const char* const vertShaderSrc =
             "#version 430 core\n"
+            "\n"
             "layout (location = 0) in vec2 a_vert;\n"
             "layout (location = 1) in vec2 a_texCoord;\n"
             "\n"
             "out vec2 v_texCoord;\n"
             "\n"
-            "void main()\n"
-            "{\n"
+            "void main() {\n"
             "    gl_Position = vec4(a_vert, 0.0f, 1.0f);\n"
             "    v_texCoord = a_texCoord;\n"
             "}\n";
@@ -427,8 +426,7 @@ namespace zf4 {
             "\n"
             "uniform sampler2D u_tex;\n"
             "\n"
-            "void main()\n"
-            "{\n"
+            "void main() {\n"
             "    vec4 texColor = texture(u_tex, v_texCoord);\n"
             "    o_fragColor = vec4(texColor.r, texColor.g * 0.5f, texColor.b * 0.5f, texColor.a);\n"
             "}\n";

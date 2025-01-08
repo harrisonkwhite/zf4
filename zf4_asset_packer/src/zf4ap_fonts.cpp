@@ -132,9 +132,9 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
         return false;
     }
 
-    const auto fontData = zf4::alloc<FontData>(); // A buffer reused for all fonts.
+    const auto fontDataBuf = zf4::alloc<FontData>(); // A buffer reused for all fonts.
 
-    if (!fontData) {
+    if (!fontDataBuf) {
         zf4::log_error("Failed to allocate memory for font data!");
         FT_Done_FreeType(ftLib);
         return false;
@@ -160,19 +160,19 @@ bool pack_fonts(FILE* const outputFS, char* const srcAssetFilePathBuf, const int
             break;
         }
 
-        memset(fontData, 0, sizeof(*fontData));
+        memset(fontDataBuf, 0, sizeof(*fontDataBuf));
 
-        if (!load_font_data(fontData, ftLib, srcAssetFilePathBuf, cjPtSize->valueint)) {
+        if (!load_font_data(fontDataBuf, ftLib, srcAssetFilePathBuf, cjPtSize->valueint)) {
             success = false;
             break;
         }
 
-        fwrite(fontData, sizeof(*fontData), 1, outputFS);
+        fwrite(fontDataBuf, sizeof(*fontDataBuf), 1, outputFS);
 
         zf4::log("Packed font with file path \"%s\" and point size %d.", srcAssetFilePathBuf, cjPtSize->valueint);
     }
 
-    free(fontData);
+    free(fontDataBuf);
     FT_Done_FreeType(ftLib);
 
     return success;

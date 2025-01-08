@@ -22,12 +22,13 @@ namespace zf4 {
     using AudioSample = float;
 
     enum AssetType {
-        TEX_ASSET_TYPE,
-        FONT_ASSET_TYPE,
-        SOUND_ASSET_TYPE,
-        MUSIC_ASSET_TYPE,
+        AssetType_Texture,
+        AssetType_Font,
+        AssetType_ShaderProg,
+        AssetType_Sound,
+        AssetType_Music,
 
-        ASSET_TYPE_CNT
+        AssetTypeCnt
     };
 
     struct FontCharsArrangementInfo {

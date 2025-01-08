@@ -4,19 +4,25 @@
 
 static const char* const ik_packingInstrsFileName = "packing_instrs.json";
 
-static const char* const ik_assetTypeNames[] = {
+static const char* const ik_assetTypeArrayNames[] = {
     "textures",
     "fonts",
+    "shader_progs",
     "sounds",
     "music"
 };
 
-static const AssetTypePacker ik_assetTypePackers[] = {
+static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypeArrayNames) == zf4::ASSET_TYPE_CNT);
+
+static const AssetTypePacker ik_assetTypePackers[zf4::ASSET_TYPE_CNT] = {
     pack_textures,
     pack_fonts,
+    pack_shaders,
     pack_sounds,
     pack_music
 };
+
+static_assert(ZF4_STATIC_ARRAY_LEN(ik_assetTypePackers) == zf4::ASSET_TYPE_CNT);
 
 static FILE* open_output_fs(const char* const outputDir) {
     // Determine the output file path.
@@ -89,10 +95,10 @@ bool run_asset_packer(AssetPacker* const packer, const char* const srcDir, const
 
     // Perform packing for each asset type using the packing instructions file.
     for (int i = 0; i < zf4::ASSET_TYPE_CNT; ++i) {
-        cJSON* const cjAssets = cJSON_GetObjectItemCaseSensitive(packer->instrsCJ, ik_assetTypeNames[i]);
+        cJSON* const cjAssets = cJSON_GetObjectItemCaseSensitive(packer->instrsCJ, ik_assetTypeArrayNames[i]);
 
         if (!cJSON_IsArray(cjAssets)) {
-            zf4::log_error("Failed to get \"%s\" array from packing instructions JSON file!", ik_assetTypeNames[i]);
+            zf4::log_error("Failed to get \"%s\" array from packing instructions JSON file!", ik_assetTypeArrayNames[i]);
             return false;
         }
 

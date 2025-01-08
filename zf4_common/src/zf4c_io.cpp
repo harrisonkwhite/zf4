@@ -23,7 +23,7 @@ namespace zf4 {
         va_end(args);
     }
 
-    char* get_file_contents(const char* const filename) {
+    char* get_file_contents(const char* const filename, int* const len) {
         // Open the file.
         FILE* const fs = fopen(filename, "rb");
 
@@ -37,7 +37,8 @@ namespace zf4 {
         fseek(fs, 0, SEEK_SET);
 
         // Allocate memory to store the file contents.
-        const int contentsSize = fileSize + 1; // Accounts for '\0'.
+        const int contentsLen = fileSize;
+        const int contentsSize = contentsLen + 1; // Account for the '\0'.
         const auto contents = alloc<char>(contentsSize);
 
         if (!contents) {
@@ -50,6 +51,11 @@ namespace zf4 {
         contents[contentsSize - 1] = '\0';
 
         fclose(fs);
+
+        // Update the length variable if provided.
+        if (len) {
+            *len = contentsLen;
+        }
 
         return contents;
     }
