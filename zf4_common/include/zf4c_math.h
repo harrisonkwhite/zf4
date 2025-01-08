@@ -227,6 +227,20 @@ namespace zf4 {
         }
     };
 
+    struct RectEdges {
+        float left;
+        float top;
+        float right;
+        float bottom;
+    };
+
+    struct RectEdgesI {
+        int left;
+        int top;
+        int right;
+        int bottom;
+    };
+
     struct Matrix4x4 {
         float elems[4][4];
 
@@ -310,12 +324,24 @@ namespace zf4 {
         return {rect.x, rect.y};
     }
 
+    constexpr Vec2D get_rect_pos(const RectEdges& rectEdges) {
+        return {rectEdges.left, rectEdges.top};
+    }
+
     constexpr Vec2D get_rect_size(const Rect& rect) {
         return {rect.width, rect.height};
     }
 
+    constexpr Vec2D get_rect_size(const RectEdges& rectEdges) {
+        return {rectEdges.right - rectEdges.left, rectEdges.bottom - rectEdges.top};
+    }
+
     constexpr Vec2D get_rect_center(const Rect& rect) {
         return {rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)};
+    }
+
+    constexpr Vec2D get_rect_center(const RectEdges& rectEdges) {
+        return {(rectEdges.left + rectEdges.right) / 2.0f, (rectEdges.top + rectEdges.bottom) / 2.0f};
     }
 
     constexpr float get_rect_right(const Rect& rect) {
@@ -326,7 +352,19 @@ namespace zf4 {
         return rect.y + rect.height;
     }
 
+    constexpr float get_rect_width(const RectEdges& rectEdges) {
+        return rectEdges.right - rectEdges.left;
+    }
+
+    constexpr float get_rect_height(const RectEdges& rectEdges) {
+        return rectEdges.bottom - rectEdges.top;
+    }
+
     constexpr bool do_rects_intersect(const Rect& a, const Rect& b) {
         return a.x < get_rect_right(b) && get_rect_right(a) > b.x && a.y < get_rect_bottom(b) && get_rect_bottom(a) > b.y;
+    }
+
+    constexpr bool do_rects_intersect(const RectEdges& a, const RectEdges& b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
     }
 }

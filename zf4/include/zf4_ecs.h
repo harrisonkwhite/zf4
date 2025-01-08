@@ -61,12 +61,12 @@ namespace zf4 {
             return m_entPositions[entID.index];
         }
 
-        inline Rect& get_ent_collider_offset(const EntID entID) {
+        inline RectEdges& get_ent_collider_offset(const EntID entID) {
             assert(does_ent_exist(entID));
             return m_entColliderOffsets[entID.index];
         }
 
-        inline Rect get_ent_collider_offset(const EntID entID) const {
+        inline RectEdges get_ent_collider_offset(const EntID entID) const {
             assert(does_ent_exist(entID));
             return m_entColliderOffsets[entID.index];
         }
@@ -107,7 +107,7 @@ namespace zf4 {
 
     private:
         Vec2D* m_entPositions;
-        Rect* m_entColliderOffsets;
+        RectEdges* m_entColliderOffsets;
         int** m_entCompIndexes;
         int* m_entTags;
         Byte* m_entFlags; // TEMP: For now we only allow 8 flags per entity.

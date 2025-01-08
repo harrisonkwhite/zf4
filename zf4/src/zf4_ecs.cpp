@@ -20,7 +20,7 @@ namespace zf4 {
                 return false;
             }
 
-            m_entColliderOffsets = memArena->push<Rect>(entLimit);
+            m_entColliderOffsets = memArena->push<RectEdges>(entLimit);
 
             if (!m_entColliderOffsets) {
                 return false;
@@ -152,15 +152,21 @@ namespace zf4 {
     Rect EntityManager::create_ent_collider(const EntID entID, const int spriteIndex, const Vec2D origin, const Vec2D scale, const Vec2D posOffs) const {
         zf4::Rect collider;
 
-        const zf4::Rect& colliderOffs = m_entColliderOffsets[entID.index];
-
         const zf4::Rect srcRect = get_game_sprites()[spriteIndex].frames[0]; // TEMP: Using just the first frame for now.
-        collider.width = (srcRect.width * scale.x) + colliderOffs.width;
-        collider.height = (srcRect.height * scale.y) + colliderOffs.height;
+        collider.width = srcRect.width * scale.x;
+        collider.height = srcRect.height * scale.y;
 
         const zf4::Vec2D entPos = get_ent_pos(entID);
-        collider.x = entPos.x + posOffs.x - (collider.width * origin.x) + colliderOffs.x;
-        collider.y = entPos.y + posOffs.y - (collider.height * origin.y) + colliderOffs.y;
+        collider.x = entPos.x - (collider.width * origin.x);
+        collider.y = entPos.y - (collider.height * origin.y);
+
+        // Apply offsets.
+        const zf4::RectEdges& colliderOffs = m_entColliderOffsets[entID.index];
+
+        collider.x += colliderOffs.left + posOffs.x;
+        collider.y += colliderOffs.top + posOffs.y;
+        collider.width += colliderOffs.right - colliderOffs.left;
+        collider.height += colliderOffs.bottom - colliderOffs.top;
 
         return collider;
     }
