@@ -9,7 +9,6 @@ namespace zf4 {
         bool init(MemArena* const memArena, const int len);
 
         int get_len() const {
-            assert(m_elems);
             return m_len;
         }
 
@@ -33,25 +32,7 @@ namespace zf4 {
     template<SimpleType T>
     class List {
     public:
-        bool init(MemArena* const memArena, const int lenLimit) {
-            assert(is_zero(this));
-
-            if (!m_array.init(memArena, lenLimit)) {
-                return false;
-            }
-
-            return true;
-        }
-
-        void add(const T& elem) {
-            assert(m_len < m_array.get_len());
-            m_array[m_len] = elem;
-            ++m_len;
-        }
-
-        void clear() {
-            m_len = 0;
-        }
+        bool init(MemArena* const memArena, const int lenLimit);
 
         int get_len() const {
             return m_len;
@@ -65,13 +46,21 @@ namespace zf4 {
             return m_len == m_array.get_len();
         }
 
+        void add(const T& elem) {
+            assert(m_len < m_array.get_len());
+            m_array[m_len] = elem;
+            ++m_len;
+        }
+
+        void clear() {
+            m_len = 0;
+        }
+
         T& operator[](const int index) {
-            assert(index >= 0 && index < m_len);
             return m_array[index];
         }
 
         const T& operator[](const int index) const {
-            assert(index >= 0 && index < m_len);
             return m_array[index];
         }
 
@@ -89,7 +78,6 @@ namespace zf4 {
         void deactivate(const int index);
 
         int get_len() const {
-            assert(m_elems);
             return m_len;
         }
 
@@ -122,6 +110,7 @@ namespace zf4 {
     template<SimpleType T>
     inline bool Array<T>::init(MemArena* const memArena, const int len) {
         assert(is_zero(this));
+        assert(len > 0);
 
         m_elems = memArena->push<T>(len);
 
@@ -135,8 +124,20 @@ namespace zf4 {
     }
 
     template<SimpleType T>
+    inline bool List<T>::init(MemArena* const memArena, const int lenLimit) {
+        assert(is_zero(this));
+
+        if (!m_array.init(memArena, lenLimit)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    template<SimpleType T>
     inline bool ActivityArray<T>::init(MemArena* const memArena, const int len) {
         assert(is_zero(this));
+        assert(len > 0);
 
         m_elems = memArena->push<T>(len);
 

@@ -29,7 +29,7 @@ namespace zf4 {
     // An entity is effectively an assortment of components, and a component is effectively a struct.
     class EntityManager {
     public:
-        bool load(const int entLimit, const ComponentTypeLimitLoader compTypeLimitLoader, MemArena* const memArena);
+        bool load(MemArena* const memArena, const int entLimit, const ComponentTypeLimitLoader compTypeLimitLoader);
 
         bool spawn_ent(EntID* const entID, const Vec2D pos);
         void destroy_ent(const EntID entID);

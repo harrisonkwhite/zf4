@@ -5,8 +5,6 @@
 #include <zf4_assets.h>
 
 namespace zf4 {
-    constexpr int gk_renderSurfaceLimit = 16; // NOTE: Kind of arbitrary?
-    constexpr int gk_renderBatchLimit = 128;
     constexpr int gk_renderBatchSlotLimit = 4096;
     constexpr int gk_renderBatchSlotVertCnt = gk_texturedQuadShaderProgVertCnt * 4;
 
@@ -89,32 +87,33 @@ namespace zf4 {
 
     class Renderer {
     public:
-        bool init(MemArena* const memArena);
+        bool init(MemArena* const memArena, const int surfCnt, const int batchCnt);
         void clean();
 
-        void render(const Vec3D& bgColor, const InternalShaderProgs& internalShaderProgs);
+        void render(const InternalShaderProgs& internalShaderProgs);
 
-        bool add_surface();
-
-        void begin_writeup();
-        void end_writeup();
+        // The functions below do not actually perform the operations immediately.
+        // They add appropriate instructions to the instruction list, which are executed during the game render phase (distinct from tick).
+        void begin_draw();
+        void end_draw();
         void clear(const Vec4D& color = {});
         void set_view_matrix(const Matrix4x4& mat);
-        void write_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
-        void write_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::STR_HOR_ALIGN_CENTER, const StrVerAlign verAlign = zf4::StrVerAlign::STR_VER_ALIGN_CENTER);
+        void draw_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
+        void draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::STR_HOR_ALIGN_CENTER, const StrVerAlign verAlign = zf4::StrVerAlign::STR_VER_ALIGN_CENTER);
         void set_surface(const int index);
         void unset_surface();
         void draw_surface(const int index, const int shaderProgIndex);
 
     private:
         bool m_initialized;
-        bool m_inWriteup;
+        bool m_drawActive;
 
-        List<RenderSurface> m_surfs;
+        Array<RenderSurface> m_surfs;
         GLuint m_surfVertArrayGLID;
         GLuint m_surfVertBufGLID;
         GLuint m_surfElemBufGLID;
 
+        int m_batchCnt;
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when a writeup begins.
         int m_batchWriteIndex; // Index of the batch we are currently writing to.
@@ -123,7 +122,9 @@ namespace zf4 {
 
         List<RenderInstr> m_renderInstrs;
 
+        static bool init_surface(RenderSurface* const surf);
         static int add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID);
+
         void write(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha);
     };
 }

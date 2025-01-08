@@ -20,7 +20,12 @@ namespace zf4 {
             return false;
         }
 
-        if (!scene->entManager.load(sceneTypeInfo->entLimit, sceneTypeInfo->compTypeLimitLoader, &scene->memArena)) {
+        if (!scene->renderer.init(&scene->memArena, sceneTypeInfo->renderSurfCnt, sceneTypeInfo->renderBatchCnt)) {
+            log_error("Failed to initialise the scene renderer!");
+            return false;
+        }
+
+        if (!scene->entManager.load(&scene->memArena, sceneTypeInfo->entLimit, sceneTypeInfo->compTypeLimitLoader)) {
             log_error("Failed to load the scene entity manager!");
             return false;
         }
@@ -38,6 +43,7 @@ namespace zf4 {
     }
 
     void unload_scene(Scene* const scene) {
+        scene->renderer.clean();
         scene->scratchSpace.clean();
         scene->memArena.clean();
         zero_out(scene);
@@ -46,11 +52,15 @@ namespace zf4 {
     bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
         scene->scratchSpace.reset();
 
+        scene->renderer.begin_draw();
+
         int sceneChangeIndex = -1;
 
         if (!sceneTypeInfos[scene->typeIndex].tick(scene, &sceneChangeIndex, gamePtrs)) {
             return false;
         }
+
+        scene->renderer.end_draw();
 
         if (sceneChangeIndex != -1) {
             log("Scene change request detected.");

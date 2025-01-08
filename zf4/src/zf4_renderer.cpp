@@ -5,116 +5,73 @@
 #include <zf4_assets.h>
 
 namespace zf4 {
-    const char* const ik_texturedQuadVertShaderSrc = R"(
-#version 430 core
-layout (location = 0) in vec2 a_vert;
-layout (location = 1) in vec2 a_pos;
-layout (location = 2) in vec2 a_size;
-layout (location = 3) in float a_rot;
-layout (location = 4) in float a_texIndex;
-layout (location = 5) in vec2 a_texCoord;
-layout (location = 6) in float a_alpha;
-
-out flat int v_texIndex;
-out vec2 v_texCoord;
-out float v_alpha;
-
-uniform mat4 u_view;
-uniform mat4 u_proj;
-
-void main()
-{
-    float rotCos = cos(a_rot);
-    float rotSin = -sin(a_rot);
-
-    mat4 model = mat4(
-        vec4(a_size.x * rotCos, a_size.x * rotSin, 0.0f, 0.0f),
-        vec4(a_size.y * -rotSin, a_size.y * rotCos, 0.0f, 0.0f),
-        vec4(0.0f, 0.0f, 1.0f, 0.0f),
-        vec4(a_pos.x, a_pos.y, 0.0f, 1.0f)
-    );
-
-    gl_Position = u_proj * u_view * model * vec4(a_vert, 0.0f, 1.0f);
-
-    v_texIndex = int(a_texIndex);
-    v_texCoord = a_texCoord;
-    v_alpha = a_alpha;
-}
-)";
-
-    const char* const ik_texturedQuadFragShaderSrc = R"(
-#version 430 core
-
-in flat int v_texIndex;
-in vec2 v_texCoord;
-in float v_alpha;
-
-out vec4 o_fragColor;
-
-uniform sampler2D u_textures[32];
-
-void main()
-{
-    vec4 texColor = texture(u_textures[v_texIndex], v_texCoord);
-    o_fragColor = texColor * vec4(1.0f, 1.0f, 1.0f, v_alpha);
-}
-)";
-
-    bool Renderer::init(MemArena* const memArena) {
+    bool Renderer::init(MemArena* const memArena, const int surfCnt, const int batchCnt) {
         assert(is_zero(this));
+        assert(surfCnt >= 0);
+        assert(batchCnt > 0);
 
         //
         // Surfaces
         //
-        if (!m_surfs.init(memArena, gk_renderSurfaceLimit)) {
-            return false;
+        if (surfCnt > 0) {
+            if (!m_surfs.init(memArena, surfCnt)) {
+                return false;
+            }
+
+            for (int i = 0; i < surfCnt; ++i) {
+                if (!init_surface(&m_surfs[i])) {
+                    return false;
+                }
+            }
+
+            // NOTE: The below can exist for the lifetime of the game, so why regenerate it every scene?
+            glGenVertexArrays(1, &m_surfVertArrayGLID);
+            glBindVertexArray(m_surfVertArrayGLID);
+
+            glGenBuffers(1, &m_surfVertBufGLID);
+            glBindBuffer(GL_ARRAY_BUFFER, m_surfVertBufGLID);
+
+            {
+                const float verts[] = {
+                    -1.0f, -1.0f, 0.0f, 0.0f,
+                    1.0f, -1.0f, 1.0f, 0.0f,
+                    1.0f, 1.0f, 1.0f, 1.0f,
+                    -1.0f, 1.0f, 0.0f, 1.0f
+                };
+
+                glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+            }
+
+            glGenBuffers(1, &m_surfElemBufGLID);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
+
+            {
+                const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+            }
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 0));
+
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 2));
+            glEnableVertexAttribArray(1);
+
+            glBindVertexArray(0);
         }
-
-        glGenVertexArrays(1, &m_surfVertArrayGLID);
-        glBindVertexArray(m_surfVertArrayGLID);
-
-        glGenBuffers(1, &m_surfVertBufGLID);
-        glBindBuffer(GL_ARRAY_BUFFER, m_surfVertBufGLID);
-
-        {
-            const float verts[] = {
-                -1.0f, -1.0f, 0.0f, 0.0f,
-                1.0f, -1.0f, 1.0f, 0.0f,
-                1.0f, 1.0f, 1.0f, 1.0f,
-                -1.0f, 1.0f, 0.0f, 1.0f
-            };
-
-            glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
-        }
-
-        glGenBuffers(1, &m_surfElemBufGLID);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
-
-        {
-            const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-        }
-
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 0));
-
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 2));
-        glEnableVertexAttribArray(1);
-
-        glBindVertexArray(0);
 
         //
         // Batches
         //
+        m_batchCnt = batchCnt;
 
         // Reserve memory for batch data.
-        m_batchPermDatas = memArena->push<RenderBatchPermData>(gk_renderBatchLimit);
+        m_batchPermDatas = memArena->push<RenderBatchPermData>(batchCnt);
 
         if (!m_batchPermDatas) {
             return false;
         }
 
-        m_batchTransDatas = memArena->push<RenderBatchTransientData>(gk_renderBatchLimit);
+        m_batchTransDatas = memArena->push<RenderBatchTransientData>(batchCnt);
 
         if (!m_batchTransDatas) {
             return false;
@@ -137,7 +94,7 @@ void main()
         }
 
         // Initialise batches.
-        for (int i = 0; i < gk_renderBatchLimit; ++i) {
+        for (int i = 0; i < batchCnt; ++i) {
             RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
 
             // Generate vertex array.
@@ -199,7 +156,7 @@ void main()
     }
 
     void Renderer::clean() {
-        for (int i = 0; i < gk_renderBatchLimit; ++i) {
+        for (int i = 0; i < m_batchCnt; ++i) {
             glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
             glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
             glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
@@ -217,9 +174,9 @@ void main()
         zero_out(this);
     }
 
-    void Renderer::render(const Vec3D& bgColor, const InternalShaderProgs& internalShaderProgs) {
-        // Set the background.
-        glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.0f);
+    void Renderer::render(const InternalShaderProgs& internalShaderProgs) {
+        // Set the background to black.
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Iterate through and execute render instructions.
@@ -295,48 +252,23 @@ void main()
         glBindFramebuffer(GL_FRAMEBUFFER, 0); // TEMP?
     }
 
-    bool Renderer::add_surface() {
-        RenderSurface surf = {};
-
-        glGenFramebuffers(1, &surf.framebufferGLID);
-
-        glGenTextures(1, &surf.framebufferTexGLID);
-        glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, surf.framebufferGLID);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surf.framebufferTexGLID, 0);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            return false;
-        }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        m_surfs.add(surf);
-
-        return true;
-    }
-
-    void Renderer::begin_writeup() {
+    void Renderer::begin_draw() {
         assert(m_initialized);
-        assert(!m_inWriteup);
+        assert(!m_drawActive);
 
         zero_out(m_batchTransDatas, m_batchWriteIndex + 1);
         m_batchWriteIndex = 0;
 
         m_renderInstrs.clear();
 
-        m_inWriteup = true;
+        m_drawActive = true;
     }
 
-    void Renderer::end_writeup() {
+    void Renderer::end_draw() {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
-        // Submit vertex data to GPU.
+        // Submit render batch vertex data to the GPU.
         for (int i = 0; i <= m_batchWriteIndex; ++i) {
             const RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
             const RenderBatchTransientData* const batchTransData = &m_batchTransDatas[i];
@@ -346,12 +278,12 @@ void main()
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData->verts), batchTransData->verts);
         }
 
-        m_inWriteup = false;
+        m_drawActive = false;
     }
 
     void Renderer::clear(const Vec4D& color) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
         if (!m_renderInstrs.is_full()) {
             RenderInstr instr = {
@@ -366,9 +298,9 @@ void main()
 
     void Renderer::set_view_matrix(const Matrix4x4& mat) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
             RenderInstr instr = {
                 .type = RenderInstrType::SetViewMatrix
             };
@@ -380,9 +312,9 @@ void main()
         }
     }
 
-    void Renderer::write_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
+    void Renderer::draw_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
         const Vec2DI texSize = AssetManager::get_tex_size(texIndex);
         const Rect texCoords = {
@@ -394,9 +326,9 @@ void main()
         write(origin, scale, pos, get_rect_size(srcRect), rot, AssetManager::get_tex_gl_id(texIndex), texCoords, alpha);
     }
 
-    void Renderer::write_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
+    void Renderer::draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
         const int strLen = static_cast<int>(strlen(str));
         assert(strLen > 0);
@@ -474,7 +406,7 @@ void main()
 
         // Write the characters.
         const int strHeight = strFirstLineMinOffs + charDrawPosPen.y + strLastLineMaxHeight;
-        
+
         const GLuint fontTexGLID = AssetManager::get_font_tex_gl_id(fontIndex);
         const Vec2DI fontTexSize = AssetManager::get_font_tex_size(fontIndex);
 
@@ -512,10 +444,10 @@ void main()
 
     void Renderer::set_surface(const int index) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
         assert(index >= 0 && index < m_surfs.get_len());
 
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
             RenderInstr instr = {
                 .type = RenderInstrType::SetSurface
             };
@@ -529,9 +461,9 @@ void main()
 
     void Renderer::unset_surface() {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < gk_renderBatchLimit - 1) {
+        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
             m_renderInstrs.add({.type = RenderInstrType::UnsetSurface});
             ++m_batchWriteIndex;
         } else {
@@ -541,7 +473,7 @@ void main()
 
     void Renderer::draw_surface(const int surfIndex, const int shaderProgIndex) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
         if (!m_renderInstrs.is_full()) {
             RenderInstr instr = {
@@ -550,11 +482,34 @@ void main()
 
             instr.data.drawSurfaceData.surfIndex = surfIndex;
             instr.data.drawSurfaceData.shaderProgIndex = shaderProgIndex;
-            
+
             m_renderInstrs.add(instr);
         } else {
             assert(false);
         }
+    }
+
+    bool Renderer::init_surface(RenderSurface* const surf) {
+        assert(is_zero(surf));
+
+        glGenFramebuffers(1, &surf->framebufferGLID);
+
+        glGenTextures(1, &surf->framebufferTexGLID);
+        glBindTexture(GL_TEXTURE_2D, surf->framebufferTexGLID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, surf->framebufferGLID);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surf->framebufferTexGLID, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            return false;
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        return true;
     }
 
     int Renderer::add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {
@@ -577,7 +532,7 @@ void main()
 
     void Renderer::write(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
         assert(m_initialized);
-        assert(m_inWriteup);
+        assert(m_drawActive);
 
         RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchWriteIndex];
 
@@ -585,7 +540,7 @@ void main()
         int texUnit;
 
         if (batchTransData->slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_batch(batchTransData, texGLID)) == -1) {
-            if (m_batchWriteIndex < gk_renderBatchLimit - 1) {
+            if (m_batchWriteIndex < m_batchCnt - 1) {
                 // Move to a new batch.
                 ++m_batchWriteIndex;
 

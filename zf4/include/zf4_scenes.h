@@ -1,8 +1,9 @@
 #pragma once
 
 #include <zf4c.h>
-#include <zf4_renderer.h>
 #include <zf4_ecs.h>
+#include <zf4_renderer.h>
+#include <zf4_audio.h>
 
 namespace zf4 {
     constexpr int gk_sceneScratchSpaceSize = megabytes_to_bytes(2);
@@ -13,13 +14,16 @@ namespace zf4 {
         MemArena memArena;
         MemArena scratchSpace;
 
+        Renderer renderer;
+
         EntityManager entManager;
 
         void* userData;
     };
 
     struct GamePtrs {
-        Renderer* renderer;
+        SoundSrcManager* soundSrcManager;
+        MusicSrcManager* musicSrcManager;
     };
 
     using SceneInit = bool (*)(Scene* const scene, const GamePtrs& gamePtrs);
@@ -28,7 +32,8 @@ namespace zf4 {
     struct SceneTypeInfo {
         int memArenaSize;
 
-        Vec3D bgColor;
+        int renderSurfCnt;
+        int renderBatchCnt;
 
         int entLimit;
         ComponentTypeLimitLoader compTypeLimitLoader;

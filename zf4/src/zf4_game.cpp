@@ -13,20 +13,12 @@ namespace zf4 {
 
     struct Game {
         MemArena memArena;
-
         InternalShaderProgs internalShaderProgs;
-
-        Renderer renderer;
-
         SoundSrcManager sndSrcManager;
-
         MusicSrcManager musicSrcManager;
-
         Array<Sprite> sprites;
-
-        Scene scene;
-
         Array<SceneTypeInfo> sceneTypeInfos;
+        Scene scene;
     };
 
     Game i_game;
@@ -39,7 +31,7 @@ namespace zf4 {
         //
         log("Initialising...");
 
-        if (!i_game.memArena.init(megabytes_to_bytes(256))) {
+        if (!i_game.memArena.init(megabytes_to_bytes(4))) {
             log_error("Failed to initialise the memory arena!");
             return;
         }
@@ -71,11 +63,6 @@ namespace zf4 {
 
         i_game.internalShaderProgs = load_internal_shader_progs();
 
-        if (!i_game.renderer.init(&i_game.memArena)) {
-            log_error("Failed to initialise the renderer!");
-            return;
-        }
-
         if (!userInfo->spritesLoader(&i_game.sprites, &i_game.memArena)) {
             log_error("Failed to load sprites!");
             return;
@@ -91,7 +78,10 @@ namespace zf4 {
 
         init_rng();
 
-        const GamePtrs gamePtrs = {&i_game.renderer}; // TEMP
+        const GamePtrs gamePtrs = {
+            .soundSrcManager = &i_game.sndSrcManager,
+            .musicSrcManager = &i_game.musicSrcManager
+        };
 
         if (!load_scene(&i_game.scene, 0, i_game.sceneTypeInfos, gamePtrs)) { // We begin with the first scene.
             return;
@@ -116,8 +106,6 @@ namespace zf4 {
 
             if (frameDurAccum >= ik_targTickDur) {
                 do {
-                    i_game.renderer.begin_writeup();
-
                     handle_auto_release_sound_srcs(&i_game.sndSrcManager);
 
                     if (!refresh_music_src_bufs(&i_game.musicSrcManager)) {
@@ -128,16 +116,13 @@ namespace zf4 {
                         return;
                     }
 
-                    i_game.renderer.end_writeup();
-
                     frameDurAccum -= ik_targTickDur;
                 } while (frameDurAccum >= ik_targTickDur);
 
                 save_input_state();
             }
 
-            const SceneTypeInfo* const sceneTypeInfo = &i_game.sceneTypeInfos[i_game.scene.typeIndex];
-            i_game.renderer.render(sceneTypeInfo->bgColor, i_game.internalShaderProgs);
+            i_game.scene.renderer.render(i_game.internalShaderProgs);
             swap_window_buffers();
 
             glfwPollEvents();
@@ -153,7 +138,6 @@ namespace zf4 {
         unload_component_types();
         clean_music_srcs(&i_game.musicSrcManager);
         clean_sound_srcs(&i_game.sndSrcManager);
-        i_game.renderer.clean();
         AssetManager::unload();
         clean_audio_system();
         clean_window();
