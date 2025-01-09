@@ -108,15 +108,15 @@ namespace zf4 {
     };
 
     enum StrHorAlign {
-        STR_HOR_ALIGN_LEFT,
-        STR_HOR_ALIGN_CENTER,
-        STR_HOR_ALIGN_RIGHT
+        StrHorAlign_Left,
+        StrHorAlign_Center,
+        StrHorAlign_Right
     };
 
     enum StrVerAlign {
-        STR_VER_ALIGN_TOP,
-        STR_VER_ALIGN_CENTER,
-        STR_VER_ALIGN_BOTTOM
+        StrVerAlign_Top,
+        StrVerAlign_Center,
+        StrVerAlign_Bottom
     };
 
     class Renderer {
@@ -135,7 +135,7 @@ namespace zf4 {
         void clear(const Vec4D& color = {});
         void set_view_matrix(const Matrix4x4& mat);
         void draw_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
-        void draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::STR_HOR_ALIGN_CENTER, const StrVerAlign verAlign = zf4::StrVerAlign::STR_VER_ALIGN_CENTER);
+        void draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::StrHorAlign_Center, const StrVerAlign verAlign = zf4::StrVerAlign::StrVerAlign_Center);
         void set_surface(const int index);
         void unset_surface();
         void set_surface_shader_prog(const int progIndex);
