@@ -41,7 +41,7 @@ namespace zf4 {
             return;
         }
 
-        if (!init_window(userInfo->windowInitWidth, userInfo->windowInitHeight, userInfo->windowTitle, userInfo->windowResizable, userInfo->windowHideCursor)) {
+        if (!Window::init(userInfo->windowInitWidth, userInfo->windowInitHeight, userInfo->windowTitle, userInfo->windowResizable, userInfo->windowHideCursor)) {
             return;
         }
 
@@ -87,7 +87,7 @@ namespace zf4 {
             return;
         }
 
-        show_window();
+        Window::show();
 
         //
         // Main Loop
@@ -97,7 +97,7 @@ namespace zf4 {
 
         log("Entering the main loop...");
 
-        while (!window_should_close()) {
+        while (!Window::should_close()) {
             const double frameTimeLast = frameTime;
             frameTime = glfwGetTime();
 
@@ -119,11 +119,11 @@ namespace zf4 {
                     frameDurAccum -= ik_targTickDur;
                 } while (frameDurAccum >= ik_targTickDur);
 
-                save_input_state();
+                Window::save_input_state();
             }
 
             i_game.scene.renderer.render(i_game.internalShaderProgs);
-            swap_window_buffers();
+            Window::swap_buffers();
 
             glfwPollEvents();
         }
@@ -140,7 +140,7 @@ namespace zf4 {
         clean_sound_srcs(&i_game.sndSrcManager);
         AssetManager::unload();
         clean_audio_system();
-        clean_window();
+        Window::clean();
         glfwTerminate();
         i_game.memArena.clean();
 

@@ -1,7 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <GLFW/glfw3.h>
-#include <zf4c_math.h>
+#include <zf4c.h>
 
 namespace zf4 {
     enum KeyCode {
@@ -86,28 +87,95 @@ namespace zf4 {
         NUM_MOUSE_BUTTON_CODES
     };
 
-    //
-    // State
-    //
-    bool init_window(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
-    void clean_window();
-    Vec2DI get_window_size();
-    void show_window();
-    bool window_should_close();
-    void swap_window_buffers();
+    using KeysDownBitset = unsigned long long;
+    using MouseButtonsDownBitset = unsigned char;
 
-    void save_input_state();
-    bool is_key_down(const KeyCode keyCode);
-    bool is_key_pressed(const KeyCode keyCode);
-    bool is_key_released(const KeyCode keyCode);
-    bool is_mouse_button_down(const MouseButtonCode buttonCode);
-    bool is_mouse_button_pressed(const MouseButtonCode buttonCode);
-    bool is_mouse_button_released(const MouseButtonCode buttonCode);
-    Vec2D get_mouse_pos();
+    struct InputState {
+        KeysDownBitset keysDown;
+        MouseButtonsDownBitset mouseButtonsDown;
+        Vec2D mousePos;
+    };
 
-    //
-    // Logic
-    //
-    KeyCode conv_glfw_key_code(const int keyCode);
-    MouseButtonCode conv_glfw_mouse_button_code(const int buttonCode);
+    class Window {
+    public:
+        static bool init(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
+        static void clean();
+
+        static Vec2DI get_size() {
+            assert(s_glfwWindow);
+            return s_windowSize;
+        }
+
+        static void show() {
+            assert(s_glfwWindow);
+            glfwShowWindow(s_glfwWindow);
+        }
+
+        static bool should_close() {
+            assert(s_glfwWindow);
+            return glfwWindowShouldClose(s_glfwWindow);
+        }
+
+        static void swap_buffers() {
+            assert(s_glfwWindow);
+            glfwSwapBuffers(s_glfwWindow);
+        }
+
+        static void save_input_state() {
+            assert(s_glfwWindow);
+            s_inputStateSaved = s_inputState;
+        }
+
+        static bool is_key_down(const KeyCode keyCode) {
+            assert(s_glfwWindow);
+            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+            return s_inputState.keysDown & keyBit;
+        }
+
+        static bool is_key_pressed(const KeyCode keyCode) {
+            assert(s_glfwWindow);
+            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+            return (s_inputState.keysDown & keyBit) && !(s_inputStateSaved.keysDown & keyBit);
+        }
+
+        static bool is_key_released(const KeyCode keyCode) {
+            assert(s_glfwWindow);
+            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+            return !(s_inputState.keysDown & keyBit) && (s_inputStateSaved.keysDown & keyBit);
+        }
+
+        static bool is_mouse_button_down(const MouseButtonCode buttonCode) {
+            assert(s_glfwWindow);
+            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+            return s_inputState.mouseButtonsDown & buttonBit;
+        }
+
+        static bool is_mouse_button_pressed(const MouseButtonCode buttonCode) {
+            assert(s_glfwWindow);
+            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+            return (s_inputState.mouseButtonsDown & buttonBit) && !(s_inputStateSaved.mouseButtonsDown & buttonBit);
+        }
+
+        static bool is_mouse_button_released(const MouseButtonCode buttonCode) {
+            assert(s_glfwWindow);
+            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+            return !(s_inputState.mouseButtonsDown & buttonBit) && (s_inputStateSaved.mouseButtonsDown & buttonBit);
+        }
+
+        static Vec2D get_mouse_pos() {
+            assert(s_glfwWindow);
+            return s_inputState.mousePos;
+        }
+
+    private:
+        static inline GLFWwindow* s_glfwWindow;
+        static inline Vec2DI s_windowSize;
+        static inline InputState s_inputState;
+        static inline InputState s_inputStateSaved;
+
+        static void glfw_window_size_callback(GLFWwindow* const window, const int width, const int height);
+        static void glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods);
+        static void glfw_mouse_button_callback(GLFWwindow* const window, const int button, const int action, const int mods);
+        static void glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y);
+    };
 }

@@ -108,13 +108,13 @@ namespace zf4 {
         }
 
     private:
-        inline static bool s_loaded;
+        static inline bool s_loaded;
 
-        inline static Textures s_textures;
-        inline static Fonts s_fonts;
-        inline static ShaderProgs s_shaderProgs;
-        inline static Sounds s_sounds;
-        inline static Music s_music;
+        static inline Textures s_textures;
+        static inline Fonts s_fonts;
+        static inline ShaderProgs s_shaderProgs;
+        static inline Sounds s_sounds;
+        static inline Music s_music;
     };
 
     struct TexturedQuadShaderProg {

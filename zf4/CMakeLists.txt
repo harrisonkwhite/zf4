@@ -7,8 +7,7 @@ find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
     src/zf4_game.cpp
-    src/zf4_window_state.cpp
-    src/zf4_window_logic.cpp
+    src/zf4_window.cpp
     src/zf4_assets.cpp
     src/zf4_renderer.cpp
     src/zf4_sprites.cpp

@@ -1,7 +1,7 @@
 #include <zf4_window.h>
 
 namespace zf4 {
-    KeyCode conv_glfw_key_code(const int keyCode) {
+    static KeyCode conv_glfw_key_code(const int keyCode) {
         switch (keyCode) {
             case GLFW_KEY_SPACE: return KEY_SPACE;
 
@@ -73,7 +73,7 @@ namespace zf4 {
         }
     }
 
-    MouseButtonCode conv_glfw_mouse_button_code(const int buttonCode) {
+    static MouseButtonCode conv_glfw_mouse_button_code(const int buttonCode) {
         switch (buttonCode) {
             case GLFW_MOUSE_BUTTON_LEFT: return MOUSE_BUTTON_LEFT;
             case GLFW_MOUSE_BUTTON_RIGHT: return MOUSE_BUTTON_RIGHT;
@@ -81,5 +81,82 @@ namespace zf4 {
 
             default: return UNDEFINED_MOUSE_BUTTON_CODE;
         }
+    }
+
+    bool Window::init(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor) {
+        assert(!s_glfwWindow);
+        assert(width > 0 && height > 0);
+        assert(title && title[0]);
+
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_RESIZABLE, resizable);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+        s_glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+
+        if (!s_glfwWindow) {
+            log_error("Failed to create GLFW window!");
+            return false;
+        }
+
+        glfwMakeContextCurrent(s_glfwWindow);
+
+        glfwSetWindowSizeCallback(s_glfwWindow, glfw_window_size_callback);
+        glfwSetKeyCallback(s_glfwWindow, glfw_key_callback);
+        glfwSetMouseButtonCallback(s_glfwWindow, glfw_mouse_button_callback);
+        glfwSetCursorPosCallback(s_glfwWindow, glfw_cursor_pos_callback);
+
+        glfwSetInputMode(s_glfwWindow, GLFW_CURSOR, hideCursor ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+
+        glfwGetWindowSize(s_glfwWindow, &s_windowSize.x, &s_windowSize.y);
+
+        return true;
+    }
+
+    void Window::clean() {
+        if (s_glfwWindow) {
+            glfwDestroyWindow(s_glfwWindow);
+            s_glfwWindow = nullptr;
+        }
+    }
+
+    void Window::glfw_window_size_callback(GLFWwindow* const window, const int width, const int height) {
+        s_windowSize.x = width;
+        s_windowSize.y = height;
+    }
+
+    void Window::glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods) {
+        const KeyCode keyCode = conv_glfw_key_code(key);
+
+        if (keyCode != UNDEFINED_KEY_CODE) {
+            const KeysDownBitset keyBit = (KeysDownBitset)1 << keyCode;
+
+            if (action == GLFW_PRESS) {
+                s_inputState.keysDown |= keyBit;
+            } else if (action == GLFW_RELEASE) {
+                s_inputState.keysDown &= ~keyBit;
+            }
+        }
+    }
+
+    void Window::glfw_mouse_button_callback(GLFWwindow* const window, const int button, const int action, const int mods) {
+        const MouseButtonCode buttonCode = conv_glfw_mouse_button_code(button);
+
+        if (buttonCode != UNDEFINED_MOUSE_BUTTON_CODE) {
+            const MouseButtonsDownBitset buttonBit = (MouseButtonsDownBitset)1 << buttonCode;
+
+            if (action == GLFW_PRESS) {
+                s_inputState.mouseButtonsDown |= buttonBit;
+            } else if (action == GLFW_RELEASE) {
+                s_inputState.mouseButtonsDown &= ~buttonBit;
+            }
+        }
+    }
+
+    void Window::glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y) {
+        s_inputState.mousePos.x = (float)x;
+        s_inputState.mousePos.y = (float)y;
     }
 }

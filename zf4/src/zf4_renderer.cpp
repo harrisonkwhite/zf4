@@ -204,7 +204,7 @@ namespace zf4 {
                         // NOTE: At the moment we do a full reset of the context for each batch. Will optimise this later.
                         glUseProgram(internalShaderProgs.texturedQuad.glID);
 
-                        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(get_window_size().x), static_cast<float>(get_window_size().y), 0.0f, -1.0f, 1.0f);
+                        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(Window::get_size().x), static_cast<float>(Window::get_size().y), 0.0f, -1.0f, 1.0f);
                         glUniformMatrix4fv(internalShaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
 
                         glUniformMatrix4fv(internalShaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
@@ -577,7 +577,7 @@ namespace zf4 {
 
         glGenTextures(1, &surf->framebufferTexGLID);
         glBindTexture(GL_TEXTURE_2D, surf->framebufferTexGLID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_window_size().x, get_window_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Window::get_size().x, Window::get_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
