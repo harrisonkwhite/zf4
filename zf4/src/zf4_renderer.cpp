@@ -231,13 +231,58 @@ namespace zf4 {
                     glBindFramebuffer(GL_FRAMEBUFFER, 0);
                     break;
 
+                case RenderInstrType::SetSurfaceShaderProg:
+                    {
+                        const GLuint progGLID = AssetManager::get_shader_prog_gl_id(instr.data.setSurfaceShaderProgData.progIndex);
+                        glUseProgram(progGLID);
+                    }
+
+                    break;
+
+                case RenderInstrType::SetSurfaceShaderProgUniform:
+                    {
+                        GLint progGLIDSigned;
+                        glGetIntegerv(GL_CURRENT_PROGRAM, &progGLIDSigned);
+                        const auto progGLID = static_cast<GLuint>(progGLIDSigned);
+
+                        const int uniformLoc = glGetUniformLocation(progGLID, instr.data.setSurfaceShaderProgUniformData.name);
+                        const ShaderUniformVal uniformVal = instr.data.setSurfaceShaderProgUniformData.val;
+
+                        switch (instr.data.setSurfaceShaderProgUniformData.valType) {
+                            case ShaderUniformValType::Float:
+                                glUniform1f(uniformLoc, uniformVal.floatVal);
+                                break;
+
+                            case ShaderUniformValType::Int:
+                                glUniform1i(uniformLoc, uniformVal.intVal);
+                                break;
+
+                            case ShaderUniformValType::Vec2D:
+                                glUniform2fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec2DVal));
+                                break;
+
+                            case ShaderUniformValType::Vec3D:
+                                glUniform3fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec3DVal));
+                                break;
+
+                            case ShaderUniformValType::Vec4D:
+                                glUniform4fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec4DVal));
+                                break;
+
+                            case ShaderUniformValType::Matrix4x4:
+                                glUniformMatrix4fv(uniformLoc, 1, false, reinterpret_cast<const float*>(&uniformVal.mat4x4Val));
+                                break;
+                        }
+                    }
+
+                    break;
+
                 case RenderInstrType::DrawSurface:
                     {
-                        const GLuint progGLID = AssetManager::get_shader_prog_gl_id(instr.data.drawSurfaceData.shaderProgIndex);
-                        glUseProgram(progGLID);
+                        // TODO: Check that a shader program has been set?
 
                         glActiveTexture(GL_TEXTURE0);
-                        const RenderSurface& surf = m_surfs[instr.data.drawSurfaceData.surfIndex];
+                        const RenderSurface& surf = m_surfs[instr.data.drawSurfaceData.index];
                         glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
 
                         glBindVertexArray(m_surfVertArrayGLID);
@@ -471,7 +516,44 @@ namespace zf4 {
         }
     }
 
-    void Renderer::draw_surface(const int surfIndex, const int shaderProgIndex) {
+    void Renderer::set_surface_shader_prog(const int progIndex) {
+        assert(m_initialized);
+        assert(m_drawActive);
+
+        if (!m_renderInstrs.is_full()) {
+            RenderInstr instr = {
+                .type = RenderInstrType::SetSurfaceShaderProg
+            };
+
+            instr.data.setSurfaceShaderProgData.progIndex = progIndex;
+
+            m_renderInstrs.add(instr);
+        } else {
+            assert(false);
+        }
+    }
+
+    void Renderer::set_surface_shader_prog_uniform(const char* const name, const ShaderUniformVal val, const ShaderUniformValType valType) {
+        assert(m_initialized);
+        assert(m_drawActive);
+
+        if (!m_renderInstrs.is_full()) {
+            RenderInstr instr = {
+                .type = RenderInstrType::SetSurfaceShaderProgUniform
+            };
+
+            snprintf(instr.data.setSurfaceShaderProgUniformData.name, sizeof(instr.data.setSurfaceShaderProgUniformData.name), "%s", name);
+
+            instr.data.setSurfaceShaderProgUniformData.val = val;
+            instr.data.setSurfaceShaderProgUniformData.valType = valType;
+
+            m_renderInstrs.add(instr);
+        } else {
+            assert(false);
+        }
+    }
+
+    void Renderer::draw_surface(const int index) {
         assert(m_initialized);
         assert(m_drawActive);
 
@@ -480,8 +562,7 @@ namespace zf4 {
                 .type = RenderInstrType::DrawSurface
             };
 
-            instr.data.drawSurfaceData.surfIndex = surfIndex;
-            instr.data.drawSurfaceData.shaderProgIndex = shaderProgIndex;
+            instr.data.drawSurfaceData.index = index;
 
             m_renderInstrs.add(instr);
         } else {

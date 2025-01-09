@@ -10,6 +10,26 @@ namespace zf4 {
 
     constexpr int gk_texUnitLimit = 16;
 
+    constexpr int gk_uniformNameLenLimit = 63;
+
+    enum class ShaderUniformValType {
+        Float,
+        Int,
+        Vec2D,
+        Vec3D,
+        Vec4D,
+        Matrix4x4
+    };
+
+    union ShaderUniformVal {
+        float floatVal;
+        int intVal;
+        Vec2D vec2DVal;
+        Vec3D vec3DVal;
+        Vec4D vec4DVal;
+        Matrix4x4 mat4x4Val;
+    };
+
     struct RenderSurface {
         GLuint framebufferGLID;
         GLuint framebufferTexGLID;
@@ -36,36 +56,50 @@ namespace zf4 {
         DrawBatch,
         SetSurface,
         UnsetSurface,
+        SetSurfaceShaderProg,
+        SetSurfaceShaderProgUniform,
         DrawSurface
     };
 
-    struct ClearRenderInstrData {
+    struct RenderInstrData_Clear {
         Vec4D color;
     };
 
-    struct SetViewMatrixRenderInstrData {
+    struct RenderInstrData_SetViewMatrix {
         Matrix4x4 mat;
     };
 
-    struct DrawBatchRenderInstrData {
+    struct RenderInstrData_DrawBatch {
         int index;
     };
 
-    struct SetSurfaceRenderInstrData {
+    struct RenderInstrData_SetSurface {
         int index;
     };
 
-    struct DrawSurfaceRenderInstrData {
-        int surfIndex;
-        int shaderProgIndex;
+    struct RenderInstrData_SetSurfaceShaderProg {
+        int progIndex;
+    };
+
+    struct RenderInstrData_SetSurfaceShaderProgUniform {
+        char name[gk_uniformNameLenLimit + 1];
+
+        ShaderUniformVal val;
+        ShaderUniformValType valType;
+    };
+
+    struct RenderInstrData_DrawSurface {
+        int index;
     };
 
     union RenderInstrData {
-        ClearRenderInstrData clearData;
-        SetViewMatrixRenderInstrData setViewMatrixData;
-        DrawBatchRenderInstrData drawBatchData;
-        SetSurfaceRenderInstrData setSurfaceData;
-        DrawSurfaceRenderInstrData drawSurfaceData;
+        RenderInstrData_Clear clearData;
+        RenderInstrData_SetViewMatrix setViewMatrixData;
+        RenderInstrData_DrawBatch drawBatchData;
+        RenderInstrData_SetSurface setSurfaceData;
+        RenderInstrData_SetSurfaceShaderProg setSurfaceShaderProgData;
+        RenderInstrData_SetSurfaceShaderProgUniform setSurfaceShaderProgUniformData;
+        RenderInstrData_DrawSurface drawSurfaceData;
     };
 
     struct RenderInstr {
@@ -102,7 +136,9 @@ namespace zf4 {
         void draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::STR_HOR_ALIGN_CENTER, const StrVerAlign verAlign = zf4::StrVerAlign::STR_VER_ALIGN_CENTER);
         void set_surface(const int index);
         void unset_surface();
-        void draw_surface(const int index, const int shaderProgIndex);
+        void set_surface_shader_prog(const int progIndex);
+        void set_surface_shader_prog_uniform(const char* const name, const ShaderUniformVal val, const ShaderUniformValType valType); // NOTE: Could use templates here (as part of the public interface only) for extra safety.
+        void draw_surface(const int index);
 
     private:
         bool m_initialized;
