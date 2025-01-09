@@ -4,6 +4,9 @@
 #include <zf4_scenes.h>
 
 namespace zf4 {
+    constexpr int gk_glVersionMajor = 4;
+    constexpr int gk_glVersionMinor = 3;
+
     struct UserGameInfo {
         int windowInitWidth;
         int windowInitHeight;

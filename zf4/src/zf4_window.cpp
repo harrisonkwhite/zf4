@@ -1,5 +1,7 @@
 #include <zf4_window.h>
 
+#include <zf4_game.h>
+
 namespace zf4 {
     static KeyCode conv_glfw_key_code(const int keyCode) {
         switch (keyCode) {
@@ -88,8 +90,8 @@ namespace zf4 {
         assert(width > 0 && height > 0);
         assert(title && title[0]);
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gk_glVersionMajor);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gk_glVersionMinor);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, resizable);
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
