@@ -208,13 +208,23 @@ namespace zf4 {
         zero_out(this);
     }
 
-    void Renderer::render(const InternalShaderProgs& internalShaderProgs) {
+    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, MemArena* const scratchSpace) {
         // Set the background to black.
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Iterate through and execute render instructions.
         Matrix4x4 viewMat = Matrix4x4::create_identity();
+
+        Stack<int> surfIndexes = {}; // When a surface is set, its index is pushed onto this stack.
+                                     // When it is unset, the index is popped off, and the surface at the top becomes the current (not the default unless the stack is empty).
+                                     // This is done to simplify surface hierarchies.
+
+        if (m_surfs.get_len() > 0) {
+            if (!surfIndexes.init(scratchSpace, m_surfs.get_len())) {
+                return false;
+            }
+        }
 
         for (int i = 0; i < m_renderInstrs.get_len(); ++i) {
             const RenderInstr instr = m_renderInstrs[i];
@@ -259,10 +269,12 @@ namespace zf4 {
 
                 case RenderInstrType::SetSurface:
                     glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[instr.data.setSurfaceData.index].framebufferGLID);
+                    surfIndexes.push(instr.data.setSurfaceData.index);
                     break;
 
                 case RenderInstrType::UnsetSurface:
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                    surfIndexes.pop();
+                    glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[*surfIndexes.peek()].framebufferGLID);
                     break;
 
                 case RenderInstrType::SetSurfaceShaderProg:
@@ -326,6 +338,8 @@ namespace zf4 {
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0); // TEMP?
+
+        return true;
     }
 
     bool Renderer::resize_surfaces(const Vec2DI size) {
@@ -546,6 +560,7 @@ namespace zf4 {
             };
             instr.data.setSurfaceData.index = index;
             m_renderInstrs.add(instr);
+
             ++m_batchWriteIndex;
         } else {
             assert(false);
@@ -572,9 +587,7 @@ namespace zf4 {
             RenderInstr instr = {
                 .type = RenderInstrType::SetSurfaceShaderProg
             };
-
             instr.data.setSurfaceShaderProgData.progIndex = progIndex;
-
             m_renderInstrs.add(instr);
         } else {
             assert(false);
@@ -609,9 +622,7 @@ namespace zf4 {
             RenderInstr instr = {
                 .type = RenderInstrType::DrawSurface
             };
-
             instr.data.drawSurfaceData.index = index;
-
             m_renderInstrs.add(instr);
         } else {
             assert(false);

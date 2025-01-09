@@ -122,7 +122,10 @@ namespace zf4 {
                 Window::save_input_state();
             }
 
-            i_game.scene.renderer.render(i_game.internalShaderProgs);
+            if (!i_game.scene.renderer.render(i_game.internalShaderProgs, &i_game.scene.scratchSpace)) {
+                return;
+            }
+
             Window::swap_buffers();
 
             const zf4::Vec2DI windowSizePrepoll = Window::get_size();

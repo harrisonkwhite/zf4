@@ -42,6 +42,10 @@ namespace zf4 {
             return m_array.get_len();
         }
 
+        bool is_empty() const {
+            return m_len == 0;
+        }
+
         bool is_full() const {
             return m_len == m_array.get_len();
         }
@@ -108,6 +112,53 @@ namespace zf4 {
     };
 
     template<SimpleType T>
+    class Stack {
+    public:
+        bool init(MemArena* const memArena, const int lenLimit);
+        
+        int get_len() const {
+            return m_len;
+        }
+
+        int get_len_limit() const {
+            return m_array.get_len();
+        }
+
+        bool is_empty() const {
+            return m_len == 0;
+        }
+
+        bool is_full() const {
+            return m_len == m_array.get_len();
+        }
+
+        void push(const T& elem) {
+            assert(m_len < m_array.get_len());
+            m_array[m_len] = elem;
+            ++m_len;
+        }
+
+        void pop() {
+            assert(m_len > 0);
+            --m_len;
+        }
+
+        T* peek() {
+            assert(m_len > 0);
+            return &m_array[m_len - 1];
+        }
+
+        const T& peek() const {
+            assert(m_len > 0);
+            return m_array[m_len - 1];
+        }
+
+    private:
+        Array<T> m_array;
+        int m_len;
+    };
+
+    template<SimpleType T>
     inline bool Array<T>::init(MemArena* const memArena, const int len) {
         assert(is_zero(this));
         assert(len > 0);
@@ -153,6 +204,17 @@ namespace zf4 {
         }
 
         m_len = len;
+
+        return true;
+    }
+
+    template<SimpleType T>
+    inline bool Stack<T>::init(MemArena* const memArena, const int lenLimit) {
+        assert(is_zero(this));
+
+        if (!m_array.init(memArena, lenLimit)) {
+            return false;
+        }
 
         return true;
     }

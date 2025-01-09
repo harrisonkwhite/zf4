@@ -124,7 +124,7 @@ namespace zf4 {
         bool init(MemArena* const memArena, const int surfCnt, const int batchCnt);
         void clean();
 
-        void render(const InternalShaderProgs& internalShaderProgs);
+        bool render(const InternalShaderProgs& internalShaderProgs, MemArena* const scratchSpace);
 
         bool resize_surfaces(const Vec2DI size);
 
@@ -150,6 +150,7 @@ namespace zf4 {
         GLuint m_surfVertArrayGLID;
         GLuint m_surfVertBufGLID;
         GLuint m_surfElemBufGLID;
+        Stack<int> m_surfIndexes;
 
         int m_batchCnt;
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
