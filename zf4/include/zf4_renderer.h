@@ -126,6 +126,8 @@ namespace zf4 {
 
         void render(const InternalShaderProgs& internalShaderProgs);
 
+        bool resize_surfaces(const Vec2DI size);
+
         // The functions below do not actually perform the operations immediately.
         // They add appropriate instructions to the instruction list, which are executed during the game render phase (distinct from tick).
         void begin_draw();
@@ -158,7 +160,6 @@ namespace zf4 {
 
         List<RenderInstr> m_renderInstrs;
 
-        static bool init_surface(RenderSurface* const surf);
         static int add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID);
 
         void write(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha);

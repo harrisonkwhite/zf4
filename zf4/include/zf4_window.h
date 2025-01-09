@@ -103,7 +103,11 @@ namespace zf4 {
 
         static Vec2DI get_size() {
             assert(s_glfwWindow);
-            return s_windowSize;
+
+            Vec2DI size;
+            glfwGetWindowSize(s_glfwWindow, &size.x, &size.y);
+
+            return size;
         }
 
         static void show() {
@@ -169,11 +173,10 @@ namespace zf4 {
 
     private:
         static inline GLFWwindow* s_glfwWindow;
-        static inline Vec2DI s_windowSize;
+
         static inline InputState s_inputState;
         static inline InputState s_inputStateSaved;
 
-        static void glfw_window_size_callback(GLFWwindow* const window, const int width, const int height);
         static void glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods);
         static void glfw_mouse_button_callback(GLFWwindow* const window, const int button, const int action, const int mods);
         static void glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y);

@@ -103,14 +103,11 @@ namespace zf4 {
 
         glfwMakeContextCurrent(s_glfwWindow);
 
-        glfwSetWindowSizeCallback(s_glfwWindow, glfw_window_size_callback);
         glfwSetKeyCallback(s_glfwWindow, glfw_key_callback);
         glfwSetMouseButtonCallback(s_glfwWindow, glfw_mouse_button_callback);
         glfwSetCursorPosCallback(s_glfwWindow, glfw_cursor_pos_callback);
 
         glfwSetInputMode(s_glfwWindow, GLFW_CURSOR, hideCursor ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
-
-        glfwGetWindowSize(s_glfwWindow, &s_windowSize.x, &s_windowSize.y);
 
         return true;
     }
@@ -120,11 +117,6 @@ namespace zf4 {
             glfwDestroyWindow(s_glfwWindow);
             s_glfwWindow = nullptr;
         }
-    }
-
-    void Window::glfw_window_size_callback(GLFWwindow* const window, const int width, const int height) {
-        s_windowSize.x = width;
-        s_windowSize.y = height;
     }
 
     void Window::glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods) {

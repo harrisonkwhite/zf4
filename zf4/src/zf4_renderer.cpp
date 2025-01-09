@@ -5,6 +5,36 @@
 #include <zf4_assets.h>
 
 namespace zf4 {
+    static bool init_and_attach_framebuffer_tex(GLuint* const texGLID, const GLuint fbGLID, const Vec2DI texSize) {
+        assert(*texGLID == 0);
+
+        glGenTextures(1, texGLID);
+        glBindTexture(GL_TEXTURE_2D, *texGLID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSize.x, texSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbGLID);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texGLID, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glDeleteTextures(1, texGLID);
+            *texGLID = 0;
+            return false;
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        return true;
+    }
+
+    static inline GLuint get_active_shader_prog_gl_id() {
+        GLint progGLIDSigned;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &progGLIDSigned);
+        return static_cast<GLuint>(progGLIDSigned);
+    }
+
     bool Renderer::init(MemArena* const memArena, const int surfCnt, const int batchCnt) {
         assert(is_zero(this));
         assert(surfCnt >= 0);
@@ -19,7 +49,11 @@ namespace zf4 {
             }
 
             for (int i = 0; i < surfCnt; ++i) {
-                if (!init_surface(&m_surfs[i])) {
+                RenderSurface* const surf = &m_surfs[i];
+
+                glGenFramebuffers(1, &surf->framebufferGLID);
+
+                if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, Window::get_size())) {
                     return false;
                 }
             }
@@ -241,10 +275,7 @@ namespace zf4 {
 
                 case RenderInstrType::SetSurfaceShaderProgUniform:
                     {
-                        GLint progGLIDSigned;
-                        glGetIntegerv(GL_CURRENT_PROGRAM, &progGLIDSigned);
-                        const auto progGLID = static_cast<GLuint>(progGLIDSigned);
-
+                        const GLuint progGLID = get_active_shader_prog_gl_id();
                         const int uniformLoc = glGetUniformLocation(progGLID, instr.data.setSurfaceShaderProgUniformData.name);
                         const ShaderUniformVal uniformVal = instr.data.setSurfaceShaderProgUniformData.val;
 
@@ -295,6 +326,23 @@ namespace zf4 {
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0); // TEMP?
+    }
+
+    bool Renderer::resize_surfaces(const Vec2DI size) {
+        for (int i = 0; i < m_surfs.get_len(); ++i) {
+            RenderSurface* const surf = &m_surfs[i];
+
+            // Delete the old texture.
+            glDeleteTextures(1, &surf->framebufferTexGLID);
+            surf->framebufferTexGLID = 0;
+
+            // Generate a new texture of the desired size and attach it to the framebuffer.
+            if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void Renderer::begin_draw() {
@@ -568,29 +616,6 @@ namespace zf4 {
         } else {
             assert(false);
         }
-    }
-
-    bool Renderer::init_surface(RenderSurface* const surf) {
-        assert(is_zero(surf));
-
-        glGenFramebuffers(1, &surf->framebufferGLID);
-
-        glGenTextures(1, &surf->framebufferTexGLID);
-        glBindTexture(GL_TEXTURE_2D, surf->framebufferTexGLID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Window::get_size().x, Window::get_size().y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); // TODO: Handle resizing.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, surf->framebufferGLID);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, surf->framebufferTexGLID, 0);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            return false;
-        }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        return true;
     }
 
     int Renderer::add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {

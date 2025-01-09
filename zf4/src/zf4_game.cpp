@@ -125,7 +125,16 @@ namespace zf4 {
             i_game.scene.renderer.render(i_game.internalShaderProgs);
             Window::swap_buffers();
 
+            const zf4::Vec2DI windowSizePrepoll = Window::get_size();
+
             glfwPollEvents();
+
+            // Check for and process window resize.
+            if (Window::get_size().x != windowSizePrepoll.x || Window::get_size().y != windowSizePrepoll.y) {
+                log("Processing window resize...");
+                glViewport(0, 0, Window::get_size().x, Window::get_size().y);
+                i_game.scene.renderer.resize_surfaces(Window::get_size());
+            }
         }
     }
 
