@@ -5,6 +5,10 @@
 #include <zf4_assets.h>
 
 namespace zf4 {
+    static Vec2DI get_surface_targ_size() {
+        return Window::get_size();
+    }
+
     static bool init_and_attach_framebuffer_tex(GLuint* const texGLID, const GLuint fbGLID, const Vec2DI texSize) {
         assert(*texGLID == 0);
 
@@ -29,12 +33,6 @@ namespace zf4 {
         return true;
     }
 
-    static inline GLuint get_active_shader_prog_gl_id() {
-        GLint progGLIDSigned;
-        glGetIntegerv(GL_CURRENT_PROGRAM, &progGLIDSigned);
-        return static_cast<GLuint>(progGLIDSigned);
-    }
-
     bool Renderer::init(MemArena* const memArena, const int surfCnt, const int batchCnt) {
         assert(is_zero(this));
         assert(surfCnt >= 0);
@@ -53,7 +51,7 @@ namespace zf4 {
 
                 glGenFramebuffers(1, &surf->framebufferGLID);
 
-                if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, Window::get_size())) {
+                if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, get_surface_targ_size())) {
                     return false;
                 }
             }
@@ -111,20 +109,21 @@ namespace zf4 {
             return false;
         }
 
-        // Initialise indices.
-        const auto indices = alloc<unsigned short>(6 * gk_renderBatchSlotLimit);
+        // Initialise batch indices.
+        const int indicesLen = 6 * gk_renderBatchSlotLimit;
+        const auto indices = alloc<unsigned short>(indicesLen);
 
         if (!indices) {
             return false;
         }
 
         for (int i = 0; i < gk_renderBatchSlotLimit; i++) {
-            indices[(i * 6) + 0] = (i * 4) + 0;
-            indices[(i * 6) + 1] = (i * 4) + 1;
-            indices[(i * 6) + 2] = (i * 4) + 2;
-            indices[(i * 6) + 3] = (i * 4) + 2;
-            indices[(i * 6) + 4] = (i * 4) + 3;
-            indices[(i * 6) + 5] = (i * 4) + 0;
+            indices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
+            indices[(i * 6) + 1] = static_cast<unsigned short>((i * 4) + 1);
+            indices[(i * 6) + 2] = static_cast<unsigned short>((i * 4) + 2);
+            indices[(i * 6) + 3] = static_cast<unsigned short>((i * 4) + 2);
+            indices[(i * 6) + 4] = static_cast<unsigned short>((i * 4) + 3);
+            indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
         }
 
         // Initialise batches.
@@ -138,12 +137,12 @@ namespace zf4 {
             // Generate vertex buffer.
             glGenBuffers(1, &batchPermData->vertBufGLID);
             glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_texturedQuadShaderProgVertCnt * 4 * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
 
             // Generate element buffer.
             glGenBuffers(1, &batchPermData->elemBufGLID);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * 6 * gk_renderBatchSlotLimit, indices, GL_STATIC_DRAW);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, indices, GL_STATIC_DRAW);
 
             // Set vertex attribute pointers.
             const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
@@ -182,7 +181,9 @@ namespace zf4 {
         //
         // Instructions
         //
-        m_renderInstrs.init(memArena, 256); // TEMP
+        if (!m_renderInstrs.init(memArena, gk_renderInstrLimit)) {
+            return false;
+        }
 
         m_initialized = true;
 
@@ -209,16 +210,22 @@ namespace zf4 {
     }
 
     bool Renderer::render(const InternalShaderProgs& internalShaderProgs, MemArena* const scratchSpace) {
+        assert(m_initialized);
+        assert(!m_inSubmissionPhase);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
         // Set the background to black.
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Iterate through and execute render instructions.
-        Matrix4x4 viewMat = Matrix4x4::create_identity();
+        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(Window::get_size().x), static_cast<float>(Window::get_size().y), 0.0f, -1.0f, 1.0f);
+        Matrix4x4 viewMat = Matrix4x4::create_identity(); // Whenever we draw a batch, the shader view matrix uniform is assigned to whatever this is.
 
-        Stack<int> surfIndexes = {}; // When a surface is set, its index is pushed onto this stack.
-                                     // When it is unset, the index is popped off, and the surface at the top becomes the current (not the default unless the stack is empty).
-                                     // This is done to simplify surface hierarchies.
+        GLuint surfShaderProgGLID = 0;
+
+        Stack<int> surfIndexes = {};
 
         if (m_surfs.get_len() > 0) {
             if (!surfIndexes.init(scratchSpace, m_surfs.get_len())) {
@@ -231,26 +238,23 @@ namespace zf4 {
 
             switch (instr.type) {
                 case RenderInstrType::Clear:
-                    glClearColor(instr.data.clearData.color.x, instr.data.clearData.color.y, instr.data.clearData.color.z, instr.data.clearData.color.w);
+                    glClearColor(instr.data.clear.color.x, instr.data.clear.color.y, instr.data.clear.color.z, instr.data.clear.color.w);
                     glClear(GL_COLOR_BUFFER_BIT);
                     break;
 
                 case RenderInstrType::SetViewMatrix:
-                    viewMat = instr.data.setViewMatrixData.mat;
+                    viewMat = instr.data.setViewMatrix.mat;
                     break;
 
                 case RenderInstrType::DrawBatch:
                     {
-                        const int batchIndex = instr.data.drawBatchData.index;
+                        const int batchIndex = instr.data.drawBatch.index;
                         const RenderBatchTransientData& batchTransData = m_batchTransDatas[batchIndex];
                         const RenderBatchPermData& batchPermData = m_batchPermDatas[batchIndex];
 
-                        // NOTE: At the moment we do a full reset of the context for each batch. Will optimise this later.
                         glUseProgram(internalShaderProgs.texturedQuad.glID);
 
-                        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(Window::get_size().x), static_cast<float>(Window::get_size().y), 0.0f, -1.0f, 1.0f);
                         glUniformMatrix4fv(internalShaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
-
                         glUniformMatrix4fv(internalShaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
 
                         glUniform1iv(internalShaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
@@ -268,8 +272,8 @@ namespace zf4 {
                     break;
 
                 case RenderInstrType::SetSurface:
-                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[instr.data.setSurfaceData.index].framebufferGLID);
-                    surfIndexes.push(instr.data.setSurfaceData.index);
+                    surfIndexes.push(instr.data.setSurface.index);
+                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[*surfIndexes.peek()].framebufferGLID);
                     break;
 
                 case RenderInstrType::UnsetSurface:
@@ -277,21 +281,22 @@ namespace zf4 {
                     glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[*surfIndexes.peek()].framebufferGLID);
                     break;
 
-                case RenderInstrType::SetSurfaceShaderProg:
-                    {
-                        const GLuint progGLID = AssetManager::get_shader_prog_gl_id(instr.data.setSurfaceShaderProgData.progIndex);
-                        glUseProgram(progGLID);
-                    }
-
+                case RenderInstrType::SetDrawSurfaceShaderProg:
+                    surfShaderProgGLID = AssetManager::get_shader_prog_gl_id(instr.data.setDrawSurfaceShaderProg.progIndex);
                     break;
 
-                case RenderInstrType::SetSurfaceShaderProgUniform:
+                case RenderInstrType::SetDrawSurfaceShaderUniform:
                     {
-                        const GLuint progGLID = get_active_shader_prog_gl_id();
-                        const int uniformLoc = glGetUniformLocation(progGLID, instr.data.setSurfaceShaderProgUniformData.name);
-                        const ShaderUniformVal uniformVal = instr.data.setSurfaceShaderProgUniformData.val;
+                        assert(surfShaderProgGLID); // Make sure the surface shader program has been set prior to this instruction.
 
-                        switch (instr.data.setSurfaceShaderProgUniformData.valType) {
+                        glUseProgram(surfShaderProgGLID);
+
+                        const int uniformLoc = glGetUniformLocation(surfShaderProgGLID, instr.data.setDrawSurfaceShaderUniform.name);
+                        assert(uniformLoc != -1 && "Could not find the surface shader uniform with the given name!");
+
+                        const ShaderUniformVal uniformVal = instr.data.setDrawSurfaceShaderUniform.val;
+
+                        switch (instr.data.setDrawSurfaceShaderUniform.valType) {
                             case ShaderUniformValType::Float:
                                 glUniform1f(uniformLoc, uniformVal.floatVal);
                                 break;
@@ -322,27 +327,29 @@ namespace zf4 {
 
                 case RenderInstrType::DrawSurface:
                     {
-                        // TODO: Check that a shader program has been set?
+                        assert(surfShaderProgGLID); // Make sure the surface shader program has been set prior to this instruction.
+
+                        glUseProgram(surfShaderProgGLID);
 
                         glActiveTexture(GL_TEXTURE0);
-                        const RenderSurface& surf = m_surfs[instr.data.drawSurfaceData.index];
+                        const RenderSurface& surf = m_surfs[instr.data.drawSurface.index];
                         glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
 
                         glBindVertexArray(m_surfVertArrayGLID);
                         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
                         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+
+                        surfShaderProgGLID = 0; // Reset the surface shader program.
                     }
 
                     break;
             }
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0); // TEMP?
-
         return true;
     }
 
-    bool Renderer::resize_surfaces(const Vec2DI size) {
+    bool Renderer::resize_surfaces() {
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             RenderSurface* const surf = &m_surfs[i];
 
@@ -351,7 +358,7 @@ namespace zf4 {
             surf->framebufferTexGLID = 0;
 
             // Generate a new texture of the desired size and attach it to the framebuffer.
-            if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
+            if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, get_surface_targ_size())) {
                 return false;
             }
         }
@@ -359,24 +366,25 @@ namespace zf4 {
         return true;
     }
 
-    void Renderer::begin_draw() {
+    void Renderer::begin_submission_phase() {
         assert(m_initialized);
-        assert(!m_drawActive);
+        assert(!m_inSubmissionPhase);
 
-        zero_out(m_batchTransDatas, m_batchWriteIndex + 1);
-        m_batchWriteIndex = 0;
+        zero_out(m_batchTransDatas, m_batchSubmitIndex + 1);
+
+        m_batchSubmitIndex = 0;
 
         m_renderInstrs.clear();
 
-        m_drawActive = true;
+        m_inSubmissionPhase = true;
     }
 
-    void Renderer::end_draw() {
+    void Renderer::end_submission_phase() {
         assert(m_initialized);
-        assert(m_drawActive);
+        assert(m_inSubmissionPhase);
 
         // Submit render batch vertex data to the GPU.
-        for (int i = 0; i <= m_batchWriteIndex; ++i) {
+        for (int i = 0; i <= m_batchSubmitIndex; ++i) {
             const RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
             const RenderBatchTransientData* const batchTransData = &m_batchTransDatas[i];
 
@@ -385,43 +393,12 @@ namespace zf4 {
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData->verts), batchTransData->verts);
         }
 
-        m_drawActive = false;
+        m_inSubmissionPhase = false;
     }
 
-    void Renderer::clear(const Vec4D& color) {
+    void Renderer::submit_texture_to_batch(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
         assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full()) {
-            RenderInstr instr = {
-                .type = RenderInstrType::Clear
-            };
-            instr.data.clearData.color = color;
-            m_renderInstrs.add(instr);
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::set_view_matrix(const Matrix4x4& mat) {
-        assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
-            RenderInstr instr = {
-                .type = RenderInstrType::SetViewMatrix
-            };
-            instr.data.setViewMatrixData.mat = mat;
-            m_renderInstrs.add(instr);
-            ++m_batchWriteIndex;
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::draw_texture(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
-        assert(m_initialized);
-        assert(m_drawActive);
+        assert(m_inSubmissionPhase);
 
         const Vec2DI texSize = AssetManager::get_tex_size(texIndex);
         const Rect texCoords = {
@@ -430,12 +407,14 @@ namespace zf4 {
             static_cast<float>(srcRect.width) / texSize.x,
             static_cast<float>(srcRect.height) / texSize.y
         };
-        write(origin, scale, pos, get_rect_size(srcRect), rot, AssetManager::get_tex_gl_id(texIndex), texCoords, alpha);
+        submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, AssetManager::get_tex_gl_id(texIndex), texCoords, alpha);
     }
 
-    void Renderer::draw_str(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
+    void Renderer::submit_str_to_batch(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
+        // TODO: Calculate and store the vertex data for a string once.
+
         assert(m_initialized);
-        assert(m_drawActive);
+        assert(m_inSubmissionPhase);
 
         const int strLen = static_cast<int>(strlen(str));
         assert(strLen > 0);
@@ -545,87 +524,7 @@ namespace zf4 {
                 static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].height) / fontTexSize.y
             };
 
-            write({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f);
-        }
-    }
-
-    void Renderer::set_surface(const int index) {
-        assert(m_initialized);
-        assert(m_drawActive);
-        assert(index >= 0 && index < m_surfs.get_len());
-
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
-            RenderInstr instr = {
-                .type = RenderInstrType::SetSurface
-            };
-            instr.data.setSurfaceData.index = index;
-            m_renderInstrs.add(instr);
-
-            ++m_batchWriteIndex;
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::unset_surface() {
-        assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full() && m_batchWriteIndex < m_batchCnt - 1) {
-            m_renderInstrs.add({.type = RenderInstrType::UnsetSurface});
-            ++m_batchWriteIndex;
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::set_surface_shader_prog(const int progIndex) {
-        assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full()) {
-            RenderInstr instr = {
-                .type = RenderInstrType::SetSurfaceShaderProg
-            };
-            instr.data.setSurfaceShaderProgData.progIndex = progIndex;
-            m_renderInstrs.add(instr);
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::set_surface_shader_prog_uniform(const char* const name, const ShaderUniformVal val, const ShaderUniformValType valType) {
-        assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full()) {
-            RenderInstr instr = {
-                .type = RenderInstrType::SetSurfaceShaderProgUniform
-            };
-
-            snprintf(instr.data.setSurfaceShaderProgUniformData.name, sizeof(instr.data.setSurfaceShaderProgUniformData.name), "%s", name);
-
-            instr.data.setSurfaceShaderProgUniformData.val = val;
-            instr.data.setSurfaceShaderProgUniformData.valType = valType;
-
-            m_renderInstrs.add(instr);
-        } else {
-            assert(false);
-        }
-    }
-
-    void Renderer::draw_surface(const int index) {
-        assert(m_initialized);
-        assert(m_drawActive);
-
-        if (!m_renderInstrs.is_full()) {
-            RenderInstr instr = {
-                .type = RenderInstrType::DrawSurface
-            };
-            instr.data.drawSurfaceData.index = index;
-            m_renderInstrs.add(instr);
-        } else {
-            assert(false);
+            submit_to_batch({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f);
         }
     }
 
@@ -647,29 +546,42 @@ namespace zf4 {
         return batchTransData->texUnitsInUseCnt++;
     }
 
-    void Renderer::write(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
-        assert(m_initialized);
-        assert(m_drawActive);
+    void Renderer::move_to_next_batch() {
+        assert(m_batchSubmitIndex < m_batchCnt - 1);
+        assert(m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt > 0); // Make sure we aren't wasting the current batch.
 
-        RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchWriteIndex];
+        ++m_batchSubmitIndex;
+        assert(is_zero(&m_batchTransDatas[m_batchSubmitIndex])); // Make sure the new batch is empty.
+    }
+
+    void Renderer::submit_instr(const RenderInstrType type, const RenderInstrData data) {
+        assert(m_initialized);
+        assert(m_inSubmissionPhase);
+        assert(!m_renderInstrs.is_full());
+
+        if (m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt > 0) {
+            if (type == RenderInstrType::SetViewMatrix || type == RenderInstrType::SetSurface || type == RenderInstrType::UnsetSurface) {
+                move_to_next_batch();
+            }
+        }
+
+        m_renderInstrs.add({.type = type, .data = data});
+    }
+
+    void Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
+        assert(m_initialized);
+        assert(m_inSubmissionPhase);
+
+        RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchSubmitIndex];
 
         // Check if the batch is full or if it cannot support the texture.
         int texUnit;
 
         if (batchTransData->slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_batch(batchTransData, texGLID)) == -1) {
-            if (m_batchWriteIndex < m_batchCnt - 1) {
-                // Move to a new batch.
-                ++m_batchWriteIndex;
+            move_to_next_batch();
 
-                // The new batch should be empty.
-                assert(is_zero(&m_batchTransDatas[m_batchWriteIndex]));
-
-                // Perform this write but on the new batch.
-                write(origin, scale, pos, size, rot, texGLID, texCoords, alpha);
-            } else {
-                // No more batches to use!
-                assert(false);
-            }
+            // Submit again but this time to the new batch.
+            submit_to_batch(origin, scale, pos, size, rot, texGLID, texCoords, alpha);
 
             return;
         }
@@ -728,15 +640,9 @@ namespace zf4 {
 
         ++batchTransData->slotsUsedCnt;
 
-        // NOTE: Kind of hacky - change?
         if (batchTransData->slotsUsedCnt == 1) {
-            RenderInstr instr = {
-                .type = RenderInstrType::DrawBatch
-            };
-
-            instr.data.drawBatchData.index = m_batchWriteIndex;
-
-            m_renderInstrs.add(instr);
+            // This is the first submission to this batch, so submit an instruction to draw the batch.
+            submit_draw_batch_instr(m_batchSubmitIndex);
         }
     }
 }

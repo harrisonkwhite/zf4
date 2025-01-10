@@ -52,7 +52,7 @@ namespace zf4 {
     bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
         scene->scratchSpace.reset();
 
-        scene->renderer.begin_draw();
+        scene->renderer.begin_submission_phase();
 
         int sceneChangeIndex = -1;
 
@@ -60,7 +60,7 @@ namespace zf4 {
             return false;
         }
 
-        scene->renderer.end_draw();
+        scene->renderer.end_submission_phase();
 
         if (sceneChangeIndex != -1) {
             log("Scene change request detected.");
