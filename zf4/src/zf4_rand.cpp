@@ -9,7 +9,7 @@ namespace zf4 {
 
     void init_rng() {
         assert(!i_rngInitialized);
-        srand((unsigned int)time(nullptr));
+        srand(static_cast<unsigned int>(time(nullptr)));
         i_rngInitialized = true;
     }
 
@@ -25,11 +25,11 @@ namespace zf4 {
         assert(max >= min);
 
         const float range = max - min;
-        return min + (range * ((float)rand() / RAND_MAX));
+        return min + (range * (static_cast<float>(rand()) / RAND_MAX));
     }
 
     float gen_rand_perc() {
         assert(i_rngInitialized);
-        return (float)rand() / RAND_MAX;
+        return static_cast<float>(rand()) / RAND_MAX;
     }
 }
