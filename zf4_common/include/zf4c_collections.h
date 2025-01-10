@@ -8,6 +8,10 @@ namespace zf4 {
     public:
         bool init(MemArena* const memArena, const int len);
 
+        bool is_initialized() const {
+            return m_elems != nullptr;
+        }
+
         int get_len() const {
             return m_len;
         }
@@ -27,100 +31,22 @@ namespace zf4 {
     private:
         T* m_elems;
         int m_len;
-    };
-
-    template<SimpleType T>
-    class List {
-    public:
-        bool init(MemArena* const memArena, const int lenLimit);
-
-        int get_len() const {
-            return m_len;
-        }
-
-        int get_len_limit() const {
-            return m_array.get_len();
-        }
-
-        bool is_empty() const {
-            return m_len == 0;
-        }
-
-        bool is_full() const {
-            return m_len == m_array.get_len();
-        }
-
-        void add(const T& elem) {
-            assert(m_len < m_array.get_len());
-            m_array[m_len] = elem;
-            ++m_len;
-        }
-
-        void clear() {
-            m_len = 0;
-        }
-
-        T& operator[](const int index) {
-            return m_array[index];
-        }
-
-        const T& operator[](const int index) const {
-            return m_array[index];
-        }
-
-    private:
-        Array<T> m_array;
-        int m_len;
-    };
-
-    template<SimpleType T>
-    class ActivityArray {
-    public:
-        bool init(MemArena* const memArena, const int len);
-        void activate(const int index);
-        int activate_first_inactive();
-        void deactivate(const int index);
-
-        int get_len() const {
-            return m_len;
-        }
-
-        bool is_active(const int index) const {
-            assert(m_elems);
-            assert(index >= 0 && index < m_len);
-            return is_bit_active(m_activity, index);
-        }
-
-        T& operator[](const int index) {
-            assert(m_elems);
-            assert(index >= 0 && index < m_len);
-            assert(is_active(index));
-            return m_elems[index];
-        }
-
-        const T& operator[](const int index) const {
-            assert(m_elems);
-            assert(index >= 0 && index < m_len);
-            assert(is_active(index));
-            return m_elems[index];
-        }
-
-    private:
-        T* m_elems;
-        int m_len;
-        Byte* m_activity;
     };
 
     template<SimpleType T>
     class Stack {
     public:
-        bool init(MemArena* const memArena, const int lenLimit);
-        
+        bool init(MemArena* const memArena, const int cap);
+
+        bool is_initialized() const {
+            return m_array.is_initialized();
+        }
+
         int get_len() const {
             return m_len;
         }
 
-        int get_len_limit() const {
+        int get_capacity() const {
             return m_array.get_len();
         }
 
@@ -129,11 +55,11 @@ namespace zf4 {
         }
 
         bool is_full() const {
-            return m_len == m_array.get_len();
+            return m_len == get_capacity();
         }
 
         void push(const T& elem) {
-            assert(m_len < m_array.get_len());
+            assert(m_len < get_capacity());
             m_array[m_len] = elem;
             ++m_len;
         }
@@ -143,19 +69,79 @@ namespace zf4 {
             --m_len;
         }
 
-        T* peek() {
-            assert(m_len > 0);
-            return &m_array[m_len - 1];
-        }
-
-        const T& peek() const {
+        T& peek() {
             assert(m_len > 0);
             return m_array[m_len - 1];
+        }
+
+        void clear() {
+            m_len = 0;
+        }
+
+        Array<T> to_array() {
+            return m_array;
+        }
+
+        T& operator[](const int index) {
+            assert(index < m_len);
+            return m_array[index];
+        }
+
+        const T& operator[](const int index) const {
+            assert(index < m_len);
+            return m_array[index];
         }
 
     private:
         Array<T> m_array;
         int m_len;
+    };
+
+    // A form of array where each element has an "activity" state associated with it, indicated by a bit in a bitset.
+    template<SimpleType T>
+    class ActivityArray {
+    public:
+        bool init(MemArena* const memArena, const int len);
+
+        bool is_initialized() const {
+            return m_array.is_initialized();
+        }
+
+        int get_len() const {
+            return m_array.get_len();
+        }
+
+        bool is_active(const int index) const {
+            return is_bit_active(m_activity, index);
+        }
+
+        void activate(const int index) {
+            assert(index >= 0 && index < get_len());
+            activate_bit(m_activity, index);
+        }
+
+        void deactivate(const int index) {
+            assert(index >= 0 && index < get_len());
+            deactivate_bit(m_activity, index);
+        }
+
+        Array<T> to_array() {
+            return m_array;
+        }
+
+        T& operator[](const int index) {
+            assert(is_active(index));
+            return m_array[index];
+        }
+
+        const T& operator[](const int index) const {
+            assert(is_active(index));
+            return m_array[index];
+        }
+
+    private:
+        Array<T> m_array;
+        Byte* m_activity;
     };
 
     template<SimpleType T>
@@ -175,10 +161,10 @@ namespace zf4 {
     }
 
     template<SimpleType T>
-    inline bool List<T>::init(MemArena* const memArena, const int lenLimit) {
+    inline bool Stack<T>::init(MemArena* const memArena, const int cap) {
         assert(is_zero(this));
 
-        if (!m_array.init(memArena, lenLimit)) {
+        if (!m_array.init(memArena, cap)) {
             return false;
         }
 
@@ -188,66 +174,18 @@ namespace zf4 {
     template<SimpleType T>
     inline bool ActivityArray<T>::init(MemArena* const memArena, const int len) {
         assert(is_zero(this));
-        assert(len > 0);
 
-        m_elems = memArena->push<T>(len);
-
-        if (!m_elems) {
+        if (!m_array.init(memArena, len)) {
             return false;
         }
 
         m_activity = memArena->push<Byte>(bits_to_bytes(len));
 
         if (!m_activity) {
-            m_elems = nullptr;
-            return false;
-        }
-
-        m_len = len;
-
-        return true;
-    }
-
-    template<SimpleType T>
-    inline bool Stack<T>::init(MemArena* const memArena, const int lenLimit) {
-        assert(is_zero(this));
-
-        if (!m_array.init(memArena, lenLimit)) {
+            zero_out(this);
             return false;
         }
 
         return true;
-    }
-
-    template<SimpleType T>
-    inline void ActivityArray<T>::activate(const int index) {
-        assert(m_elems);
-        assert(index >= 0 && index < m_len);
-        assert(!is_active(index));
-
-        zero_out(&m_elems[index]);
-        activate_bit(m_activity, index);
-    }
-
-    template<SimpleType T>
-    inline int ActivityArray<T>::activate_first_inactive() {
-        assert(m_elems);
-
-        const int index = get_first_inactive_bit_index(m_activity, m_len);
-
-        if (index != -1) {
-            activate(index);
-        }
-
-        return index;
-    }
-
-    template<SimpleType T>
-    inline void ActivityArray<T>::deactivate(const int index) {
-        assert(m_elems);
-        assert(index >= 0 && index < m_len);
-        assert(is_active(index));
-
-        deactivate_bit(m_activity, index);
     }
 }

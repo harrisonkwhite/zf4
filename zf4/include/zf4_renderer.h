@@ -207,7 +207,6 @@ namespace zf4 {
         GLuint m_surfVertArrayGLID;
         GLuint m_surfVertBufGLID;
         GLuint m_surfElemBufGLID;
-        Stack<int> m_surfIndexes;
 
         int m_batchCnt;
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
@@ -216,7 +215,7 @@ namespace zf4 {
 
         int m_texUnits[gk_texUnitLimit]; // TODO: Rename.
 
-        List<RenderInstr> m_renderInstrs;
+        Stack<RenderInstr> m_renderInstrs;
 
         static int add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID);
         void move_to_next_batch();

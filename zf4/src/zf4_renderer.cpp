@@ -273,12 +273,12 @@ namespace zf4 {
 
                 case RenderInstrType::SetSurface:
                     surfIndexes.push(instr.data.setSurface.index);
-                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[*surfIndexes.peek()].framebufferGLID);
+                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[surfIndexes.peek()].framebufferGLID);
                     break;
 
                 case RenderInstrType::UnsetSurface:
                     surfIndexes.pop();
-                    glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[*surfIndexes.peek()].framebufferGLID);
+                    glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[surfIndexes.peek()].framebufferGLID);
                     break;
 
                 case RenderInstrType::SetDrawSurfaceShaderProg:
@@ -565,7 +565,7 @@ namespace zf4 {
             }
         }
 
-        m_renderInstrs.add({.type = type, .data = data});
+        m_renderInstrs.push({.type = type, .data = data});
     }
 
     void Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
