@@ -9,7 +9,7 @@ add_library(zf4 STATIC
     src/zf4_game.cpp
     src/zf4_window.cpp
     src/zf4_assets.cpp
-    src/zf4_renderer.cpp
+    src/zf4_rendering.cpp
     src/zf4_sprites.cpp
     src/zf4_audio.cpp
     src/zf4_rand.cpp
@@ -22,7 +22,7 @@ add_library(zf4 STATIC
     include/zf4_game.h
     include/zf4_window.h
     include/zf4_assets.h
-    include/zf4_renderer.h
+    include/zf4_rendering.h
     include/zf4_sprites.h
     include/zf4_audio.h
     include/zf4_rand.h

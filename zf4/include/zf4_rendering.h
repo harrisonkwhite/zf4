@@ -4,16 +4,20 @@
 #include <glad/glad.h>
 #include <zf4c.h>
 #include <zf4_assets.h>
+#include <zf4_sprites.h>
 
 namespace zf4 {
+    constexpr int gk_uniformNameLenLimit = 63;
+
+    constexpr int gk_renderBatchLimit = 64; // TODO: Have it so that these are only generated when needed, and released when unused.
     constexpr int gk_renderBatchSlotLimit = 4096;
     constexpr int gk_renderBatchSlotVertCnt = gk_texturedQuadShaderProgVertCnt * 4;
 
     constexpr int gk_texUnitLimit = 16;
 
-    constexpr int gk_renderInstrLimit = 1024;
+    constexpr int gk_renderSurfaceLimit = 256;
 
-    constexpr int gk_uniformNameLenLimit = 63;
+    constexpr int gk_renderInstrLimit = 1024;
 
     enum class ShaderUniformValType {
         Float,
@@ -59,8 +63,8 @@ namespace zf4 {
         DrawBatch,
         SetSurface,
         UnsetSurface,
-        SetDrawSurfaceShaderProg,
-        SetDrawSurfaceShaderUniform,
+        SetSurfaceShaderProg,
+        SetSurfaceShaderUniform,
         DrawSurface
     };
 
@@ -110,6 +114,12 @@ namespace zf4 {
         RenderInstrData data;
     };
 
+    enum class RendererState {
+        Uninitialized,
+        Initialized,
+        Submitting
+    };
+
     enum StrHorAlign {
         StrHorAlign_Left,
         StrHorAlign_Center,
@@ -122,19 +132,37 @@ namespace zf4 {
         StrVerAlign_Bottom
     };
 
+    struct StrRenderInfo {
+        Vec2DI* charDrawPositions;
+        int charCnt;
+
+        int* lineWidths;
+        int lineCnt;
+
+        int height;
+    };
+
+    using RenderSurfaceID = int; // NOTE: Maybe remove?
+
     class Renderer {
     public:
-        bool init(MemArena* const memArena, const int surfCnt, const int batchCnt);
+        bool init(MemArena* const memArena);
         void clean();
 
-        bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace);
-
-        bool resize_surfaces();
+        RenderSurfaceID add_surface();
+        void remove_surface(const RenderSurfaceID surfID);
+        void resize_surfaces();
 
         void begin_submission_phase();
         void end_submission_phase();
-        void submit_texture_to_batch(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
-        void submit_str_to_batch(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::StrHorAlign_Center, const StrVerAlign verAlign = zf4::StrVerAlign::StrVerAlign_Center);
+        bool submit_texture(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
+        bool submit_str(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = StrHorAlign_Center, const StrVerAlign verAlign = StrVerAlign_Center);
+
+        bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace);
+
+        bool submit_sprite(const Sprite& sprite, const int frameIndex, const Vec2D pos, const Assets& assets, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
+            submit_texture(sprite.texIndex, assets, pos, sprite.frames[frameIndex], origin, rot, scale, alpha);
+        }
 
         void submit_clear_instr(const Vec4D color = {}) {
             submit_instr(RenderInstrType::Clear, {.clear = {.color = color}});
@@ -156,42 +184,26 @@ namespace zf4 {
             submit_instr(RenderInstrType::UnsetSurface, {});
         }
 
-        void submit_set_draw_surface_shader_prog_instr(const int progIndex) {
-            submit_instr(RenderInstrType::SetDrawSurfaceShaderProg, {.setDrawSurfaceShaderProg = {.progIndex = progIndex}});
-        }
-
-        void submit_set_draw_surface_shader_uniform_instr(const char* const name, const ShaderUniformVal& val, const ShaderUniformValType valType) {
-            RenderInstrData_SetDrawSurfaceShaderUniform data = {
-                .val = val,
-                .valType = valType
-            };
-
-            std::strncpy(data.name, name, gk_uniformNameLenLimit);
-            data.name[gk_uniformNameLenLimit] = '\0';
-
-            submit_instr(RenderInstrType::SetDrawSurfaceShaderUniform, {.setDrawSurfaceShaderUniform = data});
+        void submit_set_surface_shader_prog_instr(const int progIndex) {
+            submit_instr(RenderInstrType::SetSurfaceShaderProg, {.setDrawSurfaceShaderProg = {.progIndex = progIndex}});
         }
 
         template<typename T>
-        void submit_set_draw_surface_shader_uniform_instr(const char* const name, const T& val) {
-            static_assert(
-                std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, Vec2D> ||
-                std::is_same_v<T, Vec3D> || std::is_same_v<T, Vec4D> || std::is_same_v<T, Matrix4x4>,
-                "Invalid type for surface shader uniform value!"
-            );
-
+        void submit_set_surface_shader_uniform_instr(const char* const name, const T& val) {
             if constexpr (std::is_same_v<T, float>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.floatVal = val}, ShaderUniformValType::Float);
+                submit_set_surface_shader_uniform_instr(name, {.floatVal = val}, ShaderUniformValType::Float);
             } else if constexpr (std::is_same_v<T, int>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.intVal = val}, ShaderUniformValType::Int);
+                submit_set_surface_shader_uniform_instr(name, {.intVal = val}, ShaderUniformValType::Int);
             } else if constexpr (std::is_same_v<T, Vec2D>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.vec2DVal = val}, ShaderUniformValType::Vec2D);
+                submit_set_surface_shader_uniform_instr(name, {.vec2DVal = val}, ShaderUniformValType::Vec2D);
             } else if constexpr (std::is_same_v<T, Vec3D>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.vec3DVal = val}, ShaderUniformValType::Vec3D);
+                submit_set_surface_shader_uniform_instr(name, {.vec3DVal = val}, ShaderUniformValType::Vec3D);
             } else if constexpr (std::is_same_v<T, Vec4D>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.vec4DVal = val}, ShaderUniformValType::Vec4D);
+                submit_set_surface_shader_uniform_instr(name, {.vec4DVal = val}, ShaderUniformValType::Vec4D);
             } else if constexpr (std::is_same_v<T, Matrix4x4>) {
-                submit_set_draw_surface_shader_uniform_instr(name, {.mat4x4Val = val}, ShaderUniformValType::Matrix4x4);
+                submit_set_surface_shader_uniform_instr(name, {.mat4x4Val = val}, ShaderUniformValType::Matrix4x4);
+            } else {
+                static_assert(false, "Unsupported type for shader uniform value!");
             }
         }
 
@@ -200,15 +212,13 @@ namespace zf4 {
         }
 
     private:
-        bool m_initialized;
-        bool m_inSubmissionPhase;
+        RendererState m_state;
 
-        Array<RenderSurface> m_surfs;
+        ActivityArray<RenderSurface> m_surfs;
         GLuint m_surfVertArrayGLID;
         GLuint m_surfVertBufGLID;
         GLuint m_surfElemBufGLID;
 
-        int m_batchCnt;
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when submission phase begins.
         int m_batchSubmitIndex; // Index of the batch we are currently submitting to.
@@ -217,9 +227,7 @@ namespace zf4 {
 
         Stack<RenderInstr> m_renderInstrs;
 
-        static int add_tex_unit_to_batch(RenderBatchTransientData* const batchTransData, const GLuint glID);
-        void move_to_next_batch();
+        bool move_to_next_batch();
         void submit_instr(const RenderInstrType type, const RenderInstrData data);
-        void submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha);
     };
 }

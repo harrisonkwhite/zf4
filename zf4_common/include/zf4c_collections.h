@@ -125,6 +125,14 @@ namespace zf4 {
             deactivate_bit(m_activity, index);
         }
 
+        int get_first_active_index() const {
+            return get_first_active_bit_index(m_activity, get_len());
+        }
+
+        int get_first_inactive_index() const {
+            return get_first_inactive_bit_index(m_activity, get_len());
+        }
+
         Array<T> to_array() {
             return m_array;
         }

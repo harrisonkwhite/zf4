@@ -15,6 +15,7 @@ namespace zf4 {
         MemArena memArena;
         Assets assets;
         InternalShaderProgs internalShaderProgs;
+        Renderer renderer;
         SoundSrcManager sndSrcManager;
         MusicSrcManager musicSrcManager;
         Array<Sprite> sprites;
@@ -80,6 +81,7 @@ namespace zf4 {
         init_rng();
 
         const GamePtrs gamePtrs = {
+            .renderer = &i_game.renderer,
             .soundSrcManager = &i_game.sndSrcManager,
             .musicSrcManager = &i_game.musicSrcManager
         };
@@ -123,7 +125,7 @@ namespace zf4 {
                 Window::save_input_state();
             }
 
-            if (!i_game.scene.renderer.render(i_game.internalShaderProgs, i_game.assets, &i_game.scene.scratchSpace)) {
+            if (!i_game.renderer.render(i_game.internalShaderProgs, i_game.assets, &i_game.scene.scratchSpace)) {
                 return;
             }
 
@@ -137,7 +139,7 @@ namespace zf4 {
             if (Window::get_size().x != windowSizePrepoll.x || Window::get_size().y != windowSizePrepoll.y) {
                 log("Processing window resize...");
                 glViewport(0, 0, Window::get_size().x, Window::get_size().y);
-                i_game.scene.renderer.resize_surfaces();
+                i_game.renderer.resize_surfaces();
             }
         }
     }

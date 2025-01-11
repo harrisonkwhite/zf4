@@ -14,14 +14,13 @@ namespace zf4 {
         MemArena memArena;
         MemArena scratchSpace;
 
-        Renderer renderer;
-
         EntityManager entManager;
 
         void* userData;
     };
 
     struct GamePtrs {
+        Renderer* renderer;
         SoundSrcManager* soundSrcManager;
         MusicSrcManager* musicSrcManager;
     };
