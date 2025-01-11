@@ -127,14 +127,14 @@ namespace zf4 {
         bool init(MemArena* const memArena, const int surfCnt, const int batchCnt);
         void clean();
 
-        bool render(const InternalShaderProgs& internalShaderProgs, MemArena* const scratchSpace);
+        bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace);
 
         bool resize_surfaces();
 
         void begin_submission_phase();
         void end_submission_phase();
-        void submit_texture_to_batch(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
-        void submit_str_to_batch(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::StrHorAlign_Center, const StrVerAlign verAlign = zf4::StrVerAlign::StrVerAlign_Center);
+        void submit_texture_to_batch(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f);
+        void submit_str_to_batch(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = zf4::StrHorAlign::StrHorAlign_Center, const StrVerAlign verAlign = zf4::StrVerAlign::StrVerAlign_Center);
 
         void submit_clear_instr(const Vec4D color = {}) {
             submit_instr(RenderInstrType::Clear, {.clear = {.color = color}});

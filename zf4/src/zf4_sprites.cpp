@@ -1,12 +1,11 @@
 #include <zf4_sprites.h>
 
 #include <algorithm>
-#include <zf4_assets.h>
 
 namespace zf4 {
-    RectI shrink_tex_src_rect_to_pixels(const RectI srcRect, const int texIndex) {
-        const Vec2DI texSize = AssetManager::get_tex_size(texIndex); // NOTE: Consider removing implicit conversion from Vec2DI to Vec2D.
-        const unsigned char* const texPxData = AssetManager::get_tex_px_data(texIndex);
+    RectI shrink_tex_src_rect_to_pixels(const RectI srcRect, const int texIndex, const Assets& assets) {
+        const Vec2DI texSize = assets.get_tex_size(texIndex); // NOTE: Consider removing implicit conversion from Vec2DI to Vec2D.
+        const unsigned char* const texPxData = assets.get_tex_px_data(texIndex);
 
         // Determine the minimum source rectangle which encompasses all non-transparent pixels.
         int xMin = INT_MAX;

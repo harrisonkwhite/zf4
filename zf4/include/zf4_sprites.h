@@ -1,6 +1,7 @@
 #pragma once
 
 #include <zf4c.h>
+#include <zf4_assets.h>
 
 namespace zf4 {
     struct Sprite {
@@ -17,6 +18,6 @@ namespace zf4 {
         int frameInterval;
     };
 
-    RectI shrink_tex_src_rect_to_pixels(const RectI srcRect, const int texIndex);
+    RectI shrink_tex_src_rect_to_pixels(const RectI srcRect, const int texIndex, const Assets& assets);
     void anim_tick(Anim* const anim, const Array<Sprite>* const sprites);
 }

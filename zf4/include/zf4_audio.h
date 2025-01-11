@@ -43,14 +43,14 @@ namespace zf4 {
 
     void clean_sound_srcs(SoundSrcManager* const manager);
     void handle_auto_release_sound_srcs(SoundSrcManager* const manager);
-    AudioSrcID add_sound_src(SoundSrcManager* const manager, const int sndIndex);
+    AudioSrcID add_sound_src(SoundSrcManager* const manager, const int sndIndex, const Assets& assets);
     void remove_sound_src(SoundSrcManager* const manager, const AudioSrcID srcID);
     void play_sound_src(const SoundSrcManager* const manager, const AudioSrcID srcID, const float gain, const float pitch);
-    void add_and_play_sound_src(SoundSrcManager* const manager, const int sndIndex, const float gain, const float pitch);
+    void add_and_play_sound_src(SoundSrcManager* const manager, const int sndIndex, const Assets& assets, const float gain, const float pitch);
 
     void clean_music_srcs(MusicSrcManager* const manager);
-    bool refresh_music_src_bufs(MusicSrcManager* const manager);
+    bool refresh_music_src_bufs(MusicSrcManager* const manager, const Assets& assets);
     AudioSrcID add_music_src(MusicSrcManager* const manager, const int musicIndex);
     void remove_music_src(MusicSrcManager* const manager, const AudioSrcID id);
-    bool play_music_src(MusicSrcManager* const manager, const AudioSrcID id, const float gain);
+    bool play_music_src(MusicSrcManager* const manager, const AudioSrcID id, const Assets& assets, const float gain = 1.0f);
 }

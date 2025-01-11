@@ -13,6 +13,7 @@ namespace zf4 {
 
     struct Game {
         MemArena memArena;
+        Assets assets;
         InternalShaderProgs internalShaderProgs;
         SoundSrcManager sndSrcManager;
         MusicSrcManager musicSrcManager;
@@ -57,7 +58,7 @@ namespace zf4 {
             return;
         }
 
-        if (!AssetManager::load(&i_game.memArena)) {
+        if (!i_game.assets.load(&i_game.memArena)) {
             return;
         }
 
@@ -108,7 +109,7 @@ namespace zf4 {
                 do {
                     handle_auto_release_sound_srcs(&i_game.sndSrcManager);
 
-                    if (!refresh_music_src_bufs(&i_game.musicSrcManager)) {
+                    if (!refresh_music_src_bufs(&i_game.musicSrcManager, i_game.assets)) {
                         return;
                     }
 
@@ -122,7 +123,7 @@ namespace zf4 {
                 Window::save_input_state();
             }
 
-            if (!i_game.scene.renderer.render(i_game.internalShaderProgs, &i_game.scene.scratchSpace)) {
+            if (!i_game.scene.renderer.render(i_game.internalShaderProgs, i_game.assets, &i_game.scene.scratchSpace)) {
                 return;
             }
 
@@ -150,7 +151,7 @@ namespace zf4 {
         unload_component_types();
         clean_music_srcs(&i_game.musicSrcManager);
         clean_sound_srcs(&i_game.sndSrcManager);
-        AssetManager::unload();
+        i_game.assets.clean();
         clean_audio_system();
         Window::clean();
         glfwTerminate();

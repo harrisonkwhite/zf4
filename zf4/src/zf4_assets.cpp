@@ -53,8 +53,8 @@ namespace zf4 {
         return progGLID;
     }
 
-    bool AssetManager::load(MemArena* const memArena) {
-        assert(!s_loaded);
+    bool Assets::load(MemArena* const memArena) {
+        assert(!m_loaded);
 
         FILE* const fs = fopen(gk_assetsFileName, "rb");
 
@@ -63,31 +63,31 @@ namespace zf4 {
             return false;
         }
 
-        if (!load_textures(&s_textures, memArena, fs)) {
+        if (!load_textures_from_fs(&m_textures, memArena, fs)) {
             log_error("Failed to load textures!");
             fclose(fs);
             return false;
         }
 
-        if (!load_fonts(&s_fonts, memArena, fs)) {
+        if (!load_fonts_from_fs(&m_fonts, memArena, fs)) {
             log_error("Failed to load fonts!");
             fclose(fs);
             return false;
         }
 
-        if (!load_shader_progs(&s_shaderProgs, memArena, fs)) {
+        if (!load_shader_progs_from_fs(&m_shaderProgs, memArena, fs)) {
             log_error("Failed to load shader programs!");
             fclose(fs);
             return false;
         }
 
-        if (!load_sounds(&s_sounds, memArena, fs)) {
+        if (!load_sounds_from_fs(&m_sounds, memArena, fs)) {
             log_error("Failed to load sounds!");
             fclose(fs);
             return false;
         }
 
-        if (!load_music(&s_music, memArena, fs)) {
+        if (!load_music_from_fs(&m_music, memArena, fs)) {
             log_error("Failed to load music!");
             fclose(fs);
             return false;
@@ -95,40 +95,32 @@ namespace zf4 {
 
         fclose(fs);
 
-        s_loaded = true;
+        m_loaded = true;
 
         return true;
     }
 
-    void AssetManager::unload() {
-        if (s_sounds.cnt > 0) {
-            alDeleteBuffers(s_sounds.cnt, s_sounds.bufALIDs);
+    void Assets::clean() {
+        if (m_sounds.cnt > 0) {
+            alDeleteBuffers(m_sounds.cnt, m_sounds.bufALIDs);
         }
 
-        zero_out(&s_sounds);
-
-        for (int i = 0; i < s_shaderProgs.cnt; ++i) {
-            glDeleteProgram(s_shaderProgs.glIDs[i]);
+        for (int i = 0; i < m_shaderProgs.cnt; ++i) {
+            glDeleteProgram(m_shaderProgs.glIDs[i]);
         }
 
-        zero_out(&s_shaderProgs);
-
-        if (s_fonts.cnt > 0) {
-            glDeleteTextures(s_fonts.cnt, s_fonts.texGLIDs);
+        if (m_fonts.cnt > 0) {
+            glDeleteTextures(m_fonts.cnt, m_fonts.texGLIDs);
         }
 
-        zero_out(&s_fonts);
-
-        if (s_textures.cnt > 0) {
-            glDeleteTextures(s_textures.cnt, s_textures.glIDs);
+        if (m_textures.cnt > 0) {
+            glDeleteTextures(m_textures.cnt, m_textures.glIDs);
         }
 
-        zero_out(&s_textures);
-
-        s_loaded = false;
+        zero_out(this);
     }
 
-    bool load_textures(Textures* const textures, MemArena* const memArena, FILE* const fs) {
+    bool load_textures_from_fs(Textures* const textures, MemArena* const memArena, FILE* const fs) {
         read_from_fs<int>(&textures->cnt, fs);
 
         if (textures->cnt > 0) {
@@ -175,7 +167,7 @@ namespace zf4 {
         return true;
     }
 
-    bool load_fonts(Fonts* const fonts, MemArena* const memArena, FILE* const fs) {
+    bool load_fonts_from_fs(Fonts* const fonts, MemArena* const memArena, FILE* const fs) {
         read_from_fs<int>(&fonts->cnt, fs);
 
         if (fonts->cnt > 0) {
@@ -221,7 +213,7 @@ namespace zf4 {
         return true;
     }
 
-    bool load_shader_progs(ShaderProgs* const progs, MemArena* const memArena, FILE* const fs) {
+    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena* const memArena, FILE* const fs) {
         read_from_fs<int>(&progs->cnt, fs);
 
         if (progs->cnt > 0) {
@@ -278,7 +270,7 @@ namespace zf4 {
         return true;
     }
 
-    bool load_sounds(Sounds* const snds, MemArena* const memArena, FILE* const fs) {
+    bool load_sounds_from_fs(Sounds* const snds, MemArena* const memArena, FILE* const fs) {
         read_from_fs<int>(&snds->cnt, fs);
 
         if (snds->cnt > 0) {
@@ -313,7 +305,7 @@ namespace zf4 {
         return true;
     }
 
-    bool load_music(Music* const music, MemArena* const memArena, FILE* const fs) {
+    bool load_music_from_fs(Music* const music, MemArena* const memArena, FILE* const fs) {
         read_from_fs<int>(&music->cnt, fs);
 
         if (music->cnt > 0) {

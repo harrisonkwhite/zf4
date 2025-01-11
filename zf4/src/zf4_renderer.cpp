@@ -209,7 +209,7 @@ namespace zf4 {
         zero_out(this);
     }
 
-    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, MemArena* const scratchSpace) {
+    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace) {
         assert(m_initialized);
         assert(!m_inSubmissionPhase);
 
@@ -282,7 +282,7 @@ namespace zf4 {
                     break;
 
                 case RenderInstrType::SetDrawSurfaceShaderProg:
-                    surfShaderProgGLID = AssetManager::get_shader_prog_gl_id(instr.data.setDrawSurfaceShaderProg.progIndex);
+                    surfShaderProgGLID = assets.get_shader_prog_gl_id(instr.data.setDrawSurfaceShaderProg.progIndex);
                     break;
 
                 case RenderInstrType::SetDrawSurfaceShaderUniform:
@@ -396,21 +396,21 @@ namespace zf4 {
         m_inSubmissionPhase = false;
     }
 
-    void Renderer::submit_texture_to_batch(const int texIndex, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
+    void Renderer::submit_texture_to_batch(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
         assert(m_initialized);
         assert(m_inSubmissionPhase);
 
-        const Vec2DI texSize = AssetManager::get_tex_size(texIndex);
+        const Vec2DI texSize = assets.get_tex_size(texIndex);
         const Rect texCoords = {
             static_cast<float>(srcRect.x) / texSize.x,
             static_cast<float>(srcRect.y) / texSize.y,
             static_cast<float>(srcRect.width) / texSize.x,
             static_cast<float>(srcRect.height) / texSize.y
         };
-        submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, AssetManager::get_tex_gl_id(texIndex), texCoords, alpha);
+        submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, assets.get_tex_gl_id(texIndex), texCoords, alpha);
     }
 
-    void Renderer::submit_str_to_batch(const char* const str, const int fontIndex, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
+    void Renderer::submit_str_to_batch(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
         // TODO: Calculate and store the vertex data for a string once.
 
         assert(m_initialized);
@@ -439,7 +439,7 @@ namespace zf4 {
         bool strLastLineMaxHeightUpdated = false;
         int strLineCnter = 0;
 
-        const FontArrangementInfo& fontArrangementInfo = AssetManager::get_font_arrangement_info(fontIndex);
+        const FontArrangementInfo& fontArrangementInfo = assets.get_font_arrangement_info(fontIndex);
 
         for (int i = 0; i < strLen; i++) {
             if (str[i] == '\n') {
@@ -493,8 +493,8 @@ namespace zf4 {
         // Write the characters.
         const int strHeight = strFirstLineMinOffs + charDrawPosPen.y + strLastLineMaxHeight;
 
-        const GLuint fontTexGLID = AssetManager::get_font_tex_gl_id(fontIndex);
-        const Vec2DI fontTexSize = AssetManager::get_font_tex_size(fontIndex);
+        const GLuint fontTexGLID = assets.get_font_tex_gl_id(fontIndex);
+        const Vec2DI fontTexSize = assets.get_font_tex_size(fontIndex);
 
         strLineCnter = 0;
 
