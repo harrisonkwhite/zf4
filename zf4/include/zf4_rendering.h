@@ -145,7 +145,7 @@ namespace zf4 {
 
     class Renderer {
     public:
-        bool init(MemArena* const memArena, const int batchLimit = 64); // TODO: Have the default be specified maybe in user game information defaults?
+        bool init(MemArena* const memArena, const int batchLimit = 64, const int batchLifeMax = 600); // TODO: Have the defaults be specified maybe in user game information defaults?
         void clean();
 
         RenderSurfaceID add_surface();
@@ -223,6 +223,10 @@ namespace zf4 {
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when submission phase begins.
         int m_batchSubmitIndex; // Index of the batch we are currently submitting to.
+        int* m_batchLifes; // Reset to a maximum whenever the batch is written to, and decrements when not.
+                           // Batch is deactivated (i.e. freed) once this reaches 0.
+        int m_batchLifeMax;
+        unsigned short* m_batchIndices; // Reused whenever a batch is generated.
 
         int m_texUnits[gk_texUnitLimit]; // TODO: Rename.
 

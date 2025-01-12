@@ -245,7 +245,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::init(MemArena* const memArena, const int batchLimit) {
+    bool Renderer::init(MemArena* const memArena, const int batchLimit, const int batchLifeMax) {
         assert(is_zero(this));
 
         //
@@ -292,6 +292,7 @@ namespace zf4 {
         // Batches
         //
         m_batchLimit = batchLimit;
+        m_batchLifeMax = batchLifeMax;
 
         // Reserve memory for batch data.
         m_batchPermDatas = memArena->push<RenderBatchPermData>(batchLimit);
@@ -306,74 +307,35 @@ namespace zf4 {
             return false;
         }
 
-        // Initialise batch indices.
-        const int indicesLen = 6 * gk_renderBatchSlotLimit;
-        const auto indices = alloc<unsigned short>(indicesLen);
+        m_batchLifes = memArena->push<int>(batchLimit);
 
-        if (!indices) {
+        if (!m_batchLifes) {
             return false;
         }
-
-        for (int i = 0; i < gk_renderBatchSlotLimit; i++) {
-            indices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
-            indices[(i * 6) + 1] = static_cast<unsigned short>((i * 4) + 1);
-            indices[(i * 6) + 2] = static_cast<unsigned short>((i * 4) + 2);
-            indices[(i * 6) + 3] = static_cast<unsigned short>((i * 4) + 2);
-            indices[(i * 6) + 4] = static_cast<unsigned short>((i * 4) + 3);
-            indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
-        }
-
-        // Initialise batches.
-        for (int i = 0; i < m_batchLimit; ++i) {
-            RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
-
-            // Generate vertex array.
-            glGenVertexArrays(1, &batchPermData->vertArrayGLID);
-            glBindVertexArray(batchPermData->vertArrayGLID);
-
-            // Generate vertex buffer.
-            glGenBuffers(1, &batchPermData->vertBufGLID);
-            glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
-
-            // Generate element buffer.
-            glGenBuffers(1, &batchPermData->elemBufGLID);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, indices, GL_STATIC_DRAW);
-
-            // Set vertex attribute pointers.
-            const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
-
-            glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
-            glEnableVertexAttribArray(0);
-
-            glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
-            glEnableVertexAttribArray(1);
-
-            glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
-            glEnableVertexAttribArray(2);
-
-            glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
-            glEnableVertexAttribArray(3);
-
-            glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
-            glEnableVertexAttribArray(4);
-
-            glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
-            glEnableVertexAttribArray(5);
-
-            glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
-            glEnableVertexAttribArray(6);
-
-            glBindVertexArray(0);
-        }
-
-        free(indices);
 
         // Set up texture units.
         for (int i = 0; i < gk_texUnitLimit; ++i) {
             m_texUnits[i] = i;
         }
+
+        // Generate batch indices.
+        const int indicesLen = 6 * gk_renderBatchSlotLimit;
+        m_batchIndices = memArena->push<unsigned short>(indicesLen);
+
+        if (!m_batchIndices) {
+            return false;
+        }
+
+        for (int i = 0; i < gk_renderBatchSlotLimit; i++) {
+            m_batchIndices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
+            m_batchIndices[(i * 6) + 1] = static_cast<unsigned short>((i * 4) + 1);
+            m_batchIndices[(i * 6) + 2] = static_cast<unsigned short>((i * 4) + 2);
+            m_batchIndices[(i * 6) + 3] = static_cast<unsigned short>((i * 4) + 2);
+            m_batchIndices[(i * 6) + 4] = static_cast<unsigned short>((i * 4) + 3);
+            m_batchIndices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
+        }
+
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
 
         //
         // Instructions
@@ -459,6 +421,20 @@ namespace zf4 {
             glBindVertexArray(batchPermData->vertArrayGLID);
             glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData->verts), batchTransData->verts);
+        }
+
+        // Decrement all batch life values and deactivate the batches if necessary.
+        for (int i = 0; i < m_batchLimit; ++i) {
+            if (m_batchLifes[i] > 0) {
+                --m_batchLifes[i];
+
+                if (m_batchLifes[i] == 0) {
+                    // Deactivate the batch.
+                    glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
+                    glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
+                    glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
+                }
+            }
         }
 
         m_state = RendererState::Initialized;
@@ -674,8 +650,58 @@ namespace zf4 {
             return false;
         }
 
-        // Submission failed, so try the next batch.
         ++m_batchSubmitIndex;
+
+        if (m_batchLifes[m_batchSubmitIndex] == 0) {
+            //
+            // New Batch Generation
+            //
+            RenderBatchPermData* const batchPermData = &m_batchPermDatas[m_batchSubmitIndex];
+
+            // Generate vertex array.
+            glGenVertexArrays(1, &batchPermData->vertArrayGLID);
+            glBindVertexArray(batchPermData->vertArrayGLID);
+
+            // Generate vertex buffer.
+            glGenBuffers(1, &batchPermData->vertBufGLID);
+            glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
+
+            // Generate element buffer.
+            glGenBuffers(1, &batchPermData->elemBufGLID);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
+
+            const int indicesLen = 6 * gk_renderBatchSlotLimit;
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
+
+            // Set vertex attribute pointers.
+            const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
+
+            glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
+            glEnableVertexAttribArray(0);
+
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
+            glEnableVertexAttribArray(1);
+
+            glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
+            glEnableVertexAttribArray(2);
+
+            glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
+            glEnableVertexAttribArray(3);
+
+            glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
+            glEnableVertexAttribArray(4);
+
+            glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
+            glEnableVertexAttribArray(5);
+
+            glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
+            glEnableVertexAttribArray(6);
+
+            glBindVertexArray(0);
+        }
+
+        m_batchLifes[m_batchSubmitIndex] = m_batchLifeMax;
 
         // Make sure the new batch is zero.
         assert(is_zero(&m_batchTransDatas[m_batchSubmitIndex]));
