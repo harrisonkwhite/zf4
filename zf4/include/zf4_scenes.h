@@ -2,7 +2,7 @@
 
 #include <zf4c.h>
 #include <zf4_ecs.h>
-#include <zf4_renderer.h>
+#include <zf4_rendering.h>
 #include <zf4_audio.h>
 
 namespace zf4 {

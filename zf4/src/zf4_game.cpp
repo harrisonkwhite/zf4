@@ -3,7 +3,7 @@
 #include <zf4c_mem.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
-#include <zf4_renderer.h>
+#include <zf4_rendering.h>
 #include <zf4_audio.h>
 #include <zf4_rand.h>
 

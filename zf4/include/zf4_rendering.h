@@ -9,7 +9,6 @@
 namespace zf4 {
     constexpr int gk_uniformNameLenLimit = 63;
 
-    constexpr int gk_renderBatchLimit = 64; // TODO: Have it so that these are only generated when needed, and released when unused.
     constexpr int gk_renderBatchSlotLimit = 4096;
     constexpr int gk_renderBatchSlotVertCnt = gk_texturedQuadShaderProgVertCnt * 4;
 
@@ -146,7 +145,7 @@ namespace zf4 {
 
     class Renderer {
     public:
-        bool init(MemArena* const memArena);
+        bool init(MemArena* const memArena, const int batchLimit = 64); // TODO: Have the default be specified maybe in user game information defaults?
         void clean();
 
         RenderSurfaceID add_surface();
@@ -164,6 +163,7 @@ namespace zf4 {
             submit_texture(sprite.texIndex, assets, pos, sprite.frames[frameIndex], origin, rot, scale, alpha);
         }
 
+        // TODO: Change return values for these to allow for error handling. Only a subset needs to have them. Solve this somehow!
         void submit_clear_instr(const Vec4D color = {}) {
             submit_instr(RenderInstrType::Clear, {.clear = {.color = color}});
         }
@@ -219,6 +219,7 @@ namespace zf4 {
         GLuint m_surfVertBufGLID;
         GLuint m_surfElemBufGLID;
 
+        int m_batchLimit;
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when submission phase begins.
         int m_batchSubmitIndex; // Index of the batch we are currently submitting to.
@@ -228,6 +229,6 @@ namespace zf4 {
         Stack<RenderInstr> m_renderInstrs;
 
         bool move_to_next_batch();
-        void submit_instr(const RenderInstrType type, const RenderInstrData data);
+        bool submit_instr(const RenderInstrType type, const RenderInstrData data);
     };
 }

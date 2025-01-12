@@ -1,4 +1,4 @@
-#include <zf4_renderer.h>
+#include <zf4_rendering.h>
 
 #include <algorithm>
 #include <zf4_window.h>
@@ -31,7 +31,7 @@ namespace zf4 {
     static bool init_render_surface(RenderSurface* const surf, const Vec2DI size) {
         glGenFramebuffers(1, &surf->framebufferGLID);
 
-        if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, Window::get_size())) {
+        if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
             glDeleteFramebuffers(1, &surf->framebufferGLID);
             return false;
         }
@@ -40,15 +40,42 @@ namespace zf4 {
     }
 
     static void clean_render_surface(RenderSurface* const surf) {
+        glDeleteFramebuffers(1, &surf->framebufferGLID);
+        glDeleteTextures(1, &surf->framebufferTexGLID);
 
+        zero_out(surf);
     }
 
     static bool resize_render_surface(RenderSurface* const surf, const Vec2DI size) {
+        // Delete the old texture.
+        glDeleteTextures(1, &surf->framebufferTexGLID);
+        surf->framebufferTexGLID = 0;
+
+        // Generate a new texture of the desired size and attach it to the framebuffer.
+        if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
+            return false;
+        }
+
         return false;
     }
 
     static int add_tex_unit_to_render_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {
-        return 0;
+        // Check if the texture GL ID is already in use.
+        for (int i = 0; i < batchTransData->texUnitsInUseCnt; ++i) {
+            if (batchTransData->texUnitTexGLIDs[i] == glID) {
+                return i;
+            }
+        }
+
+        // Check if we can't support another texture.
+        if (batchTransData->texUnitsInUseCnt == gk_texUnitLimit) {
+            return -1;
+        }
+
+        // Use a new texture unit, since the texture GL ID is not in use.
+        batchTransData->texUnitTexGLIDs[batchTransData->texUnitsInUseCnt] = glID;
+
+        return batchTransData->texUnitsInUseCnt++;
     }
 
     bool attempt_render_batch_submission(RenderBatchTransientData* const batchTransData, const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect srcRect, const float alpha) {
@@ -218,7 +245,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::init(MemArena* const memArena) {
+    bool Renderer::init(MemArena* const memArena, const int batchLimit) {
         assert(is_zero(this));
 
         //
@@ -264,15 +291,16 @@ namespace zf4 {
         //
         // Batches
         //
+        m_batchLimit = batchLimit;
 
         // Reserve memory for batch data.
-        m_batchPermDatas = memArena->push<RenderBatchPermData>(gk_renderBatchLimit);
+        m_batchPermDatas = memArena->push<RenderBatchPermData>(batchLimit);
 
         if (!m_batchPermDatas) {
             return false;
         }
 
-        m_batchTransDatas = memArena->push<RenderBatchTransientData>(gk_renderBatchLimit);
+        m_batchTransDatas = memArena->push<RenderBatchTransientData>(batchLimit);
 
         if (!m_batchTransDatas) {
             return false;
@@ -296,7 +324,7 @@ namespace zf4 {
         }
 
         // Initialise batches.
-        for (int i = 0; i < gk_renderBatchLimit; ++i) {
+        for (int i = 0; i < m_batchLimit; ++i) {
             RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
 
             // Generate vertex array.
@@ -360,7 +388,7 @@ namespace zf4 {
     }
 
     void Renderer::clean() {
-        for (int i = 0; i < gk_renderBatchLimit; ++i) {
+        for (int i = 0; i < m_batchLimit; ++i) {
             glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
             glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
             glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
@@ -440,13 +468,9 @@ namespace zf4 {
         assert(m_state == RendererState::Submitting);
 
         while (!attempt_render_batch_submission(&m_batchTransDatas[m_batchSubmitIndex], origin, scale, pos, assets.get_tex_size(texIndex), rot, assets.get_tex_gl_id(texIndex), srcRect, alpha)) {
-            if (m_batchSubmitIndex == gk_renderBatchLimit - 1) {
-                // We're out of batches!
+            if (!move_to_next_batch()) {
                 return false;
             }
-
-            // Submission failed, so try the next batch.
-            ++m_batchSubmitIndex;
         }
 
         return true;
@@ -457,9 +481,8 @@ namespace zf4 {
         const GLuint fontTexGLID = assets.get_font_tex_gl_id(fontIndex);
         const Vec2DI fontTexSize = assets.get_font_tex_size(fontIndex);
 
-        //const StrRenderInfo strRenderInfo = load_str_render_info(str, fontIndex, assets, scratchSpace);
         StrRenderInfo strRenderInfo;
-        
+
         if (!load_str_render_info(&strRenderInfo, scratchSpace, str, fontIndex, assets)) {
             return false;
         }
@@ -495,13 +518,9 @@ namespace zf4 {
             };
 
             while (!attempt_render_batch_submission(&m_batchTransDatas[m_batchSubmitIndex], {}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f)) {
-                if (m_batchSubmitIndex == gk_renderBatchLimit - 1) {
-                    // We're out of batches!
+                if (!move_to_next_batch()) {
                     return false;
                 }
-
-                // Submission failed, so try the next batch.
-                ++m_batchSubmitIndex;
             }
         }
 
@@ -650,7 +669,7 @@ namespace zf4 {
     }
 
     bool Renderer::move_to_next_batch() {
-        if (m_batchSubmitIndex == gk_renderBatchLimit - 1) {
+        if (m_batchSubmitIndex == m_batchLimit - 1) {
             // We're out of batches!
             return false;
         }
@@ -664,17 +683,20 @@ namespace zf4 {
         return true;
     }
 
-    void Renderer::submit_instr(const RenderInstrType type, const RenderInstrData data) {
+    bool Renderer::submit_instr(const RenderInstrType type, const RenderInstrData data) {
         assert(m_state == RendererState::Submitting);
         assert(!m_renderInstrs.is_full());
 
         if (m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt > 0) {
             if (type == RenderInstrType::SetViewMatrix || type == RenderInstrType::SetSurface || type == RenderInstrType::UnsetSurface) {
-                assert(m_batchSubmitIndex < gk_renderBatchLimit - 1);
-                ++m_batchSubmitIndex;
+                if (!move_to_next_batch()) {
+                    return false; // NOTE: Error handling for every instruction submission? Seriously?
+                }
             }
         }
 
         m_renderInstrs.push({.type = type, .data = data});
+
+        return true;
     }
 }
