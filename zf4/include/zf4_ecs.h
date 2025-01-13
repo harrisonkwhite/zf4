@@ -5,37 +5,29 @@
 
 namespace zf4 {
     using ComponentTypeLimitLoader = void (*)(int* const typeLimit, const int typeIndex);
-    using ComponentDefaultsLoader = void (*)(Byte* const comp);
 
-    struct ComponentTypeInfo {
+    struct ComponentType {
         int size;
         int alignment;
 
-        ComponentDefaultsLoader defaultsLoader;
+        void (*defaultsSetter)(Byte* const comp);
     };
 
-    using ComponentTypeInfoLoader = void (*)(ComponentTypeInfo* const typeInfo, const int typeIndex);
+    using ComponentTypeInitializer = void (*)(ComponentType* const typeInfo, const int typeIndex);
 
     struct EntID {
         int index;
         int version;
     };
 
-    bool load_component_types(const int typeCnt, const ComponentTypeInfoLoader typeInfoLoader);
-    void unload_component_types();
-    int get_component_type_cnt();
-    const ComponentTypeInfo* get_component_type_info(const int typeIndex);
-
-    // An entity is effectively an assortment of components, and a component is effectively a struct.
     class EntityManager {
     public:
-        bool load(MemArena* const memArena, const int entLimit, const ComponentTypeLimitLoader compTypeLimitLoader);
+        bool load(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes);
 
-        bool spawn_ent(EntID* const entID, const Vec2D pos);
-        void destroy_ent(const EntID entID);
-        Rect create_ent_collider(const EntID entID, const int spriteIndex, const Vec2D origin, const Vec2D scale, const Vec2D posOffs = {}) const;
-        Byte* get_ent_component(const EntID entID, const int compTypeIndex);
-        bool add_component_to_ent(const int compTypeIndex, const EntID entID);
+        bool spawn_ent(EntID* const entID, const Vec2D pos, const Array<ComponentType>& compTypes);
+        void destroy_ent(const EntID entID, const Array<ComponentType>& compTypes);
+        Byte* get_ent_component(const EntID entID, const int compTypeIndex, const Array<ComponentType>& compTypes);
+        bool add_component_to_ent(const int compTypeIndex, const EntID entID, const Array<ComponentType>& compTypes);
 
         inline int get_ent_limit() const {
             return m_entLimit;
@@ -61,24 +53,14 @@ namespace zf4 {
             return m_entPositions[entID.index];
         }
 
-        inline RectEdges& get_ent_collider_offset(const EntID entID) {
-            assert(does_ent_exist(entID));
-            return m_entColliderOffsets[entID.index];
-        }
-
-        inline RectEdges get_ent_collider_offset(const EntID entID) const {
-            assert(does_ent_exist(entID));
-            return m_entColliderOffsets[entID.index];
-        }
-
         inline const Byte* get_ent_component(const EntID entID, const int compTypeIndex) const {
             assert(does_ent_exist(entID));
             return const_cast<EntityManager*>(this)->get_ent_component(entID, compTypeIndex);
         }
 
-        inline bool does_ent_have_component(const EntID entID, const int compTypeIndex) const {
+        inline bool does_ent_have_component(const EntID entID, const int compTypeIndex, const Array<ComponentType>& compTypes) const {
             assert(does_ent_exist(entID));
-            assert(compTypeIndex >= 0 && compTypeIndex < get_component_type_cnt());
+            assert(compTypeIndex >= 0 && compTypeIndex < compTypes.get_len());
             return m_entCompIndexes[entID.index][compTypeIndex] != -1;
         }
 
@@ -107,7 +89,6 @@ namespace zf4 {
 
     private:
         Vec2D* m_entPositions;
-        RectEdges* m_entColliderOffsets;
         int** m_entCompIndexes;
         int* m_entTags;
         Byte* m_entFlags; // TEMP: For now we only allow 8 flags per entity.
@@ -116,7 +97,6 @@ namespace zf4 {
         int m_entLimit;
 
         Byte** m_compArrays; // One array per component type.
-        int* m_compTypeLimits; // The maximum number of components of each type.
         Byte** m_compActivities; // One bitset per component type.
     };
 }

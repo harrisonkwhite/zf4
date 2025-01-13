@@ -83,11 +83,11 @@ namespace zf4 {
         int index;
     };
 
-    struct RenderInstrData_SetDrawSurfaceShaderProg {
+    struct RenderInstrData_SetSurfaceShaderProg {
         int progIndex;
     };
 
-    struct RenderInstrData_SetDrawSurfaceShaderUniform {
+    struct RenderInstrData_SetSurfaceShaderUniform {
         char name[gk_uniformNameLenLimit + 1];
 
         ShaderUniformVal val;
@@ -103,8 +103,8 @@ namespace zf4 {
         RenderInstrData_SetViewMatrix setViewMatrix;
         RenderInstrData_DrawBatch drawBatch;
         RenderInstrData_SetSurface setSurface;
-        RenderInstrData_SetDrawSurfaceShaderProg setDrawSurfaceShaderProg;
-        RenderInstrData_SetDrawSurfaceShaderUniform setDrawSurfaceShaderUniform;
+        RenderInstrData_SetSurfaceShaderProg setDrawSurfaceShaderProg;
+        RenderInstrData_SetSurfaceShaderUniform setDrawSurfaceShaderUniform;
         RenderInstrData_DrawSurface drawSurface;
     };
 
@@ -150,7 +150,7 @@ namespace zf4 {
 
         RenderSurfaceID add_surface();
         void remove_surface(const RenderSurfaceID surfID);
-        void resize_surfaces();
+        bool resize_surfaces();
 
         void begin_submission_phase();
         void end_submission_phase();
@@ -159,8 +159,8 @@ namespace zf4 {
 
         bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace);
 
-        bool submit_sprite(const Sprite& sprite, const int frameIndex, const Vec2D pos, const Assets& assets, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
-            submit_texture(sprite.texIndex, assets, pos, sprite.frames[frameIndex], origin, rot, scale, alpha);
+        bool submit_sprite(const Sprite& sprite, const int frameIndex, const Vec2D pos, const Assets& assets, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f) {
+            return submit_texture(sprite.texIndex, assets, pos, sprite.frames[frameIndex], origin, rot, scale, alpha);
         }
 
         // TODO: Change return values for these to allow for error handling. Only a subset needs to have them. Solve this somehow!
@@ -170,10 +170,6 @@ namespace zf4 {
 
         void submit_set_view_matrix_instr(const Matrix4x4& mat) {
             submit_instr(RenderInstrType::SetViewMatrix, {.setViewMatrix = {.mat = mat}});
-        }
-
-        void submit_draw_batch_instr(const int index) {
-            submit_instr(RenderInstrType::DrawBatch, {.drawBatch = {.index = index}});
         }
 
         void submit_set_surface_instr(const int index) {
@@ -223,8 +219,7 @@ namespace zf4 {
         RenderBatchPermData* m_batchPermDatas; // Persists for the lifetime of the renderer.
         RenderBatchTransientData* m_batchTransDatas; // Cleared when submission phase begins.
         int m_batchSubmitIndex; // Index of the batch we are currently submitting to.
-        int* m_batchLifes; // Reset to a maximum whenever the batch is written to, and decrements when not.
-                           // Batch is deactivated (i.e. freed) once this reaches 0.
+        int* m_batchLifes; // Reset to a maximum whenever the batch is written to, and decrements when not. Batch is deactivated (i.e. freed) once this reaches 0.
         int m_batchLifeMax;
         unsigned short* m_batchIndices; // Reused whenever a batch is generated.
 
@@ -232,7 +227,20 @@ namespace zf4 {
 
         Stack<RenderInstr> m_renderInstrs;
 
+        bool submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha);
         bool move_to_next_batch();
         bool submit_instr(const RenderInstrType type, const RenderInstrData data);
+
+        void submit_draw_batch_instr(const int index) {
+            assert(index >= 0 && index <= m_batchSubmitIndex);
+            submit_instr(RenderInstrType::DrawBatch, {.drawBatch = {.index = index}});
+        }
+
+        void submit_set_surface_shader_uniform_instr(const char* const name, const ShaderUniformVal val, const ShaderUniformValType valType) {
+            RenderInstrData_SetSurfaceShaderUniform instrData = {.val = val, .valType = valType};
+            std::strncpy(instrData.name, name, sizeof(name));
+
+            submit_instr(RenderInstrType::SetSurfaceShaderUniform, {.setDrawSurfaceShaderUniform = instrData});
+        }
     };
 }

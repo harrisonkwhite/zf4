@@ -9,7 +9,7 @@ namespace zf4 {
         Array<RectI> frames;
     };
 
-    using SpritesLoader = bool (*)(Array<Sprite>* const sprites, MemArena* const memArena);
+    using SpriteInitializer = bool (*)(Sprite* const sprite, MemArena* const memArena, const int index, const zf4::Assets& assets);
 
     RectI shrink_tex_src_rect_to_pixels(const RectI srcRect, const int texIndex, const Assets& assets);
 }

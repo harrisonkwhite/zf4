@@ -56,7 +56,7 @@ namespace zf4 {
             return false;
         }
 
-        return false;
+        return true;
     }
 
     static int add_tex_unit_to_render_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {
@@ -78,72 +78,9 @@ namespace zf4 {
         return batchTransData->texUnitsInUseCnt++;
     }
 
-    bool attempt_render_batch_submission(RenderBatchTransientData* const batchTransData, const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect srcRect, const float alpha) {
-        // Check if the batch is full or if it cannot support the texture.
-        int texUnit;
-
-        if (batchTransData->slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_render_batch(batchTransData, texGLID)) == -1) {
-            return false;
-        }
-
-        // Write the slot vertex data.
-        const int slotIndex = batchTransData->slotsUsedCnt;
-        float* const slotVerts = &batchTransData->verts[slotIndex * gk_renderBatchSlotVertCnt];
-
-        slotVerts[0] = (0.0f - origin.x) * scale.x;
-        slotVerts[1] = (0.0f - origin.y) * scale.y;
-        slotVerts[2] = pos.x;
-        slotVerts[3] = pos.y;
-        slotVerts[4] = size.x;
-        slotVerts[5] = size.y;
-        slotVerts[6] = rot;
-        slotVerts[7] = static_cast<float>(texUnit);
-        slotVerts[8] = srcRect.x;
-        slotVerts[9] = srcRect.y;
-        slotVerts[10] = alpha;
-
-        slotVerts[11] = (1.0f - origin.x) * scale.x;
-        slotVerts[12] = (0.0f - origin.y) * scale.y;
-        slotVerts[13] = pos.x;
-        slotVerts[14] = pos.y;
-        slotVerts[15] = size.x;
-        slotVerts[16] = size.y;
-        slotVerts[17] = rot;
-        slotVerts[18] = static_cast<float>(texUnit);
-        slotVerts[19] = get_rect_right(srcRect);
-        slotVerts[20] = srcRect.y;
-        slotVerts[21] = alpha;
-
-        slotVerts[22] = (1.0f - origin.x) * scale.x;
-        slotVerts[23] = (1.0f - origin.y) * scale.y;
-        slotVerts[24] = pos.x;
-        slotVerts[25] = pos.y;
-        slotVerts[26] = size.x;
-        slotVerts[27] = size.y;
-        slotVerts[28] = rot;
-        slotVerts[29] = static_cast<float>(texUnit);
-        slotVerts[30] = get_rect_right(srcRect);
-        slotVerts[31] = get_rect_bottom(srcRect);
-        slotVerts[32] = alpha;
-
-        slotVerts[33] = (0.0f - origin.x) * scale.x;
-        slotVerts[34] = (1.0f - origin.y) * scale.y;
-        slotVerts[35] = pos.x;
-        slotVerts[36] = pos.y;
-        slotVerts[37] = size.x;
-        slotVerts[38] = size.y;
-        slotVerts[39] = rot;
-        slotVerts[40] = static_cast<float>(texUnit);
-        slotVerts[41] = srcRect.x;
-        slotVerts[42] = get_rect_bottom(srcRect);
-        slotVerts[43] = alpha;
-
-        ++batchTransData->slotsUsedCnt;
-
-        return true;
-    }
-
     static bool load_str_render_info(StrRenderInfo* const renderInfo, MemArena* const memArena, const char* const str, const int fontIndex, const Assets& assets) {
+        assert(is_zero(renderInfo));
+
         const auto strLen = static_cast<int>(strlen(str));
         assert(strLen > 0);
 
@@ -240,6 +177,8 @@ namespace zf4 {
             firstLineMinVerOffsDefined = true;
         }
 
+        renderInfo->charCnt = strLen;
+        renderInfo->lineCnt = lineIndex + 1;
         renderInfo->height = firstLineMinVerOffs + charDrawPosPen.y + lastLineMaxHeight;
 
         return true;
@@ -351,9 +290,11 @@ namespace zf4 {
 
     void Renderer::clean() {
         for (int i = 0; i < m_batchLimit; ++i) {
-            glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
-            glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
-            glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
+            if (m_batchLifes[i] > 0) {
+                glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
+                glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
+                glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
+            }
         }
 
         glDeleteVertexArrays(1, &m_surfVertArrayGLID);
@@ -374,8 +315,14 @@ namespace zf4 {
 
         const int surfIndex = m_surfs.get_first_inactive_index();
 
-        if (surfIndex != -1) {
-            init_render_surface(&m_surfs[surfIndex], Window::get_size());
+        if (surfIndex == -1) {
+            return -1;
+        }
+
+        m_surfs.activate(surfIndex);
+
+        if (!init_render_surface(&m_surfs[surfIndex], Window::get_size())) {
+            return -1;
         }
 
         return surfIndex;
@@ -388,14 +335,18 @@ namespace zf4 {
         clean_render_surface(&m_surfs[surfID]);
     }
 
-    void Renderer::resize_surfaces() {
+    bool Renderer::resize_surfaces() {
         assert(m_state == RendererState::Initialized);
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             if (m_surfs.is_active(i)) {
-                resize_render_surface(&m_surfs[i], Window::get_size());
+                if (!resize_render_surface(&m_surfs[i], Window::get_size())) {
+                    return false;
+                }
             }
         }
+
+        return true;
     }
 
     void Renderer::begin_submission_phase() {
@@ -413,18 +364,64 @@ namespace zf4 {
     void Renderer::end_submission_phase() {
         assert(m_state == RendererState::Submitting);
 
-        // Submit render batch vertex data to the GPU.
         for (int i = 0; i <= m_batchSubmitIndex; ++i) {
-            const RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
-            const RenderBatchTransientData* const batchTransData = &m_batchTransDatas[i];
+            RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
+            const RenderBatchTransientData& batchTransData = m_batchTransDatas[i];
+
+            const bool generateBatch = m_batchLifes[i] == 0;
+
+            m_batchLifes[i] = m_batchLifeMax;
+
+            if (generateBatch) {
+                glGenVertexArrays(1, &batchPermData->vertArrayGLID);
+                glGenBuffers(1, &batchPermData->vertBufGLID);
+                glGenBuffers(1, &batchPermData->elemBufGLID);
+            }
 
             glBindVertexArray(batchPermData->vertArrayGLID);
             glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData->verts), batchTransData->verts);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
+
+            if (generateBatch) {
+                // Set buffer data.
+                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
+
+                const int indicesLen = 6 * gk_renderBatchSlotLimit;
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
+
+                // Set vertex attribute pointers.
+                const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
+
+                glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
+                glEnableVertexAttribArray(0);
+
+                glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
+                glEnableVertexAttribArray(1);
+
+                glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
+                glEnableVertexAttribArray(2);
+
+                glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
+                glEnableVertexAttribArray(3);
+
+                glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
+                glEnableVertexAttribArray(4);
+
+                glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
+                glEnableVertexAttribArray(5);
+
+                glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
+                glEnableVertexAttribArray(6);
+            }
+
+            // Write the batch vertex data.
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData.verts), batchTransData.verts);
+
+            glBindVertexArray(0);
         }
 
-        // Decrement all batch life values and deactivate the batches if necessary.
-        for (int i = 0; i < m_batchLimit; ++i) {
+        // Decrement the life values of batches that weren't submitted to, and deactivate them if necessary.
+        for (int i = m_batchSubmitIndex + 1; i < m_batchLimit; ++i) {
             if (m_batchLifes[i] > 0) {
                 --m_batchLifes[i];
 
@@ -443,10 +440,17 @@ namespace zf4 {
     bool Renderer::submit_texture(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
         assert(m_state == RendererState::Submitting);
 
-        while (!attempt_render_batch_submission(&m_batchTransDatas[m_batchSubmitIndex], origin, scale, pos, assets.get_tex_size(texIndex), rot, assets.get_tex_gl_id(texIndex), srcRect, alpha)) {
-            if (!move_to_next_batch()) {
-                return false;
-            }
+        const Vec2DI texSize = assets.get_tex_size(texIndex);
+
+        const Rect texCoords = {
+            static_cast<float>(srcRect.x) / texSize.x,
+            static_cast<float>(srcRect.y) / texSize.y,
+            static_cast<float>(srcRect.width) / texSize.x,
+            static_cast<float>(srcRect.height) / texSize.y
+        };
+
+        if (!submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, assets.get_tex_gl_id(texIndex), texCoords, alpha)) {
+            return false;
         }
 
         return true;
@@ -457,7 +461,7 @@ namespace zf4 {
         const GLuint fontTexGLID = assets.get_font_tex_gl_id(fontIndex);
         const Vec2DI fontTexSize = assets.get_font_tex_size(fontIndex);
 
-        StrRenderInfo strRenderInfo;
+        StrRenderInfo strRenderInfo = {};
 
         if (!load_str_render_info(&strRenderInfo, scratchSpace, str, fontIndex, assets)) {
             return false;
@@ -493,21 +497,24 @@ namespace zf4 {
                 static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].height) / fontTexSize.y
             };
 
-            while (!attempt_render_batch_submission(&m_batchTransDatas[m_batchSubmitIndex], {}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f)) {
-                if (!move_to_next_batch()) {
-                    return false;
-                }
+            if (!submit_to_batch({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f)) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace) {
         assert(m_state == RendererState::Initialized);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // Enable blending.
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+        // Assign the default framebuffer.
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        
         // Set the background to black.
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -639,7 +646,84 @@ namespace zf4 {
             }
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return true;
+    }
+
+    bool Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
+        assert(m_state == RendererState::Submitting);
+
+        RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchSubmitIndex];
+
+        // Check if the batch is full or if it cannot support the texture.
+        int texUnit;
+
+        if (batchTransData->slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_render_batch(batchTransData, texGLID)) == -1) {
+            // Move to new batch and try this all again.
+            if (!move_to_next_batch()) {
+                return false;
+            }
+
+            return submit_to_batch(origin, scale, pos, size, rot, texGLID, texCoords, alpha);
+        }
+
+        // Write the slot vertex data.
+        const int slotIndex = batchTransData->slotsUsedCnt;
+        float* const slotVerts = &batchTransData->verts[slotIndex * gk_renderBatchSlotVertCnt];
+
+        slotVerts[0] = (0.0f - origin.x) * scale.x;
+        slotVerts[1] = (0.0f - origin.y) * scale.y;
+        slotVerts[2] = pos.x;
+        slotVerts[3] = pos.y;
+        slotVerts[4] = size.x;
+        slotVerts[5] = size.y;
+        slotVerts[6] = rot;
+        slotVerts[7] = static_cast<float>(texUnit);
+        slotVerts[8] = texCoords.x;
+        slotVerts[9] = texCoords.y;
+        slotVerts[10] = alpha;
+
+        slotVerts[11] = (1.0f - origin.x) * scale.x;
+        slotVerts[12] = (0.0f - origin.y) * scale.y;
+        slotVerts[13] = pos.x;
+        slotVerts[14] = pos.y;
+        slotVerts[15] = size.x;
+        slotVerts[16] = size.y;
+        slotVerts[17] = rot;
+        slotVerts[18] = static_cast<float>(texUnit);
+        slotVerts[19] = get_rect_right(texCoords);
+        slotVerts[20] = texCoords.y;
+        slotVerts[21] = alpha;
+
+        slotVerts[22] = (1.0f - origin.x) * scale.x;
+        slotVerts[23] = (1.0f - origin.y) * scale.y;
+        slotVerts[24] = pos.x;
+        slotVerts[25] = pos.y;
+        slotVerts[26] = size.x;
+        slotVerts[27] = size.y;
+        slotVerts[28] = rot;
+        slotVerts[29] = static_cast<float>(texUnit);
+        slotVerts[30] = get_rect_right(texCoords);
+        slotVerts[31] = get_rect_bottom(texCoords);
+        slotVerts[32] = alpha;
+
+        slotVerts[33] = (0.0f - origin.x) * scale.x;
+        slotVerts[34] = (1.0f - origin.y) * scale.y;
+        slotVerts[35] = pos.x;
+        slotVerts[36] = pos.y;
+        slotVerts[37] = size.x;
+        slotVerts[38] = size.y;
+        slotVerts[39] = rot;
+        slotVerts[40] = static_cast<float>(texUnit);
+        slotVerts[41] = texCoords.x;
+        slotVerts[42] = get_rect_bottom(texCoords);
+        slotVerts[43] = alpha;
+
+        ++batchTransData->slotsUsedCnt;
+
+        // If this was the first submission to this batch, submit an instruction to draw the batch.
+        if (m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt == 1) {
+            submit_draw_batch_instr(m_batchSubmitIndex);
+        }
 
         return true;
     }
@@ -651,57 +735,6 @@ namespace zf4 {
         }
 
         ++m_batchSubmitIndex;
-
-        if (m_batchLifes[m_batchSubmitIndex] == 0) {
-            //
-            // New Batch Generation
-            //
-            RenderBatchPermData* const batchPermData = &m_batchPermDatas[m_batchSubmitIndex];
-
-            // Generate vertex array.
-            glGenVertexArrays(1, &batchPermData->vertArrayGLID);
-            glBindVertexArray(batchPermData->vertArrayGLID);
-
-            // Generate vertex buffer.
-            glGenBuffers(1, &batchPermData->vertBufGLID);
-            glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
-
-            // Generate element buffer.
-            glGenBuffers(1, &batchPermData->elemBufGLID);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
-
-            const int indicesLen = 6 * gk_renderBatchSlotLimit;
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
-
-            // Set vertex attribute pointers.
-            const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
-
-            glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
-            glEnableVertexAttribArray(0);
-
-            glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
-            glEnableVertexAttribArray(1);
-
-            glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
-            glEnableVertexAttribArray(2);
-
-            glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
-            glEnableVertexAttribArray(3);
-
-            glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
-            glEnableVertexAttribArray(4);
-
-            glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
-            glEnableVertexAttribArray(5);
-
-            glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
-            glEnableVertexAttribArray(6);
-
-            glBindVertexArray(0);
-        }
-
-        m_batchLifes[m_batchSubmitIndex] = m_batchLifeMax;
 
         // Make sure the new batch is zero.
         assert(is_zero(&m_batchTransDatas[m_batchSubmitIndex]));

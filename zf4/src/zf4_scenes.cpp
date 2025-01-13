@@ -1,16 +1,18 @@
 #include <zf4_scenes.h>
 
+#include <zf4_game.h>
+
 namespace zf4 {
-    bool load_scene(Scene* const scene, const int sceneTypeIndex, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
+    bool load_scene(Scene* const scene, const int sceneTypeIndex, const GamePtrs& gamePtrs) {
         assert(is_zero(scene));
 
         log("Loading scene of type index %d...", sceneTypeIndex);
 
         scene->typeIndex = sceneTypeIndex;
 
-        const SceneTypeInfo* const sceneTypeInfo = &sceneTypeInfos[sceneTypeIndex];
+        const SceneType& sceneType = gamePtrs.sceneTypes[sceneTypeIndex];
 
-        if (!scene->memArena.init(sceneTypeInfo->memArenaSize)) {
+        if (!scene->memArena.init(sceneType.memArenaSize)) {
             log_error("Failed to initialise scene main memory arena!");
             return false;
         }
@@ -20,13 +22,13 @@ namespace zf4 {
             return false;
         }
 
-        if (!scene->entManager.load(&scene->memArena, sceneTypeInfo->entLimit, sceneTypeInfo->compTypeLimitLoader)) {
+        if (!scene->entManager.load(&scene->memArena, sceneType.entLimit, gamePtrs.compTypes)) {
             log_error("Failed to load the scene entity manager!");
             return false;
         }
 
-        if (sceneTypeInfo->userDataSize > 0) {
-            scene->userData = scene->memArena.push(sceneTypeInfo->userDataSize, sceneTypeInfo->userDataAlignment);
+        if (sceneType.userDataSize > 0) {
+            scene->userData = scene->memArena.push(sceneType.userDataSize, sceneType.userDataAlignment);
 
             if (!scene->userData) {
                 log_error("Failed to reserve memory for scene user data!");
@@ -34,7 +36,7 @@ namespace zf4 {
             }
         }
 
-        return sceneTypeInfo->init(scene, gamePtrs);
+        return sceneType.init(scene, gamePtrs);
     }
 
     void unload_scene(Scene* const scene) {
@@ -43,14 +45,14 @@ namespace zf4 {
         zero_out(scene);
     }
 
-    bool proc_scene_tick(Scene* const scene, const Array<SceneTypeInfo>& sceneTypeInfos, const GamePtrs& gamePtrs) {
+    bool proc_scene_tick(Scene* const scene, const GamePtrs& gamePtrs) {
         scene->scratchSpace.reset();
 
         gamePtrs.renderer->begin_submission_phase();
 
         int sceneChangeIndex = -1;
 
-        if (!sceneTypeInfos[scene->typeIndex].tick(scene, &sceneChangeIndex, gamePtrs)) {
+        if (!gamePtrs.sceneTypes[scene->typeIndex].tick(scene, &sceneChangeIndex, gamePtrs)) {
             return false;
         }
 
@@ -61,7 +63,7 @@ namespace zf4 {
 
             unload_scene(scene);
 
-            if (!load_scene(scene, sceneChangeIndex, sceneTypeInfos, gamePtrs)) {
+            if (!load_scene(scene, sceneChangeIndex, gamePtrs)) {
                 return false;
             }
         }

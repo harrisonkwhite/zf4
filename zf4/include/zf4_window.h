@@ -5,6 +5,11 @@
 #include <zf4c.h>
 
 namespace zf4 {
+    enum WindowFlags {
+        WindowFlags_HideCursor = 1 << 0,
+        WindowFlags_Resizable = 1 << 1
+    };
+
     enum KeyCode {
         UndefinedKeyCode = -1,
 
@@ -98,7 +103,7 @@ namespace zf4 {
 
     class Window {
     public:
-        static bool init(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor);
+        static bool init(const int width, const int height, const char* const title, const WindowFlags flags);
         static void clean();
 
         static Vec2DI get_size() {

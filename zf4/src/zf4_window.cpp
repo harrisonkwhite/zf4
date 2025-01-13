@@ -85,7 +85,7 @@ namespace zf4 {
         }
     }
 
-    bool Window::init(const int width, const int height, const char* const title, const bool resizable, const bool hideCursor) {
+    bool Window::init(const int width, const int height, const char* const title, const WindowFlags flags) {
         assert(!s_glfwWindow);
         assert(width > 0 && height > 0);
         assert(title && title[0]);
@@ -93,7 +93,7 @@ namespace zf4 {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gk_glVersionMajor);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gk_glVersionMinor);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_RESIZABLE, resizable);
+        glfwWindowHint(GLFW_RESIZABLE, flags & WindowFlags_Resizable);
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
         s_glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
@@ -109,7 +109,7 @@ namespace zf4 {
         glfwSetMouseButtonCallback(s_glfwWindow, glfw_mouse_button_callback);
         glfwSetCursorPosCallback(s_glfwWindow, glfw_cursor_pos_callback);
 
-        glfwSetInputMode(s_glfwWindow, GLFW_CURSOR, hideCursor ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(s_glfwWindow, GLFW_CURSOR, (flags & WindowFlags_HideCursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
         return true;
     }
