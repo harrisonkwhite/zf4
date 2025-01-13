@@ -25,6 +25,7 @@ add_library(zf4 STATIC
     include/zf4_audio.h
     include/zf4_rand.h
     include/zf4_ecs.h
+    include/zf4_utils.h
     ${PARENT_DIR}/vendor/glad/include/glad/glad.h
     ${PARENT_DIR}/vendor/glad/include/KHR/khrplatform.h
 )

@@ -2,25 +2,26 @@
 
 #include <cstdlib>
 #include <AL/alext.h>
+#include <zf4_utils.h>
 
 namespace zf4 {
     static void set_up_gl_tex(const GLuint glID, const Vec2DI size, const unsigned char* const pxData) {
-        glBindTexture(GL_TEXTURE_2D, glID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pxData);
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, glID));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pxData));
     }
 
     static GLuint create_shader_from_src(const char* const src, const bool frag) {
-        const GLuint glID = glCreateShader(frag ? GL_FRAGMENT_SHADER : GL_VERTEX_SHADER);
-        glShaderSource(glID, 1, &src, nullptr);
-        glCompileShader(glID);
+        const GLuint glID = GL_CALL(glCreateShader(frag ? GL_FRAGMENT_SHADER : GL_VERTEX_SHADER));
+        GL_CALL(glShaderSource(glID, 1, &src, nullptr));
+        GL_CALL(glCompileShader(glID));
 
         GLint compileSuccess;
-        glGetShaderiv(glID, GL_COMPILE_STATUS, &compileSuccess);
+        GL_CALL(glGetShaderiv(glID, GL_COMPILE_STATUS, &compileSuccess));
 
         if (!compileSuccess) {
-            glDeleteShader(glID);
+            GL_CALL(glDeleteShader(glID));
             return 0;
         }
 
@@ -37,18 +38,18 @@ namespace zf4 {
         const GLuint fragShaderGLID = create_shader_from_src(fragShaderSrc, true);
 
         if (!fragShaderGLID) {
-            glDeleteShader(vertShaderGLID);
+            GL_CALL(glDeleteShader(vertShaderGLID));
             return 0;
         }
 
-        const GLuint progGLID = glCreateProgram();
-        glAttachShader(progGLID, vertShaderGLID);
-        glAttachShader(progGLID, fragShaderGLID);
-        glLinkProgram(progGLID);
+        const GLuint progGLID = GL_CALL(glCreateProgram());
+        GL_CALL(glAttachShader(progGLID, vertShaderGLID));
+        GL_CALL(glAttachShader(progGLID, fragShaderGLID));
+        GL_CALL(glLinkProgram(progGLID));
 
         // We no longer need the shaders, as they are now part of the program.
-        glDeleteShader(vertShaderGLID);
-        glDeleteShader(fragShaderGLID);
+        GL_CALL(glDeleteShader(vertShaderGLID));
+        GL_CALL(glDeleteShader(fragShaderGLID));
 
         return progGLID;
     }
@@ -102,19 +103,19 @@ namespace zf4 {
 
     void Assets::clean() {
         if (m_sounds.cnt > 0) {
-            alDeleteBuffers(m_sounds.cnt, m_sounds.bufALIDs.get());
+            GL_CALL(alDeleteBuffers(m_sounds.cnt, m_sounds.bufALIDs.get()));
         }
 
         for (int i = 0; i < m_shaderProgs.cnt; ++i) {
-            glDeleteProgram(m_shaderProgs.glIDs[i]);
+            GL_CALL(glDeleteProgram(m_shaderProgs.glIDs[i]));
         }
 
         if (m_fonts.cnt > 0) {
-            glDeleteTextures(m_fonts.cnt, m_fonts.texGLIDs.get());
+            GL_CALL(glDeleteTextures(m_fonts.cnt, m_fonts.texGLIDs.get()));
         }
 
         if (m_textures.cnt > 0) {
-            glDeleteTextures(m_textures.cnt, m_textures.glIDs.get());
+            GL_CALL(glDeleteTextures(m_textures.cnt, m_textures.glIDs.get()));
         }
 
         zero_out(this);
@@ -137,7 +138,7 @@ namespace zf4 {
                 return false;
             }
 
-            textures->pxDatas = memArena->alloc<MemArenaAlloc<unsigned char>>(textures->cnt);
+            textures->pxDatas = memArena->alloc<SafePtr<unsigned char>>(textures->cnt);
 
             if (!textures->pxDatas) {
                 return false;
@@ -145,7 +146,7 @@ namespace zf4 {
 
             // Load textures.
             if (textures->cnt > 0) {
-                glGenTextures(textures->cnt, textures->glIDs.get());
+                GL_CALL(glGenTextures(textures->cnt, textures->glIDs.get()));
 
                 for (int i = 0; i < textures->cnt; ++i) {
                     read_from_fs<Vec2DI>(&textures->sizes[i], fs);
@@ -198,7 +199,7 @@ namespace zf4 {
             }
 
             // Load fonts.
-            glGenTextures(fonts->cnt, fonts->texGLIDs.get());
+            GL_CALL(glGenTextures(fonts->cnt, fonts->texGLIDs.get()));
 
             for (int i = 0; i < fonts->cnt; ++i) {
                 read_from_fs<FontArrangementInfo>(&fonts->arrangementInfos[i], fs);
@@ -286,7 +287,7 @@ namespace zf4 {
                 return false;
             }
 
-            alGenBuffers(snds->cnt, snds->bufALIDs.get());
+            GL_CALL(alGenBuffers(snds->cnt, snds->bufALIDs.get()));
 
             for (int i = 0; i < snds->cnt; ++i) {
                 AudioInfo audioInfo;
@@ -296,7 +297,7 @@ namespace zf4 {
                 read_from_fs<float>(samples, fs, sampleCnt);
 
                 const ALenum format = audioInfo.channelCnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;
-                alBufferData(snds->bufALIDs[i], format, samples, sizeof(*samples) * sampleCnt, audioInfo.sampleRate);
+                GL_CALL(alBufferData(snds->bufALIDs[i], format, samples, sizeof(*samples) * sampleCnt, audioInfo.sampleRate));
             }
 
             free(samples);
@@ -389,9 +390,9 @@ namespace zf4 {
 
         assert(prog.glID);
 
-        prog.projUniLoc = glGetUniformLocation(prog.glID, "u_proj");
-        prog.viewUniLoc = glGetUniformLocation(prog.glID, "u_view");
-        prog.texturesUniLoc = glGetUniformLocation(prog.glID, "u_textures");
+        prog.projUniLoc = GL_CALL(glGetUniformLocation(prog.glID, "u_proj"));
+        prog.viewUniLoc = GL_CALL(glGetUniformLocation(prog.glID, "u_view"));
+        prog.texturesUniLoc = GL_CALL(glGetUniformLocation(prog.glID, "u_textures"));
 
         return prog;
     }
@@ -440,8 +441,8 @@ namespace zf4 {
     }
 
     void unload_internal_shader_progs(InternalShaderProgs* const progs) {
-        glDeleteBuffers(1, &progs->texturedQuad.glID);
-        glDeleteBuffers(1, &progs->test.glID);
+        GL_CALL(glDeleteBuffers(1, &progs->texturedQuad.glID));
+        GL_CALL(glDeleteBuffers(1, &progs->test.glID));
 
         zero_out(progs);
     }

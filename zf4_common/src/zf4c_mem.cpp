@@ -51,7 +51,7 @@ namespace zf4 {
         zero_out(this);
     }
 
-    MemArenaAlloc<Byte> MemArena::alloc(const int size, const int alignment) {
+    SafePtr<Byte> MemArena::alloc(const int size, const int alignment) {
         assert(m_bytes);
         assert(size > 0);
         assert(is_power_of_two(alignment));

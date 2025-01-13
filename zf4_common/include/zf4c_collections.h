@@ -23,7 +23,7 @@ namespace zf4 {
         }
 
     private:
-        MemArenaAlloc<T> m_elems;
+        SafePtr<T> m_elems;
         int m_len;
     };
 
@@ -137,7 +137,7 @@ namespace zf4 {
 
     private:
         Array<T> m_array;
-        MemArenaAlloc<Byte> m_activity;
+        SafePtr<Byte> m_activity;
     };
 
     template<SimpleType T>

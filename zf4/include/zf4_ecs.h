@@ -88,15 +88,15 @@ namespace zf4 {
         }
 
     private:
-        MemArenaAlloc<Vec2D> m_entPositions;
-        MemArenaAlloc<MemArenaAlloc<int>> m_entCompIndexes;
-        MemArenaAlloc<int> m_entTags;
-        MemArenaAlloc<Byte> m_entFlags;
-        MemArenaAlloc<Byte> m_entActivity;
-        MemArenaAlloc<int> m_entVersions;
+        SafePtr<Vec2D> m_entPositions;
+        SafePtr<SafePtr<int>> m_entCompIndexes;
+        SafePtr<int> m_entTags;
+        SafePtr<Byte> m_entFlags;
+        SafePtr<Byte> m_entActivity;
+        SafePtr<int> m_entVersions;
         int m_entLimit;
 
-        MemArenaAlloc<MemArenaAlloc<Byte>> m_compArrays; // One array per component type.
-        MemArenaAlloc<MemArenaAlloc<Byte>> m_compActivities; // One bitset per component type.
+        SafePtr<SafePtr<Byte>> m_compArrays; // One array per component type.
+        SafePtr<SafePtr<Byte>> m_compActivities; // One bitset per component type.
     };
 }

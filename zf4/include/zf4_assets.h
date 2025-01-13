@@ -9,34 +9,34 @@ namespace zf4 {
     constexpr int gk_texturedQuadShaderProgVertCnt = 11;
 
     struct Textures {
-        MemArenaAlloc<GLuint> glIDs;
-        MemArenaAlloc<Vec2DI> sizes;
-        MemArenaAlloc<MemArenaAlloc<unsigned char>> pxDatas;
+        SafePtr<GLuint> glIDs;
+        SafePtr<Vec2DI> sizes;
+        SafePtr<SafePtr<unsigned char>> pxDatas;
         int cnt;
     };
 
     struct Fonts {
-        MemArenaAlloc<FontArrangementInfo> arrangementInfos;
+        SafePtr<FontArrangementInfo> arrangementInfos;
 
-        MemArenaAlloc<GLuint> texGLIDs;
-        MemArenaAlloc<Vec2DI> texSizes;
+        SafePtr<GLuint> texGLIDs;
+        SafePtr<Vec2DI> texSizes;
 
         int cnt;
     };
 
     struct ShaderProgs {
-        MemArenaAlloc<GLuint> glIDs;
+        SafePtr<GLuint> glIDs;
         int cnt;
     };
 
     struct Sounds {
-        MemArenaAlloc<GLuint> bufALIDs;
+        SafePtr<GLuint> bufALIDs;
         int cnt;
     };
 
     struct Music {
-        MemArenaAlloc<AudioInfo> infos;
-        MemArenaAlloc<int> sampleDataFilePositions;
+        SafePtr<AudioInfo> infos;
+        SafePtr<int> sampleDataFilePositions;
         int cnt;
     };
 
@@ -57,7 +57,7 @@ namespace zf4 {
             return m_textures.sizes[index];
         }
 
-        const MemArenaAlloc<unsigned char> get_tex_px_data(const int index) const {
+        const SafePtr<unsigned char> get_tex_px_data(const int index) const {
             assert(m_loaded);
             assert(index >= 0 && index < m_textures.cnt);
             return m_textures.pxDatas[index];

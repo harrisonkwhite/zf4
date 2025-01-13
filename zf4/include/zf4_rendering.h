@@ -132,10 +132,10 @@ namespace zf4 {
     };
 
     struct StrRenderInfo {
-        MemArenaAlloc<Vec2DI> charDrawPositions;
+        SafePtr<Vec2DI> charDrawPositions;
         int charCnt;
 
-        MemArenaAlloc<int> lineWidths;
+        SafePtr<int> lineWidths;
         int lineCnt;
 
         int height;
@@ -216,12 +216,12 @@ namespace zf4 {
         GLuint m_surfElemBufGLID;
 
         int m_batchLimit;
-        MemArenaAlloc<RenderBatchPermData> m_batchPermDatas; // Persists for the lifetime of the renderer.
-        MemArenaAlloc<RenderBatchTransientData> m_batchTransDatas; // Cleared when submission phase begins.
+        SafePtr<RenderBatchPermData> m_batchPermDatas; // Persists for the lifetime of the renderer.
+        SafePtr<RenderBatchTransientData> m_batchTransDatas; // Cleared when submission phase begins.
         int m_batchSubmitIndex; // Index of the batch we are currently submitting to.
-        MemArenaAlloc<int> m_batchLifes; // Reset to a maximum whenever the batch is written to, and decrements when not. Batch is deactivated (i.e. freed) once this reaches 0.
+        SafePtr<int> m_batchLifes; // Reset to a maximum whenever the batch is written to, and decrements when not. Batch is deactivated (i.e. freed) once this reaches 0.
         int m_batchLifeMax;
-        MemArenaAlloc<unsigned short> m_batchIndices; // Reused whenever a batch is generated.
+        SafePtr<unsigned short> m_batchIndices; // Reused whenever a batch is generated.
 
         int m_texUnits[gk_texUnitLimit]; // TODO: Rename.
 

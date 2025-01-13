@@ -7,3 +7,4 @@
 #include <zf4_rand.h>
 #include <zf4_rendering.h>
 #include <zf4_sprites.h>
+#include <zf4_utils.h>

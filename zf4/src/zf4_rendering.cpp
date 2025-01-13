@@ -2,8 +2,7 @@
 
 #include <algorithm>
 #include <zf4_window.h>
-
-#define GL_CALL(x) x; assert(glGetError() == GL_NO_ERROR)
+#include <zf4_utils.h>
 
 namespace zf4 {
     static bool init_and_attach_framebuffer_tex(GLuint* const texGLID, const GLuint fbGLID, const Vec2DI texSize) {

@@ -20,7 +20,7 @@ namespace zf4 {
                 return false;
             }
 
-            m_entCompIndexes = memArena->alloc<MemArenaAlloc<int>>(entLimit);
+            m_entCompIndexes = memArena->alloc<SafePtr<int>>(entLimit);
 
             if (!m_entCompIndexes) {
                 return false;
@@ -63,13 +63,13 @@ namespace zf4 {
             //
             // Components
             //
-            m_compArrays = memArena->alloc<MemArenaAlloc<Byte>>(compTypes.get_len());
+            m_compArrays = memArena->alloc<SafePtr<Byte>>(compTypes.get_len());
 
             if (!m_compArrays) {
                 return false;
             }
 
-            m_compActivities = memArena->alloc<MemArenaAlloc<Byte>>(compTypes.get_len());
+            m_compActivities = memArena->alloc<SafePtr<Byte>>(compTypes.get_len());
 
             if (!m_compActivities) {
                 return false;
