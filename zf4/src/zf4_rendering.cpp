@@ -3,36 +3,38 @@
 #include <algorithm>
 #include <zf4_window.h>
 
+#define GL_CALL(x) x; assert(glGetError() == GL_NO_ERROR)
+
 namespace zf4 {
     static bool init_and_attach_framebuffer_tex(GLuint* const texGLID, const GLuint fbGLID, const Vec2DI texSize) {
         assert(*texGLID == 0);
 
-        glGenTextures(1, texGLID);
-        glBindTexture(GL_TEXTURE_2D, *texGLID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSize.x, texSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GL_CALL(glGenTextures(1, texGLID));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, *texGLID));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSize.x, texSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 
-        glBindFramebuffer(GL_FRAMEBUFFER, fbGLID);
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbGLID));
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texGLID, 0);
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texGLID, 0));
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            glDeleteTextures(1, texGLID);
+            GL_CALL(glDeleteTextures(1, texGLID));
             *texGLID = 0;
             return false;
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
         return true;
     }
 
     static bool init_render_surface(RenderSurface* const surf, const Vec2DI size) {
-        glGenFramebuffers(1, &surf->framebufferGLID);
+        GL_CALL(glGenFramebuffers(1, &surf->framebufferGLID));
 
         if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
-            glDeleteFramebuffers(1, &surf->framebufferGLID);
+            GL_CALL(glDeleteFramebuffers(1, &surf->framebufferGLID));
             return false;
         }
 
@@ -40,15 +42,15 @@ namespace zf4 {
     }
 
     static void clean_render_surface(RenderSurface* const surf) {
-        glDeleteFramebuffers(1, &surf->framebufferGLID);
-        glDeleteTextures(1, &surf->framebufferTexGLID);
+        GL_CALL(glDeleteFramebuffers(1, &surf->framebufferGLID));
+        GL_CALL(glDeleteTextures(1, &surf->framebufferTexGLID));
 
         zero_out(surf);
     }
 
     static bool resize_render_surface(RenderSurface* const surf, const Vec2DI size) {
         // Delete the old texture.
-        glDeleteTextures(1, &surf->framebufferTexGLID);
+        GL_CALL(glDeleteTextures(1, &surf->framebufferTexGLID));
         surf->framebufferTexGLID = 0;
 
         // Generate a new texture of the desired size and attach it to the framebuffer.
@@ -194,11 +196,11 @@ namespace zf4 {
             return false;
         }
 
-        glGenVertexArrays(1, &m_surfVertArrayGLID);
-        glBindVertexArray(m_surfVertArrayGLID);
+        GL_CALL(glGenVertexArrays(1, &m_surfVertArrayGLID));
+        GL_CALL(glBindVertexArray(m_surfVertArrayGLID));
 
-        glGenBuffers(1, &m_surfVertBufGLID);
-        glBindBuffer(GL_ARRAY_BUFFER, m_surfVertBufGLID);
+        GL_CALL(glGenBuffers(1, &m_surfVertBufGLID));
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, m_surfVertBufGLID));
 
         {
             const float verts[] = {
@@ -208,24 +210,24 @@ namespace zf4 {
                 -1.0f, 1.0f, 0.0f, 1.0f
             };
 
-            glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+            GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW));
         }
 
-        glGenBuffers(1, &m_surfElemBufGLID);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
+        GL_CALL(glGenBuffers(1, &m_surfElemBufGLID));
+        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID));
 
         {
             const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+            GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW));
         }
 
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 0));
+        GL_CALL(glEnableVertexAttribArray(0));
+        GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 0)));
 
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 2));
-        glEnableVertexAttribArray(1);
+        GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, reinterpret_cast<void*>(sizeof(float) * 2)));
+        GL_CALL(glEnableVertexAttribArray(1));
 
-        glBindVertexArray(0);
+        GL_CALL(glBindVertexArray(0));
 
         //
         // Batches
@@ -274,8 +276,6 @@ namespace zf4 {
             m_batchIndices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
         }
 
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
-
         //
         // Instructions
         //
@@ -291,15 +291,15 @@ namespace zf4 {
     void Renderer::clean() {
         for (int i = 0; i < m_batchLimit; ++i) {
             if (m_batchLifes[i] > 0) {
-                glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
-                glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
-                glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
+                GL_CALL(glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID));
+                GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID));
+                GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID));
             }
         }
 
-        glDeleteVertexArrays(1, &m_surfVertArrayGLID);
-        glDeleteBuffers(1, &m_surfVertBufGLID);
-        glDeleteBuffers(1, &m_surfElemBufGLID);
+        GL_CALL(glDeleteVertexArrays(1, &m_surfVertArrayGLID));
+        GL_CALL(glDeleteBuffers(1, &m_surfVertBufGLID));
+        GL_CALL(glDeleteBuffers(1, &m_surfElemBufGLID));
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             if (m_surfs.is_active(i)) {
@@ -373,51 +373,51 @@ namespace zf4 {
             m_batchLifes[i] = m_batchLifeMax;
 
             if (generateBatch) {
-                glGenVertexArrays(1, &batchPermData->vertArrayGLID);
-                glGenBuffers(1, &batchPermData->vertBufGLID);
-                glGenBuffers(1, &batchPermData->elemBufGLID);
+                GL_CALL(glGenVertexArrays(1, &batchPermData->vertArrayGLID));
+                GL_CALL(glGenBuffers(1, &batchPermData->vertBufGLID));
+                GL_CALL(glGenBuffers(1, &batchPermData->elemBufGLID));
             }
 
-            glBindVertexArray(batchPermData->vertArrayGLID);
-            glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID);
+            GL_CALL(glBindVertexArray(batchPermData->vertArrayGLID));
+            GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID));
+            GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID));
 
             if (generateBatch) {
                 // Set buffer data.
-                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW);
+                GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW));
 
                 const int indicesLen = 6 * gk_renderBatchSlotLimit;
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW);
+                GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW));
 
                 // Set vertex attribute pointers.
                 const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;
 
-                glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0));
-                glEnableVertexAttribArray(0);
+                GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 0)));
+                GL_CALL(glEnableVertexAttribArray(0));
 
-                glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2));
-                glEnableVertexAttribArray(1);
+                GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 2)));
+                GL_CALL(glEnableVertexAttribArray(1));
 
-                glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4));
-                glEnableVertexAttribArray(2);
+                GL_CALL(glVertexAttribPointer(2, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 4)));
+                GL_CALL(glEnableVertexAttribArray(2));
 
-                glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6));
-                glEnableVertexAttribArray(3);
+                GL_CALL(glVertexAttribPointer(3, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 6)));
+                GL_CALL(glEnableVertexAttribArray(3));
 
-                glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7));
-                glEnableVertexAttribArray(4);
+                GL_CALL(glVertexAttribPointer(4, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 7)));
+                GL_CALL(glEnableVertexAttribArray(4));
 
-                glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8));
-                glEnableVertexAttribArray(5);
+                GL_CALL(glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8)));
+                GL_CALL(glEnableVertexAttribArray(5));
 
-                glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10));
-                glEnableVertexAttribArray(6);
+                GL_CALL(glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10)));
+                GL_CALL(glEnableVertexAttribArray(6));
             }
 
             // Write the batch vertex data.
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData.verts), batchTransData.verts);
+            GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData.verts), batchTransData.verts));
 
-            glBindVertexArray(0);
+            GL_CALL(glBindVertexArray(0));
         }
 
         // Decrement the life values of batches that weren't submitted to, and deactivate them if necessary.
@@ -427,9 +427,9 @@ namespace zf4 {
 
                 if (m_batchLifes[i] == 0) {
                     // Deactivate the batch.
-                    glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID);
-                    glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID);
-                    glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID);
+                    GL_CALL(glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID));
+                    GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID));
+                    GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID));
                 }
             }
         }
@@ -509,15 +509,15 @@ namespace zf4 {
         assert(m_state == RendererState::Initialized);
 
         // Enable blending.
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GL_CALL(glEnable(GL_BLEND));
+        GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
         // Assign the default framebuffer.
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
         // Set the background to black.
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        GL_CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+        GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
         // Iterate through and execute render instructions.
         const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(Window::get_size().x), static_cast<float>(Window::get_size().y), 0.0f, -1.0f, 1.0f);
@@ -538,8 +538,8 @@ namespace zf4 {
 
             switch (instr.type) {
                 case RenderInstrType::Clear:
-                    glClearColor(instr.data.clear.color.x, instr.data.clear.color.y, instr.data.clear.color.z, instr.data.clear.color.w);
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    GL_CALL(glClearColor(instr.data.clear.color.x, instr.data.clear.color.y, instr.data.clear.color.z, instr.data.clear.color.w));
+                    GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
                     break;
 
                 case RenderInstrType::SetViewMatrix:
@@ -552,33 +552,33 @@ namespace zf4 {
                         const RenderBatchTransientData& batchTransData = m_batchTransDatas[batchIndex];
                         const RenderBatchPermData& batchPermData = m_batchPermDatas[batchIndex];
 
-                        glUseProgram(internalShaderProgs.texturedQuad.glID);
+                        GL_CALL(glUseProgram(internalShaderProgs.texturedQuad.glID));
 
-                        glUniformMatrix4fv(internalShaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat));
-                        glUniformMatrix4fv(internalShaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat));
+                        GL_CALL(glUniformMatrix4fv(internalShaderProgs.texturedQuad.projUniLoc, 1, false, reinterpret_cast<const float*>(&projMat)));
+                        GL_CALL(glUniformMatrix4fv(internalShaderProgs.texturedQuad.viewUniLoc, 1, false, reinterpret_cast<const float*>(&viewMat)));
 
-                        glUniform1iv(internalShaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits);
+                        GL_CALL(glUniform1iv(internalShaderProgs.texturedQuad.texturesUniLoc, gk_texUnitLimit, m_texUnits));
 
                         for (int j = 0; j < batchTransData.texUnitsInUseCnt; ++j) {
-                            glActiveTexture(GL_TEXTURE0 + j);
-                            glBindTexture(GL_TEXTURE_2D, batchTransData.texUnitTexGLIDs[j]);
+                            GL_CALL(glActiveTexture(GL_TEXTURE0 + j));
+                            GL_CALL(glBindTexture(GL_TEXTURE_2D, batchTransData.texUnitTexGLIDs[j]));
                         }
 
-                        glBindVertexArray(batchPermData.vertArrayGLID);
-                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData.elemBufGLID);
-                        glDrawElements(GL_TRIANGLES, 6 * batchTransData.slotsUsedCnt, GL_UNSIGNED_SHORT, nullptr);
+                        GL_CALL(glBindVertexArray(batchPermData.vertArrayGLID));
+                        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData.elemBufGLID));
+                        GL_CALL(glDrawElements(GL_TRIANGLES, 6 * batchTransData.slotsUsedCnt, GL_UNSIGNED_SHORT, nullptr));
                     }
 
                     break;
 
                 case RenderInstrType::SetSurface:
                     surfIndexes.push(instr.data.setSurface.index);
-                    glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[surfIndexes.peek()].framebufferGLID);
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[surfIndexes.peek()].framebufferGLID));
                     break;
 
                 case RenderInstrType::UnsetSurface:
                     surfIndexes.pop();
-                    glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[surfIndexes.peek()].framebufferGLID);
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[surfIndexes.peek()].framebufferGLID));
                     break;
 
                 case RenderInstrType::SetSurfaceShaderProg:
@@ -589,36 +589,36 @@ namespace zf4 {
                     {
                         assert(surfShaderProgGLID); // Make sure the surface shader program has been set prior to this instruction.
 
-                        glUseProgram(surfShaderProgGLID);
+                        GL_CALL(glUseProgram(surfShaderProgGLID));
 
-                        const int uniformLoc = glGetUniformLocation(surfShaderProgGLID, instr.data.setDrawSurfaceShaderUniform.name);
+                        const int uniformLoc = GL_CALL(glGetUniformLocation(surfShaderProgGLID, instr.data.setDrawSurfaceShaderUniform.name));
                         assert(uniformLoc != -1 && "Could not find the surface shader uniform with the given name!");
 
                         const ShaderUniformVal uniformVal = instr.data.setDrawSurfaceShaderUniform.val;
 
                         switch (instr.data.setDrawSurfaceShaderUniform.valType) {
                             case ShaderUniformValType::Float:
-                                glUniform1f(uniformLoc, uniformVal.floatVal);
+                                GL_CALL(glUniform1f(uniformLoc, uniformVal.floatVal));
                                 break;
 
                             case ShaderUniformValType::Int:
-                                glUniform1i(uniformLoc, uniformVal.intVal);
+                                GL_CALL(glUniform1i(uniformLoc, uniformVal.intVal));
                                 break;
 
                             case ShaderUniformValType::Vec2D:
-                                glUniform2fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec2DVal));
+                                GL_CALL(glUniform2fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec2DVal)));
                                 break;
 
                             case ShaderUniformValType::Vec3D:
-                                glUniform3fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec3DVal));
+                                GL_CALL(glUniform3fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec3DVal)));
                                 break;
 
                             case ShaderUniformValType::Vec4D:
-                                glUniform4fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec4DVal));
+                                GL_CALL(glUniform4fv(uniformLoc, 1, reinterpret_cast<const float*>(&uniformVal.vec4DVal)));
                                 break;
 
                             case ShaderUniformValType::Matrix4x4:
-                                glUniformMatrix4fv(uniformLoc, 1, false, reinterpret_cast<const float*>(&uniformVal.mat4x4Val));
+                                GL_CALL(glUniformMatrix4fv(uniformLoc, 1, false, reinterpret_cast<const float*>(&uniformVal.mat4x4Val)));
                                 break;
                         }
                     }
@@ -629,15 +629,15 @@ namespace zf4 {
                     {
                         assert(surfShaderProgGLID); // Make sure the surface shader program has been set prior to this instruction.
 
-                        glUseProgram(surfShaderProgGLID);
+                        GL_CALL(glUseProgram(surfShaderProgGLID));
 
-                        glActiveTexture(GL_TEXTURE0);
+                        GL_CALL(glActiveTexture(GL_TEXTURE0));
                         const RenderSurface& surf = m_surfs[instr.data.drawSurface.index];
-                        glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID);
+                        GL_CALL(glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID));
 
-                        glBindVertexArray(m_surfVertArrayGLID);
-                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+                        GL_CALL(glBindVertexArray(m_surfVertArrayGLID));
+                        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfElemBufGLID));
+                        GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
 
                         surfShaderProgGLID = 0; // Reset the surface shader program.
                     }
