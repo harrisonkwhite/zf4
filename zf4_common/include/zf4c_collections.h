@@ -8,24 +8,18 @@ namespace zf4 {
     public:
         bool init(MemArena* const memArena, const int len);
 
-        bool is_initialized() const {
-            return m_elems != nullptr;
+        T* get(const int index) {
+            assert(index >= 0 && index < m_len);
+            return &m_elems[index];
+        }
+
+        const T* get(const int index) const {
+            assert(index >= 0 && index < m_len);
+            return &m_elems[index];
         }
 
         int get_len() const {
             return m_len;
-        }
-
-        T& operator[](const int index) {
-            assert(m_elems);
-            assert(index >= 0 && index < m_len);
-            return m_elems[index];
-        }
-
-        const T& operator[](const int index) const {
-            assert(m_elems);
-            assert(index >= 0 && index < m_len);
-            return m_elems[index];
         }
 
     private:
@@ -38,8 +32,14 @@ namespace zf4 {
     public:
         bool init(MemArena* const memArena, const int cap);
 
-        bool is_initialized() const {
-            return m_array.is_initialized();
+        T* get(const int index) {
+            assert(index < m_len);
+            return m_array.get(index);
+        }
+
+        const T* get(const int index) const {
+            assert(index < m_len);
+            return m_array.get(index);
         }
 
         int get_len() const {
@@ -59,8 +59,7 @@ namespace zf4 {
         }
 
         void push(const T& elem) {
-            assert(m_len < get_capacity());
-            m_array[m_len] = elem;
+            *m_array.get(m_len) = elem;
             ++m_len;
         }
 
@@ -69,9 +68,12 @@ namespace zf4 {
             --m_len;
         }
 
-        T& peek() {
-            assert(m_len > 0);
-            return m_array[m_len - 1];
+        T* peek() {
+            return m_array.get(m_len - 1);
+        }
+
+        const T* peek() const {
+            return m_array.get(m_len - 1);
         }
 
         void clear() {
@@ -80,16 +82,6 @@ namespace zf4 {
 
         Array<T> to_array() {
             return m_array;
-        }
-
-        T& operator[](const int index) {
-            assert(index < m_len);
-            return m_array[index];
-        }
-
-        const T& operator[](const int index) const {
-            assert(index < m_len);
-            return m_array[index];
         }
 
     private:
@@ -103,8 +95,14 @@ namespace zf4 {
     public:
         bool init(MemArena* const memArena, const int len);
 
-        bool is_initialized() const {
-            return m_array.is_initialized();
+        T* get(const int index) {
+            assert(is_active(index));
+            return m_array.get(index);
+        }
+
+        const T* get(const int index) const {
+            assert(is_active(index));
+            return m_array.get(index);
         }
 
         int get_len() const {
@@ -135,16 +133,6 @@ namespace zf4 {
 
         Array<T> to_array() {
             return m_array;
-        }
-
-        T& operator[](const int index) {
-            assert(is_active(index));
-            return m_array[index];
-        }
-
-        const T& operator[](const int index) const {
-            assert(is_active(index));
-            return m_array[index];
         }
 
     private:

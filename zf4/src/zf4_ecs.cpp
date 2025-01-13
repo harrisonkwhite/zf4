@@ -76,7 +76,7 @@ namespace zf4 {
             }
 
             for (int i = 0; i < compTypes.get_len(); ++i) {
-                m_compArrays[i] = memArena->push<Byte>(compTypes[i].size * entLimit);
+                m_compArrays[i] = memArena->push<Byte>(compTypes.get(i)->size * entLimit);
 
                 if (!m_compArrays[i]) {
                     return false;
@@ -138,7 +138,7 @@ namespace zf4 {
         assert(does_ent_have_component(entID, compTypeIndex, compTypes));
 
         const int compIndex = m_entCompIndexes[entID.index][compTypeIndex];
-        return m_compArrays[compTypeIndex] + (compIndex * compTypes[compTypeIndex].size);
+        return m_compArrays[compTypeIndex] + (compIndex * compTypes.get(compTypeIndex)->size);
     }
 
     bool EntityManager::add_component_to_ent(const int compTypeIndex, const EntID entID, const Array<ComponentType>& compTypes) {
@@ -160,10 +160,10 @@ namespace zf4 {
         // Clear the component data, and run the defaults loader function if defined.
         Byte* const comp = get_ent_component(entID, compTypeIndex, compTypes);
 
-        zero_out(comp, compTypes[compTypeIndex].size);
+        zero_out(comp, compTypes.get(compTypeIndex)->size);
 
-        if (compTypes[compTypeIndex].defaultsSetter) {
-            compTypes[compTypeIndex].defaultsSetter(comp);
+        if (compTypes.get(compTypeIndex)->defaultsSetter) {
+            compTypes.get(compTypeIndex)->defaultsSetter(comp);
         }
 
         return true;

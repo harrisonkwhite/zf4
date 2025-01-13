@@ -160,7 +160,7 @@ namespace zf4 {
         bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace);
 
         bool submit_sprite(const Sprite& sprite, const int frameIndex, const Vec2D pos, const Assets& assets, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const float alpha = 1.0f) {
-            return submit_texture(sprite.texIndex, assets, pos, sprite.frames[frameIndex], origin, rot, scale, alpha);
+            return submit_texture(sprite.texIndex, assets, pos, *sprite.frames.get(frameIndex), origin, rot, scale, alpha);
         }
 
         // TODO: Change return values for these to allow for error handling. Only a subset needs to have them. Solve this somehow!

@@ -78,7 +78,7 @@ namespace zf4 {
         }
 
         for (int i = 0; i < gameInfo.spriteCnt; ++i) {
-            if (!gameInfo.spriteInitializer(&game->sprites[i], &game->permMemArena, i, game->assets)) {
+            if (!gameInfo.spriteInitializer(game->sprites.get(i), &game->permMemArena, i, game->assets)) {
                 return false;
             }
         }
@@ -89,7 +89,7 @@ namespace zf4 {
         }
 
         for (int i = 0; i < gameInfo.componentTypeCnt; ++i) {
-            gameInfo.componentTypeInitializer(&game->compTypes[i], i);
+            gameInfo.componentTypeInitializer(game->compTypes.get(i), i);
         }
 
         // Initialise the entity manager.
@@ -176,7 +176,7 @@ namespace zf4 {
                 log("Processing window resize...");
 
                 glViewport(0, 0, Window::get_size().x, Window::get_size().y);
-                
+
                 if (!game->renderer.resize_surfaces()) {
                     return false;
                 }

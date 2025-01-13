@@ -303,7 +303,7 @@ namespace zf4 {
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             if (m_surfs.is_active(i)) {
-                clean_render_surface(&m_surfs[i]);
+                clean_render_surface(m_surfs.get(i));
             }
         }
 
@@ -321,7 +321,7 @@ namespace zf4 {
 
         m_surfs.activate(surfIndex);
 
-        if (!init_render_surface(&m_surfs[surfIndex], Window::get_size())) {
+        if (!init_render_surface(m_surfs.get(surfIndex), Window::get_size())) {
             return -1;
         }
 
@@ -332,7 +332,7 @@ namespace zf4 {
         assert(m_state == RendererState::Initialized);
 
         m_surfs.deactivate(surfID);
-        clean_render_surface(&m_surfs[surfID]);
+        clean_render_surface(m_surfs.get(surfID));
     }
 
     bool Renderer::resize_surfaces() {
@@ -340,7 +340,7 @@ namespace zf4 {
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             if (m_surfs.is_active(i)) {
-                if (!resize_render_surface(&m_surfs[i], Window::get_size())) {
+                if (!resize_render_surface(m_surfs.get(i), Window::get_size())) {
                     return false;
                 }
             }
@@ -534,7 +534,7 @@ namespace zf4 {
         }
 
         for (int i = 0; i < m_renderInstrs.get_len(); ++i) {
-            const RenderInstr instr = m_renderInstrs[i];
+            const RenderInstr& instr = *m_renderInstrs.get(i);
 
             switch (instr.type) {
                 case RenderInstrType::Clear:
@@ -573,12 +573,12 @@ namespace zf4 {
 
                 case RenderInstrType::SetSurface:
                     surfIndexes.push(instr.data.setSurface.index);
-                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, m_surfs[surfIndexes.peek()].framebufferGLID));
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, m_surfs.get(*surfIndexes.peek())->framebufferGLID));
                     break;
 
                 case RenderInstrType::UnsetSurface:
                     surfIndexes.pop();
-                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs[surfIndexes.peek()].framebufferGLID));
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs.get(*surfIndexes.peek())->framebufferGLID));
                     break;
 
                 case RenderInstrType::SetSurfaceShaderProg:
@@ -632,7 +632,7 @@ namespace zf4 {
                         GL_CALL(glUseProgram(surfShaderProgGLID));
 
                         GL_CALL(glActiveTexture(GL_TEXTURE0));
-                        const RenderSurface& surf = m_surfs[instr.data.drawSurface.index];
+                        const RenderSurface& surf = *m_surfs.get(instr.data.drawSurface.index);
                         GL_CALL(glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID));
 
                         GL_CALL(glBindVertexArray(m_surfVertArrayGLID));
