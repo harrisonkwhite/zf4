@@ -89,15 +89,15 @@ namespace zf4 {
         const FontArrangementInfo& fontArrangementInfo = assets.get_font_arrangement_info(fontIndex);
 
         // Reserve memory for some render information.
-        renderInfo->charDrawPositions = memArena->push<Vec2DI>(strLen);
+        renderInfo->charDrawPositions = memArena->alloc<Vec2DI>(strLen);
 
-        if (!renderInfo->charDrawPositions) {
+        if (!renderInfo->charDrawPositions.get()) {
             return false;
         }
 
-        renderInfo->lineWidths = memArena->push<int>(strLen + 1); // Maximised for the case where all characters are newlines.
+        renderInfo->lineWidths = memArena->alloc<int>(strLen + 1); // Maximised for the case where all characters are newlines.
 
-        if (!renderInfo->lineWidths) {
+        if (!renderInfo->lineWidths.get()) {
             return false;
         }
 
@@ -236,19 +236,19 @@ namespace zf4 {
         m_batchLifeMax = batchLifeMax;
 
         // Reserve memory for batch data.
-        m_batchPermDatas = memArena->push<RenderBatchPermData>(batchLimit);
+        m_batchPermDatas = memArena->alloc<RenderBatchPermData>(batchLimit);
 
         if (!m_batchPermDatas) {
             return false;
         }
 
-        m_batchTransDatas = memArena->push<RenderBatchTransientData>(batchLimit);
+        m_batchTransDatas = memArena->alloc<RenderBatchTransientData>(batchLimit);
 
         if (!m_batchTransDatas) {
             return false;
         }
 
-        m_batchLifes = memArena->push<int>(batchLimit);
+        m_batchLifes = memArena->alloc<int>(batchLimit);
 
         if (!m_batchLifes) {
             return false;
@@ -261,7 +261,7 @@ namespace zf4 {
 
         // Generate batch indices.
         const int indicesLen = 6 * gk_renderBatchSlotLimit;
-        m_batchIndices = memArena->push<unsigned short>(indicesLen);
+        m_batchIndices = memArena->alloc<unsigned short>(indicesLen);
 
         if (!m_batchIndices) {
             return false;
@@ -354,7 +354,7 @@ namespace zf4 {
 
         m_state = RendererState::Submitting;
 
-        zero_out(m_batchTransDatas, m_batchSubmitIndex + 1);
+        zero_out(m_batchTransDatas.get(), m_batchSubmitIndex + 1);
 
         m_batchSubmitIndex = 0;
 
@@ -387,7 +387,7 @@ namespace zf4 {
                 GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW));
 
                 const int indicesLen = 6 * gk_renderBatchSlotLimit;
-                GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices, GL_STATIC_DRAW));
+                GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices.get(), GL_STATIC_DRAW));
 
                 // Set vertex attribute pointers.
                 const int vertsStride = sizeof(float) * gk_texturedQuadShaderProgVertCnt;

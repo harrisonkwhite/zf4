@@ -11,12 +11,54 @@ namespace zf4 {
     template <typename T>
     concept SimpleType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
 
+    template<SimpleType T>
+    class SafePtr {
+    public:
+        SafePtr() = default;
+
+        SafePtr(T* const elems, const int elemCnt) : m_elems(elems), m_elemCnt(elemCnt) {
+        }
+
+        T* get() {
+            return m_elems; // TEMP?
+        }
+
+        const T* get() const {
+            return m_elems; // TEMP?
+        }
+
+        T& operator[](const int index) {
+            assert(index >= 0 && index < m_elemCnt);
+            return m_elems[index];
+        }
+
+        const T& operator[](const int index) const {
+            assert(index >= 0 && index < m_elemCnt);
+            return m_elems[index];
+        }
+
+        bool operator()() const {
+            return m_elems;
+        }
+
+        bool operator!() const {
+            return !m_elems;
+        }
+
+    private:
+        T* m_elems;
+
+#ifdef _DEBUG
+        int m_elemCnt; // We only hold this additional metadata in debug mode so we can catch any accidental out-of-bounds accesses.
+#endif
+    };
+
     class MemArena {
     public:
         bool init(const int size);
         void clean();
-        Byte* push(const int size, const int alignment);
-        template<SimpleType T> T* push(const int cnt = 1);
+        SafePtr<Byte> alloc(const int size, const int alignment);
+        template<SimpleType T> SafePtr<T> alloc(const int cnt = 1);
         void reset();
 
     private:
@@ -57,10 +99,13 @@ namespace zf4 {
     }
 
     template<SimpleType T>
-    bool is_zero(const T* const data) {
+    bool is_zero(const T* const data, const int cnt = 1) {
+        static_assert(!std::is_pointer_v<T>);
+        assert(cnt > 0);
+
         const auto bytes = reinterpret_cast<const Byte*>(data);
 
-        for (int i = 0; i < sizeof(T); ++i) {
+        for (int i = 0; i < sizeof(T) * cnt; ++i) {
             if (bytes[i]) {
                 return false;
             }
@@ -71,6 +116,7 @@ namespace zf4 {
 
     template<SimpleType T>
     void zero_out(T* const data, const int cnt = 1) {
+        static_assert(!std::is_pointer_v<T>);
         std::memset(data, 0, sizeof(T) * cnt);
     }
 
@@ -101,7 +147,21 @@ namespace zf4 {
     }
 
     template<SimpleType T>
-    T* MemArena::push(const int cnt) {
-        return reinterpret_cast<T*>(push(sizeof(T) * cnt, alignof(T)));
+    inline SafePtr<T> MemArena::alloc(const int cnt) {
+        assert(m_bytes);
+        assert(cnt > 0);
+
+        const int size = sizeof(T) * cnt;
+
+        const int offsAligned = align_forward(m_offs, alignof(T));
+        const int offsNext = offsAligned + size;
+
+        if (offsNext > m_size) {
+            return {};
+        }
+
+        m_offs = offsNext;
+
+        return {reinterpret_cast<T*>(m_bytes + offsAligned), size};
     }
 }

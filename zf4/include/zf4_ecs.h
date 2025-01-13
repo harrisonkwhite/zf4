@@ -35,7 +35,7 @@ namespace zf4 {
 
         inline bool does_ent_exist(const EntID entID) const {
             assert(entID.index >= 0 && entID.index < m_entLimit);
-            return is_bit_active(m_entActivity, entID.index) && m_entVersions[entID.index] == entID.version;
+            return is_bit_active(m_entActivity.get(), entID.index) && m_entVersions[entID.index] == entID.version;
         }
 
         inline EntID create_ent_id(const int index) const {
@@ -88,15 +88,15 @@ namespace zf4 {
         }
 
     private:
-        Vec2D* m_entPositions;
-        int** m_entCompIndexes;
-        int* m_entTags;
-        Byte* m_entFlags; // TEMP: For now we only allow 8 flags per entity.
-        Byte* m_entActivity;
-        int* m_entVersions;
+        MemArenaAlloc<Vec2D> m_entPositions;
+        MemArenaAlloc<MemArenaAlloc<int>> m_entCompIndexes;
+        MemArenaAlloc<int> m_entTags;
+        MemArenaAlloc<Byte> m_entFlags;
+        MemArenaAlloc<Byte> m_entActivity;
+        MemArenaAlloc<int> m_entVersions;
         int m_entLimit;
 
-        Byte** m_compArrays; // One array per component type.
-        Byte** m_compActivities; // One bitset per component type.
+        MemArenaAlloc<MemArenaAlloc<Byte>> m_compArrays; // One array per component type.
+        MemArenaAlloc<MemArenaAlloc<Byte>> m_compActivities; // One bitset per component type.
     };
 }

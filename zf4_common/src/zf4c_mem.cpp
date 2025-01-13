@@ -38,7 +38,7 @@ namespace zf4 {
             return false;
         }
 
-        this->m_size = size;
+        m_size = size;
 
         return true;
     }
@@ -51,7 +51,7 @@ namespace zf4 {
         zero_out(this);
     }
 
-    Byte* MemArena::push(const int size, const int alignment) {
+    MemArenaAlloc<Byte> MemArena::alloc(const int size, const int alignment) {
         assert(m_bytes);
         assert(size > 0);
         assert(is_power_of_two(alignment));
@@ -59,13 +59,13 @@ namespace zf4 {
         const int offsAligned = align_forward(m_offs, alignment);
         const int offsNext = offsAligned + size;
 
-        if (offsNext > this->m_size) {
-            return nullptr;
+        if (offsNext > m_size) {
+            return {};
         }
 
         m_offs = offsNext;
 
-        return m_bytes + offsAligned;
+        return {m_bytes + offsAligned, size};
     }
 
     void MemArena::reset() {

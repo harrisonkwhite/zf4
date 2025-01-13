@@ -102,7 +102,7 @@ namespace zf4 {
 
     void Assets::clean() {
         if (m_sounds.cnt > 0) {
-            alDeleteBuffers(m_sounds.cnt, m_sounds.bufALIDs);
+            alDeleteBuffers(m_sounds.cnt, m_sounds.bufALIDs.get());
         }
 
         for (int i = 0; i < m_shaderProgs.cnt; ++i) {
@@ -110,11 +110,11 @@ namespace zf4 {
         }
 
         if (m_fonts.cnt > 0) {
-            glDeleteTextures(m_fonts.cnt, m_fonts.texGLIDs);
+            glDeleteTextures(m_fonts.cnt, m_fonts.texGLIDs.get());
         }
 
         if (m_textures.cnt > 0) {
-            glDeleteTextures(m_textures.cnt, m_textures.glIDs);
+            glDeleteTextures(m_textures.cnt, m_textures.glIDs.get());
         }
 
         zero_out(this);
@@ -125,19 +125,19 @@ namespace zf4 {
 
         if (textures->cnt > 0) {
             // Reserve space in the arena for texture data.
-            textures->glIDs = memArena->push<GLuint>(textures->cnt);
+            textures->glIDs = memArena->alloc<GLuint>(textures->cnt);
 
             if (!textures->glIDs) {
                 return false;
             }
 
-            textures->sizes = memArena->push<Vec2DI>(textures->cnt);
+            textures->sizes = memArena->alloc<Vec2DI>(textures->cnt);
 
             if (!textures->sizes) {
                 return false;
             }
 
-            textures->pxDatas = memArena->push<unsigned char*>(textures->cnt);
+            textures->pxDatas = memArena->alloc<MemArenaAlloc<unsigned char>>(textures->cnt);
 
             if (!textures->pxDatas) {
                 return false;
@@ -145,21 +145,21 @@ namespace zf4 {
 
             // Load textures.
             if (textures->cnt > 0) {
-                glGenTextures(textures->cnt, textures->glIDs);
+                glGenTextures(textures->cnt, textures->glIDs.get());
 
                 for (int i = 0; i < textures->cnt; ++i) {
                     read_from_fs<Vec2DI>(&textures->sizes[i], fs);
 
                     const int pxDataSize = gk_texChannelCnt * textures->sizes[i].x * textures->sizes[i].y;
-                    textures->pxDatas[i] = memArena->push<unsigned char>(pxDataSize);
+                    textures->pxDatas[i] = memArena->alloc<unsigned char>(pxDataSize);
 
                     if (!textures->pxDatas[i]) {
                         return false;
                     }
 
-                    read_from_fs<unsigned char>(textures->pxDatas[i], fs, pxDataSize);
+                    read_from_fs<unsigned char>(textures->pxDatas[i].get(), fs, pxDataSize);
 
-                    set_up_gl_tex(textures->glIDs[i], textures->sizes[i], textures->pxDatas[i]);
+                    set_up_gl_tex(textures->glIDs[i], textures->sizes[i], textures->pxDatas[i].get());
                 }
             }
         }
@@ -172,19 +172,19 @@ namespace zf4 {
 
         if (fonts->cnt > 0) {
             // Reserve space in the arena for font data.
-            fonts->arrangementInfos = memArena->push<FontArrangementInfo>(fonts->cnt);
+            fonts->arrangementInfos = memArena->alloc<FontArrangementInfo>(fonts->cnt);
 
             if (!fonts->arrangementInfos) {
                 return false;
             }
 
-            fonts->texGLIDs = memArena->push<GLuint>(fonts->cnt);
+            fonts->texGLIDs = memArena->alloc<GLuint>(fonts->cnt);
 
             if (!fonts->texGLIDs) {
                 return false;
             }
 
-            fonts->texSizes = memArena->push<Vec2DI>(fonts->cnt);
+            fonts->texSizes = memArena->alloc<Vec2DI>(fonts->cnt);
 
             if (!fonts->texSizes) {
                 return false;
@@ -198,7 +198,7 @@ namespace zf4 {
             }
 
             // Load fonts.
-            glGenTextures(fonts->cnt, fonts->texGLIDs);
+            glGenTextures(fonts->cnt, fonts->texGLIDs.get());
 
             for (int i = 0; i < fonts->cnt; ++i) {
                 read_from_fs<FontArrangementInfo>(&fonts->arrangementInfos[i], fs);
@@ -218,7 +218,7 @@ namespace zf4 {
 
         if (progs->cnt > 0) {
             // Reserve space in the arena for shader program GL IDs.
-            progs->glIDs = memArena->push<GLuint>(progs->cnt);
+            progs->glIDs = memArena->alloc<GLuint>(progs->cnt);
 
             if (!progs->glIDs) {
                 return false;
@@ -274,7 +274,7 @@ namespace zf4 {
         read_from_fs<int>(&snds->cnt, fs);
 
         if (snds->cnt > 0) {
-            snds->bufALIDs = memArena->push<ALuint>(snds->cnt);
+            snds->bufALIDs = memArena->alloc<ALuint>(snds->cnt);
 
             if (!snds->bufALIDs) {
                 return false;
@@ -286,7 +286,7 @@ namespace zf4 {
                 return false;
             }
 
-            alGenBuffers(snds->cnt, snds->bufALIDs);
+            alGenBuffers(snds->cnt, snds->bufALIDs.get());
 
             for (int i = 0; i < snds->cnt; ++i) {
                 AudioInfo audioInfo;
@@ -309,13 +309,13 @@ namespace zf4 {
         read_from_fs<int>(&music->cnt, fs);
 
         if (music->cnt > 0) {
-            music->infos = memArena->push<AudioInfo>(music->cnt);
+            music->infos = memArena->alloc<AudioInfo>(music->cnt);
 
             if (!music->infos) {
                 return false;
             }
 
-            music->sampleDataFilePositions = memArena->push<int>(music->cnt);
+            music->sampleDataFilePositions = memArena->alloc<int>(music->cnt);
 
             if (!music->sampleDataFilePositions) {
                 return false;

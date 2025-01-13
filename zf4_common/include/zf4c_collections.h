@@ -23,7 +23,7 @@ namespace zf4 {
         }
 
     private:
-        T* m_elems;
+        MemArenaAlloc<T> m_elems;
         int m_len;
     };
 
@@ -110,25 +110,25 @@ namespace zf4 {
         }
 
         bool is_active(const int index) const {
-            return is_bit_active(m_activity, index);
+            return is_bit_active(m_activity.get(), index);
         }
 
         void activate(const int index) {
             assert(index >= 0 && index < get_len());
-            activate_bit(m_activity, index);
+            activate_bit(m_activity.get(), index);
         }
 
         void deactivate(const int index) {
             assert(index >= 0 && index < get_len());
-            deactivate_bit(m_activity, index);
+            deactivate_bit(m_activity.get(), index);
         }
 
         int get_first_active_index() const {
-            return get_first_active_bit_index(m_activity, get_len());
+            return get_first_active_bit_index(m_activity.get(), get_len());
         }
 
         int get_first_inactive_index() const {
-            return get_first_inactive_bit_index(m_activity, get_len());
+            return get_first_inactive_bit_index(m_activity.get(), get_len());
         }
 
         Array<T> to_array() {
@@ -137,7 +137,7 @@ namespace zf4 {
 
     private:
         Array<T> m_array;
-        Byte* m_activity;
+        MemArenaAlloc<Byte> m_activity;
     };
 
     template<SimpleType T>
@@ -145,7 +145,7 @@ namespace zf4 {
         assert(is_zero(this));
         assert(len > 0);
 
-        m_elems = memArena->push<T>(len);
+        m_elems = memArena->alloc<T>(len);
 
         if (!m_elems) {
             return false;
@@ -175,7 +175,7 @@ namespace zf4 {
             return false;
         }
 
-        m_activity = memArena->push<Byte>(bits_to_bytes(len));
+        m_activity = memArena->alloc<Byte>(bits_to_bytes(len));
 
         if (!m_activity) {
             zero_out(this);

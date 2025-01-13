@@ -9,34 +9,34 @@ namespace zf4 {
     constexpr int gk_texturedQuadShaderProgVertCnt = 11;
 
     struct Textures {
-        GLuint* glIDs;
-        Vec2DI* sizes;
-        unsigned char** pxDatas;
+        MemArenaAlloc<GLuint> glIDs;
+        MemArenaAlloc<Vec2DI> sizes;
+        MemArenaAlloc<MemArenaAlloc<unsigned char>> pxDatas;
         int cnt;
     };
 
     struct Fonts {
-        FontArrangementInfo* arrangementInfos;
+        MemArenaAlloc<FontArrangementInfo> arrangementInfos;
 
-        GLuint* texGLIDs;
-        Vec2DI* texSizes;
+        MemArenaAlloc<GLuint> texGLIDs;
+        MemArenaAlloc<Vec2DI> texSizes;
 
         int cnt;
     };
 
     struct ShaderProgs {
-        GLuint* glIDs;
+        MemArenaAlloc<GLuint> glIDs;
         int cnt;
     };
 
     struct Sounds {
-        GLuint* bufALIDs;
+        MemArenaAlloc<GLuint> bufALIDs;
         int cnt;
     };
 
     struct Music {
-        AudioInfo* infos;
-        int* sampleDataFilePositions;
+        MemArenaAlloc<AudioInfo> infos;
+        MemArenaAlloc<int> sampleDataFilePositions;
         int cnt;
     };
 
@@ -57,7 +57,7 @@ namespace zf4 {
             return m_textures.sizes[index];
         }
 
-        const unsigned char* get_tex_px_data(const int index) const {
+        const MemArenaAlloc<unsigned char> get_tex_px_data(const int index) const {
             assert(m_loaded);
             assert(index >= 0 && index < m_textures.cnt);
             return m_textures.pxDatas[index];
