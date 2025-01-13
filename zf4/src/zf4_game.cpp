@@ -8,7 +8,8 @@ namespace zf4 {
     static constexpr double ik_targTickDurSecs = 1.0 / ik_targFPS;
 
     struct Game {
-        MemArena memArena;
+        MemArena permMemArena;
+        MemArena tempMemArena;
         Assets assets;
         InternalShaderProgs internalShaderProgs;
         Renderer renderer;
@@ -16,11 +17,10 @@ namespace zf4 {
         MusicSrcManager musicSrcManager;
         Array<Sprite> sprites;
         Array<ComponentType> compTypes;
-        Array<SceneType> sceneTypes;
-        Scene scene;
+        EntityManager entManager;
     };
 
-    static bool exec_game_init_and_main_loop(Game* const game, const UserGameInfo& userInfo) {
+    static bool exec_game_init_and_main_loop(Game* const game, const GameInfo& gameInfo) {
         assert(is_zero(game));
 
         //
@@ -29,8 +29,13 @@ namespace zf4 {
         log("Initialising...");
 
         // Set up memory arenas.
-        if (!game->memArena.init(userInfo.memArenaSize)) {
-            log_error("Failed to initialise the memory arena!");
+        if (!game->permMemArena.init(gameInfo.permMemArenaSize)) {
+            log_error("Failed to initialise the permanent memory arena!");
+            return false;
+        }
+
+        if (!game->tempMemArena.init(gameInfo.tempMemArenaSize)) {
+            log_error("Failed to initialise the temporary memory arena!");
             return false;
         }
 
@@ -40,7 +45,7 @@ namespace zf4 {
             return false;
         }
 
-        if (!Window::init(userInfo.windowInitSize.x, userInfo.windowInitSize.y, userInfo.windowTitle, userInfo.windowFlags)) {
+        if (!Window::init(gameInfo.windowInitSize.x, gameInfo.windowInitSize.y, gameInfo.windowTitle, gameInfo.windowFlags)) {
             return false;
         }
 
@@ -56,44 +61,40 @@ namespace zf4 {
         }
 
         // Load assets.
-        if (!game->assets.load(&game->memArena)) {
+        if (!game->assets.load(&game->permMemArena)) {
             return false;
         }
 
         game->internalShaderProgs = load_internal_shader_progs();
 
         // Set up the renderer.
-        if (!game->renderer.init(&game->memArena)) {
+        if (!game->renderer.init(&game->permMemArena)) {
             return false;
         }
 
         // Initialise sprites.
-        if (!game->sprites.init(&game->memArena, userInfo.spriteCnt)) {
+        if (!game->sprites.init(&game->permMemArena, gameInfo.spriteCnt)) {
             return false;
         }
 
-        for (int i = 0; i < userInfo.spriteCnt; ++i) {
-            if (!userInfo.spriteInitializer(&game->sprites[i], &game->memArena, i, game->assets)) {
+        for (int i = 0; i < gameInfo.spriteCnt; ++i) {
+            if (!gameInfo.spriteInitializer(&game->sprites[i], &game->permMemArena, i, game->assets)) {
                 return false;
             }
         }
 
         // Initialise component types.
-        if (!game->compTypes.init(&game->memArena, userInfo.componentTypeCnt)) {
+        if (!game->compTypes.init(&game->permMemArena, gameInfo.componentTypeCnt)) {
             return false;
         }
 
-        for (int i = 0; i < userInfo.componentTypeCnt; ++i) {
-            userInfo.componentTypeInitializer(&game->compTypes[i], i);
+        for (int i = 0; i < gameInfo.componentTypeCnt; ++i) {
+            gameInfo.componentTypeInitializer(&game->compTypes[i], i);
         }
 
-        // Initialise scene types.
-        if (!game->sceneTypes.init(&game->memArena, userInfo.sceneTypeCnt)) {
+        // Initialise the entity manager.
+        if (!game->entManager.init(&game->permMemArena, gameInfo.entLimit, game->compTypes)) {
             return false;
-        }
-
-        for (int i = 0; i < userInfo.sceneTypeCnt; ++i) {
-            userInfo.sceneTypeInitializer(&game->sceneTypes[i], i);
         }
 
         // Set up the random number generator.
@@ -101,20 +102,19 @@ namespace zf4 {
 
         // Define a struct of pointers to game data to pass to the user-defined game functions.
         const GamePtrs gamePtrs = {
+            .permMemArena = &game->permMemArena,
+            .tempMemArena = &game->tempMemArena,
             .assets = &game->assets,
             .renderer = &game->renderer,
             .soundSrcManager = &game->sndSrcManager,
             .musicSrcManager = &game->musicSrcManager,
             .sprites = game->sprites,
             .compTypes = game->compTypes,
-            .sceneTypes = game->sceneTypes
+            .entManager = &game->entManager
         };
 
         // Call the user-defined initialisation function.
-        userInfo.init(gamePtrs);
-
-        // Load the first scene.
-        if (!load_scene(&game->scene, 0, gamePtrs)) {
+        if (!gameInfo.init(gamePtrs)) {
             return false;
         }
 
@@ -130,6 +130,8 @@ namespace zf4 {
         log("Entering the main loop...");
 
         while (!Window::should_close()) {
+            game->tempMemArena.reset();
+
             const double frameTimeLast = frameTime;
             frameTime = glfwGetTime();
 
@@ -138,15 +140,20 @@ namespace zf4 {
 
             if (frameDurAccum >= ik_targTickDurSecs) {
                 do {
+                    // Execute a tick.
                     handle_auto_release_sound_srcs(&game->sndSrcManager);
 
                     if (!refresh_music_src_bufs(&game->musicSrcManager, game->assets)) {
                         return false;
                     }
 
-                    if (!proc_scene_tick(&game->scene, gamePtrs)) {
+                    game->renderer.begin_submission_phase();
+
+                    if (!gameInfo.tick(gamePtrs)) {
                         return false;
                     }
+
+                    game->renderer.end_submission_phase();
 
                     frameDurAccum -= ik_targTickDurSecs;
                 } while (frameDurAccum >= ik_targTickDurSecs);
@@ -154,7 +161,7 @@ namespace zf4 {
                 Window::save_input_state();
             }
 
-            if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->scene.scratchSpace)) {
+            if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->tempMemArena)) {
                 return false;
             }
 
@@ -167,62 +174,67 @@ namespace zf4 {
             // Check for and process window resize.
             if (Window::get_size().x != windowSizePrepoll.x || Window::get_size().y != windowSizePrepoll.y) {
                 log("Processing window resize...");
+
                 glViewport(0, 0, Window::get_size().x, Window::get_size().y);
-                game->renderer.resize_surfaces();
+                
+                if (!game->renderer.resize_surfaces()) {
+                    return false;
+                }
             }
         }
 
         return true;
     }
 
-    bool run_game(const UserGameInfoInitializer userInfoInitializer) {
+    bool run_game(const GameInfoInitializer gameInfoInitializer) {
         //
         // Loading User Game Information
         //
 
-        // Initialise the user information struct with some default game settings.
-        UserGameInfo userInfo = {
-            .memArenaSize = megabytes_to_bytes(64),
+        // Initialise the game information struct with some default game settings.
+        GameInfo gameInfo = {
+            .permMemArenaSize = megabytes_to_bytes(64),
+            .tempMemArenaSize = megabytes_to_bytes(4),
 
             .windowInitSize = {1280, 720}, // NOTE: Could use a function pointer here instead, to allow for the size to be dynamically determined based on display size for example.
-            .windowTitle = "ZF4 Game"
+            .windowTitle = "ZF4 Game",
+
+            .entLimit = 1024
         };
 
         // Run the initialiser function, which could overwrite some of the above defaults.
-        userInfoInitializer(&userInfo);
+        gameInfoInitializer(&gameInfo);
 
         // Verify that things have been set correctly.
-        assert(userInfo.init);
-        assert(userInfo.cleanup);
+        // NOTE: We might need some more checks here.
+        assert(gameInfo.init);
+        assert(gameInfo.tick);
+        assert(gameInfo.cleanup);
 
-        assert(userInfo.spriteInitializer);
+        assert(gameInfo.spriteInitializer);
 
-        if (userInfo.componentTypeCnt > 0) {
-            assert(userInfo.componentTypeInitializer);
-        } else {
-            assert(userInfo.componentTypeCnt == 0);
+        if (gameInfo.componentTypeCnt > 0) {
+            assert(gameInfo.componentTypeInitializer);
         }
-
-        assert(userInfo.sceneTypeInitializer);
 
         //
         // Running the Game
         //
         Game game = {};
-        const bool success = exec_game_init_and_main_loop(&game, userInfo);
+        const bool success = exec_game_init_and_main_loop(&game, gameInfo);
 
         //
         // Cleanup
         //
-        userInfo.cleanup();
-        unload_scene(&game.scene);
+        gameInfo.cleanup();
+        game.renderer.clean();
         clean_music_srcs(&game.musicSrcManager);
         clean_sound_srcs(&game.sndSrcManager);
         game.assets.clean();
         clean_audio_system();
         Window::clean();
         glfwTerminate();
-        game.memArena.clean();
+        game.permMemArena.clean();
 
         return success;
     }

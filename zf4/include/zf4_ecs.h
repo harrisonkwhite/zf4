@@ -22,7 +22,7 @@ namespace zf4 {
 
     class EntityManager {
     public:
-        bool load(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes);
+        bool init(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes);
 
         bool spawn_ent(EntID* const entID, const Vec2D pos, const Array<ComponentType>& compTypes);
         void destroy_ent(const EntID entID, const Array<ComponentType>& compTypes);
@@ -43,9 +43,9 @@ namespace zf4 {
             return {index, m_entVersions[index]};
         }
 
-        inline Vec2D& get_ent_pos(const EntID entID) {
+        inline Vec2D* get_ent_pos(const EntID entID) {
             assert(does_ent_exist(entID));
-            return m_entPositions[entID.index];
+            return &m_entPositions[entID.index];
         }
 
         inline Vec2D get_ent_pos(const EntID entID) const {

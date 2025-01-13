@@ -4,7 +4,7 @@
 #include <zf4_sprites.h>
 
 namespace zf4 {
-    bool EntityManager::load(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes) {
+    bool EntityManager::init(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes) {
         assert(is_zero(this));
         assert(entLimit >= 0);
 
