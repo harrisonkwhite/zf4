@@ -59,9 +59,9 @@ namespace zf4 {
             return m_entPositions[entID.index];
         }
 
-        inline const Byte* get_ent_component(const EntID entID, const int compTypeIndex) const {
+        inline const Byte* get_ent_component(const EntID entID, const int compTypeIndex, const Array<ComponentType>& compTypes) const {
             assert(does_ent_exist(entID));
-            return const_cast<EntityManager*>(this)->get_ent_component(entID, compTypeIndex);
+            return const_cast<EntityManager*>(this)->get_ent_component(entID, compTypeIndex, compTypes);
         }
 
         inline bool does_ent_have_component(const EntID entID, const int compTypeIndex, const Array<ComponentType>& compTypes) const {
