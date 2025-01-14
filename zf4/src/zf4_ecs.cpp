@@ -93,28 +93,43 @@ namespace zf4 {
         return true;
     }
 
-    bool EntityManager::spawn_ent(EntID* const entID, const Vec2D pos, const Array<ComponentType>& compTypes) {
-        assert(is_zero(entID));
+    EntID EntityManager::spawn_ent(const Vec2D pos, const Array<ComponentType>& compTypes) {
+        const int entIndex = get_first_inactive_bit_index(m_entActivity.get(), m_entLimit);
 
-        entID->index = get_first_inactive_bit_index(m_entActivity.get(), m_entLimit);
-
-        if (entID->index == -1) {
-            return false;
+        if (entIndex == -1) {
+            return {};
         }
 
-        activate_bit(m_entActivity.get(), entID->index);
+        activate_bit(m_entActivity.get(), entIndex);
 
-        m_entPositions[entID->index] = pos;
-        m_entTags[entID->index] = -1;
+        m_entPositions[entIndex] = pos;
+        m_entTags[entIndex] = -1;
 
         for (int i = 0; i < compTypes.get_len(); ++i) {
-            m_entCompIndexes[entID->index][i] = -1;
+            m_entCompIndexes[entIndex][i] = -1;
         }
 
-        ++m_entVersions[entID->index];
-        entID->version = m_entVersions[entID->index];
+        ++m_entVersions[entIndex];
 
-        return true;
+        return {
+            .index = entIndex,
+            .version = m_entVersions[entIndex]
+        };
+    }
+
+    EntID EntityManager::spawn_ent(const Vec2D pos, const SafePtr<Byte> compSig, const Array<ComponentType>& compTypes) {
+        const EntID entID = spawn_ent(pos, compTypes);
+
+        if (!entID.is_valid()) {
+            return {};
+        }
+
+        if (!add_components_to_ent(compSig, compTypes, entID)) {
+            destroy_ent(entID, compTypes);
+            return {};
+        }
+
+        return entID;
     }
 
     void EntityManager::destroy_ent(const EntID entID, const Array<ComponentType>& compTypes) {
@@ -141,7 +156,7 @@ namespace zf4 {
         return m_compArrays[compTypeIndex].get() + (compIndex * compTypes.get(compTypeIndex)->size);
     }
 
-    bool EntityManager::add_component_to_ent(const int compTypeIndex, const EntID entID, const Array<ComponentType>& compTypes) {
+    bool EntityManager::add_component_to_ent(const int compTypeIndex, const Array<ComponentType>& compTypes, const EntID entID) {
         assert(does_ent_exist(entID));
         assert(compTypeIndex >= 0 && compTypeIndex < compTypes.get_len());
         assert(!does_ent_have_component(entID, compTypeIndex, compTypes));
@@ -163,6 +178,23 @@ namespace zf4 {
 
         if (compTypes.get(compTypeIndex)->defaultsSetter) {
             compTypes.get(compTypeIndex)->defaultsSetter(comp);
+        }
+
+        return true;
+    }
+
+    bool EntityManager::add_components_to_ent(const SafePtr<Byte> compSig, const Array<ComponentType>& compTypes, const EntID entID) {
+        assert(does_ent_exist(entID));
+        assert(!is_zero(compSig.get(), bits_to_bytes(compTypes.get_len())));
+
+        for (int i = 0; i < compTypes.get_len(); ++i) {
+            if (!is_bit_active(compSig.get(), i)) {
+                continue;
+            }
+
+            if (!add_component_to_ent(i, compTypes, entID)) {
+                return false;
+            }
         }
 
         return true;

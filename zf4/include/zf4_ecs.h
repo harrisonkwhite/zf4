@@ -18,16 +18,22 @@ namespace zf4 {
     struct EntID {
         int index;
         int version;
+
+        bool is_valid() const {
+            return !zf4::is_zero(this);
+        }
     };
 
     class EntityManager {
     public:
         bool init(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes);
 
-        bool spawn_ent(EntID* const entID, const Vec2D pos, const Array<ComponentType>& compTypes);
+        EntID spawn_ent(const Vec2D pos, const Array<ComponentType>& compTypes);
+        EntID spawn_ent(const Vec2D pos, const SafePtr<Byte> compSig, const Array<ComponentType>& compTypes);
         void destroy_ent(const EntID entID, const Array<ComponentType>& compTypes);
         Byte* get_ent_component(const EntID entID, const int compTypeIndex, const Array<ComponentType>& compTypes);
-        bool add_component_to_ent(const int compTypeIndex, const EntID entID, const Array<ComponentType>& compTypes);
+        bool add_component_to_ent(const int compTypeIndex, const Array<ComponentType>& compTypes, const EntID entID);
+        bool add_components_to_ent(const SafePtr<Byte> compSig, const Array<ComponentType>& compTypes, const EntID entID);
 
         inline int get_ent_limit() const {
             return m_entLimit;
