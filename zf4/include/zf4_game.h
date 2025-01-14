@@ -25,11 +25,13 @@ namespace zf4 {
 
     using GameInit = bool (*)(const GamePtrs& gamePtrs);
     using GameTick = bool (*)(const GamePtrs& gamePtrs);
+    using GameDraw = bool (*)(const GamePtrs& gamePtrs);
     using GameCleanup = void (*)();
 
     struct GameInfo {
         GameInit init;
         GameTick tick;
+        GameDraw draw;
         GameCleanup cleanup;
 
         int permMemArenaSize;

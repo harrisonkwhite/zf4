@@ -147,18 +147,23 @@ namespace zf4 {
                         return false;
                     }
 
-                    game->renderer.begin_submission_phase();
-
                     if (!gameInfo.tick(gamePtrs)) {
                         return false;
                     }
-
-                    game->renderer.end_submission_phase();
 
                     frameDurAccum -= ik_targTickDurSecs;
                 } while (frameDurAccum >= ik_targTickDurSecs);
 
                 Window::save_input_state();
+
+                // Execute draw.
+                game->renderer.begin_submission_phase();
+
+                if (!gameInfo.draw(gamePtrs)) {
+                    return false;
+                }
+
+                game->renderer.end_submission_phase();
             }
 
             if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->tempMemArena)) {
@@ -209,6 +214,7 @@ namespace zf4 {
         // NOTE: We might need some more checks here.
         assert(gameInfo.init);
         assert(gameInfo.tick);
+        assert(gameInfo.draw);
         assert(gameInfo.cleanup);
 
         assert(gameInfo.spriteInitializer);
