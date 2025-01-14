@@ -397,52 +397,14 @@ namespace zf4 {
         return prog;
     }
 
-    static TestShaderProg load_test_shader_prog() {
-        const char* const vertShaderSrc =
-            "#version 430 core\n"
-            "\n"
-            "layout (location = 0) in vec2 a_vert;\n"
-            "layout (location = 1) in vec2 a_texCoord;\n"
-            "\n"
-            "out vec2 v_texCoord;\n"
-            "\n"
-            "void main() {\n"
-            "    gl_Position = vec4(a_vert, 0.0f, 1.0f);\n"
-            "    v_texCoord = a_texCoord;\n"
-            "}\n";
-
-        const char* const fragShaderSrc =
-            "#version 430 core\n"
-            "\n"
-            "in vec2 v_texCoord;\n"
-            "out vec4 o_fragColor;\n"
-            "\n"
-            "uniform sampler2D u_tex;\n"
-            "\n"
-            "void main() {\n"
-            "    vec4 texColor = texture(u_tex, v_texCoord);\n"
-            "    o_fragColor = vec4(texColor.r, texColor.g * 0.5f, texColor.b * 0.5f, texColor.a);\n"
-            "}\n";
-
-        const TestShaderProg prog = {
-            .glID = create_shader_prog_from_srcs(vertShaderSrc, fragShaderSrc)
-        };
-
-        assert(prog.glID);
-
-        return prog;
-    }
-
     InternalShaderProgs load_internal_shader_progs() {
         return {
-            .texturedQuad = load_textured_quad_shader_prog(),
-            .test = load_test_shader_prog()
+            .texturedQuad = load_textured_quad_shader_prog()
         };
     }
 
     void unload_internal_shader_progs(InternalShaderProgs* const progs) {
         GL_CALL(glDeleteBuffers(1, &progs->texturedQuad.glID));
-        GL_CALL(glDeleteBuffers(1, &progs->test.glID));
 
         zero_out(progs);
     }

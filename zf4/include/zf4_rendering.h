@@ -238,7 +238,7 @@ namespace zf4 {
 
         void submit_set_surface_shader_uniform_instr(const char* const name, const ShaderUniformVal val, const ShaderUniformValType valType) {
             RenderInstrData_SetSurfaceShaderUniform instrData = {.val = val, .valType = valType};
-            std::strncpy(instrData.name, name, sizeof(name));
+            std::strncpy(instrData.name, name, sizeof(instrData.name));
 
             submit_instr(RenderInstrType::SetSurfaceShaderUniform, {.setDrawSurfaceShaderUniform = instrData});
         }

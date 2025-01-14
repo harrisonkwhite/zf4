@@ -122,13 +122,8 @@ namespace zf4 {
         int texturesUniLoc;
     };
 
-    struct TestShaderProg {
-        GLuint glID;
-    };
-
     struct InternalShaderProgs {
         TexturedQuadShaderProg texturedQuad;
-        TestShaderProg test;
     };
 
     bool load_textures_from_fs(Textures* const textures, MemArena* const memArena, FILE* const fs);
