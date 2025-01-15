@@ -105,6 +105,8 @@ namespace zf4 {
 
         glfwMakeContextCurrent(s_glfwWindow);
 
+        glfwSwapInterval(1); // Enables VSync.
+
         glfwSetKeyCallback(s_glfwWindow, glfw_key_callback);
         glfwSetMouseButtonCallback(s_glfwWindow, glfw_mouse_button_callback);
         glfwSetCursorPosCallback(s_glfwWindow, glfw_cursor_pos_callback);
