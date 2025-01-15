@@ -246,6 +246,7 @@ namespace zf4 {
         clean_audio_system();
         Window::clean();
         glfwTerminate();
+        game.tempMemArena.clean();
         game.permMemArena.clean();
 
         return success;
