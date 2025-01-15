@@ -129,7 +129,7 @@ namespace zf4 {
         // Main Loop
         //
         double frameTime = glfwGetTime();
-        double frameDurAccum = 0.0;
+        double frameDurAccum = ik_targTickDurSecs; // Make sure that we begin with a tick.
 
         log("Entering the main loop...");
 
@@ -160,7 +160,7 @@ namespace zf4 {
 
                 Window::save_input_state();
 
-                // Execute draw.
+                // Execute render.
                 game->renderer.begin_submission_phase();
 
                 if (!gameInfo.draw(gamePtrs)) {
@@ -168,13 +168,13 @@ namespace zf4 {
                 }
 
                 game->renderer.end_submission_phase();
-            }
 
-            if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->tempMemArena)) {
-                return false;
-            }
+                if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->tempMemArena)) {
+                    return false;
+                }
 
-            Window::swap_buffers();
+                Window::swap_buffers();
+            }
 
             const zf4::Vec2DI windowSizePrepoll = Window::get_size();
 

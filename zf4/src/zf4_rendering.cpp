@@ -379,12 +379,12 @@ namespace zf4 {
 
             GL_CALL(glBindVertexArray(batchPermData->vertArrayGLID));
             GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, batchPermData->vertBufGLID));
-            GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID));
 
             if (generateBatch) {
                 // Set buffer data.
                 GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(float) * gk_renderBatchSlotVertCnt * gk_renderBatchSlotLimit, nullptr, GL_DYNAMIC_DRAW));
 
+                GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batchPermData->elemBufGLID));
                 const int indicesLen = 6 * gk_renderBatchSlotLimit;
                 GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * indicesLen, m_batchIndices.get(), GL_STATIC_DRAW));
 
@@ -414,7 +414,7 @@ namespace zf4 {
             }
 
             // Write the batch vertex data.
-            GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(batchTransData.verts), batchTransData.verts));
+            GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(*batchTransData.verts) * gk_renderBatchSlotVertCnt * batchTransData.slotsUsedCnt, batchTransData.verts));
 
             GL_CALL(glBindVertexArray(0));
         }
