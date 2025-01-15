@@ -16,8 +16,13 @@ namespace zf4 {
     public:
         SafePtr() = default;
 
+#ifdef _DEBUG
         SafePtr(T* const elems, const int elemCnt) : m_elems(elems), m_elemCnt(elemCnt) {
         }
+#else
+        SafePtr(T* const elems, const int elemCnt) : m_elems(elems) {
+        }
+#endif
 
         T* get() {
             return m_elems; // TEMP?
