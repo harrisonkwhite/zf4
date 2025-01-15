@@ -73,23 +73,27 @@ namespace zf4 {
         }
 
         // Initialise sprites.
-        if (!game->sprites.init(&game->permMemArena, gameInfo.spriteCnt)) {
-            return false;
-        }
-
-        for (int i = 0; i < gameInfo.spriteCnt; ++i) {
-            if (!gameInfo.spriteInitializer(game->sprites.get(i), &game->permMemArena, i, game->assets)) {
+        if (gameInfo.spriteCnt > 0) {
+            if (!game->sprites.init(&game->permMemArena, gameInfo.spriteCnt)) {
                 return false;
+            }
+
+            for (int i = 0; i < gameInfo.spriteCnt; ++i) {
+                if (!gameInfo.spriteInitializer(game->sprites.get(i), &game->permMemArena, i, game->assets)) {
+                    return false;
+                }
             }
         }
 
         // Initialise component types.
-        if (!game->compTypes.init(&game->permMemArena, gameInfo.componentTypeCnt)) {
-            return false;
-        }
+        if (gameInfo.componentTypeCnt > 0) {
+            if (!game->compTypes.init(&game->permMemArena, gameInfo.componentTypeCnt)) {
+                return false;
+            }
 
-        for (int i = 0; i < gameInfo.componentTypeCnt; ++i) {
-            gameInfo.componentTypeInitializer(game->compTypes.get(i), i);
+            for (int i = 0; i < gameInfo.componentTypeCnt; ++i) {
+                gameInfo.componentTypeInitializer(game->compTypes.get(i), i);
+            }
         }
 
         // Initialise the entity manager.
@@ -217,7 +221,9 @@ namespace zf4 {
         assert(gameInfo.draw);
         assert(gameInfo.cleanup);
 
-        assert(gameInfo.spriteInitializer);
+        if (gameInfo.spriteCnt > 0) {
+            assert(gameInfo.spriteInitializer);
+        }
 
         if (gameInfo.componentTypeCnt > 0) {
             assert(gameInfo.componentTypeInitializer);

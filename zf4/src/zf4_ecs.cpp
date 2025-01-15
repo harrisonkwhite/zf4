@@ -8,7 +8,7 @@ namespace zf4 {
         assert(is_zero(this));
         assert(entLimit >= 0);
 
-        if (entLimit > 0) {
+        if (entLimit > 0 && compTypes.get_len() > 0) {
             m_entLimit = entLimit;
 
             //
