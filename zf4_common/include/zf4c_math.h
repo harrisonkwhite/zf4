@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cassert>
 
 namespace zf4 {
     constexpr float gk_pi = 3.14159265359f;
@@ -286,16 +287,19 @@ namespace zf4 {
 
     inline Vec2D calc_normal(const Vec2D vec) {
         const float mag = calc_mag(vec);
+        assert(mag != 0.0f);
         return {vec.x / mag, vec.y / mag};
     }
 
     inline Vec3D calc_normal(const Vec3D vec) {
         const float mag = calc_mag(vec);
+        assert(mag != 0.0f);
         return {vec.x / mag, vec.y / mag, vec.z / mag};
     }
 
     inline Vec4D calc_normal(const Vec4D vec) {
         const float mag = calc_mag(vec);
+        assert(mag != 0.0f);
         return {vec.x / mag, vec.y / mag, vec.z / mag, vec.w / mag};
     }
 
