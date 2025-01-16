@@ -309,18 +309,19 @@ namespace zf4 {
         zero_out(this);
     }
 
-    RenderSurfaceID Renderer::add_surface() {
+    RenderSurfaceID Renderer::add_surface(const zf4::Vec2DI windowSize) {
         assert(m_state == RendererState::Initialized);
 
         const int surfIndex = m_surfs.get_first_inactive_index();
 
         if (surfIndex == -1) {
+            zf4::log_error("Failed to add a new render surface as no available slot was found!");
             return -1;
         }
 
         m_surfs.activate(surfIndex);
 
-        if (!init_render_surface(m_surfs.get(surfIndex), Window::get_size())) {
+        if (!init_render_surface(m_surfs.get(surfIndex), windowSize)) {
             return -1;
         }
 
@@ -334,12 +335,12 @@ namespace zf4 {
         clean_render_surface(m_surfs.get(surfID));
     }
 
-    bool Renderer::resize_surfaces() {
+    bool Renderer::resize_surfaces(const zf4::Vec2DI windowSize) {
         assert(m_state == RendererState::Initialized);
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
             if (m_surfs.is_active(i)) {
-                if (!resize_render_surface(m_surfs.get(i), Window::get_size())) {
+                if (!resize_render_surface(m_surfs.get(i), windowSize)) {
                     return false;
                 }
             }
@@ -504,7 +505,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, MemArena* const scratchSpace) {
+    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const zf4::Vec2DI windowSize, MemArena* const scratchSpace) {
         assert(m_state == RendererState::Initialized);
 
         // Enable blending.
@@ -519,7 +520,7 @@ namespace zf4 {
         GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
         // Iterate through and execute render instructions.
-        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(Window::get_size().x), static_cast<float>(Window::get_size().y), 0.0f, -1.0f, 1.0f);
+        const Matrix4x4 projMat = Matrix4x4::create_ortho(0.0f, static_cast<float>(windowSize.x), static_cast<float>(windowSize.y), 0.0f, -1.0f, 1.0f);
         Matrix4x4 viewMat = Matrix4x4::create_identity(); // Whenever we draw a batch, the shader view matrix uniform is assigned to whatever this is.
 
         GLuint surfShaderProgGLID = 0;

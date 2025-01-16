@@ -101,89 +101,43 @@ namespace zf4 {
         Vec2D mousePos;
     };
 
-    class Window {
-    public:
-        static bool init(const int width, const int height, const char* const title, const WindowFlags flags);
-        static void clean();
+    struct Window {
+        GLFWwindow* glfwWindow;
+        Vec2DI size; // glfwGetWindowSize() is relatively expensive for some reason, so we cache this.
 
-        static Vec2DI get_size() {
-            assert(s_glfwWindow);
-
-            Vec2DI size;
-            glfwGetWindowSize(s_glfwWindow, &size.x, &size.y);
-
-            return size;
-        }
-
-        static void show() {
-            assert(s_glfwWindow);
-            glfwShowWindow(s_glfwWindow);
-        }
-
-        static bool should_close() {
-            assert(s_glfwWindow);
-            return glfwWindowShouldClose(s_glfwWindow);
-        }
-
-        static void swap_buffers() {
-            assert(s_glfwWindow);
-            glfwSwapBuffers(s_glfwWindow);
-        }
-
-        static void save_input_state() {
-            assert(s_glfwWindow);
-            s_inputStateSaved = s_inputState;
-        }
-
-        static bool is_key_down(const KeyCode keyCode) {
-            assert(s_glfwWindow);
-            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-            return s_inputState.keysDown & keyBit;
-        }
-
-        static bool is_key_pressed(const KeyCode keyCode) {
-            assert(s_glfwWindow);
-            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-            return (s_inputState.keysDown & keyBit) && !(s_inputStateSaved.keysDown & keyBit);
-        }
-
-        static bool is_key_released(const KeyCode keyCode) {
-            assert(s_glfwWindow);
-            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-            return !(s_inputState.keysDown & keyBit) && (s_inputStateSaved.keysDown & keyBit);
-        }
-
-        static bool is_mouse_button_down(const MouseButtonCode buttonCode) {
-            assert(s_glfwWindow);
-            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-            return s_inputState.mouseButtonsDown & buttonBit;
-        }
-
-        static bool is_mouse_button_pressed(const MouseButtonCode buttonCode) {
-            assert(s_glfwWindow);
-            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-            return (s_inputState.mouseButtonsDown & buttonBit) && !(s_inputStateSaved.mouseButtonsDown & buttonBit);
-        }
-
-        static bool is_mouse_button_released(const MouseButtonCode buttonCode) {
-            assert(s_glfwWindow);
-            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-            return !(s_inputState.mouseButtonsDown & buttonBit) && (s_inputStateSaved.mouseButtonsDown & buttonBit);
-        }
-
-        static Vec2D get_mouse_pos() {
-            assert(s_glfwWindow);
-            return s_inputState.mousePos;
-        }
-
-    private:
-        static inline GLFWwindow* s_glfwWindow;
-
-        static inline InputState s_inputState;
-        static inline InputState s_inputStateSaved;
-
-        static void glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods);
-        static void glfw_mouse_button_callback(GLFWwindow* const window, const int button, const int action, const int mods);
-        static void glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y);
+        InputState inputState;
+        InputState inputStateSaved; // Used as a reference point for press and release checks, among other things.
     };
+
+    bool init_window(Window* const window, const zf4::Vec2DI size, const char* const title, const WindowFlags flags);
+
+    inline bool is_key_down(const KeyCode keyCode, const Window* const window) {
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+        return window->inputState.keysDown & keyBit;
+    }
+
+    inline bool is_key_pressed(const KeyCode keyCode, const Window* const window) {
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+        return (window->inputState.keysDown & keyBit) && !(window->inputStateSaved.keysDown & keyBit);
+    }
+
+    inline bool is_key_released(const KeyCode keyCode, const Window* const window) {
+        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+        return !(window->inputState.keysDown & keyBit) && (window->inputStateSaved.keysDown & keyBit);
+    }
+
+    inline bool is_mouse_button_down(const MouseButtonCode buttonCode, const Window* const window) {
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+        return window->inputState.mouseButtonsDown & buttonBit;
+    }
+
+    inline bool is_mouse_button_pressed(const MouseButtonCode buttonCode, const Window* const window) {
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+        return (window->inputState.mouseButtonsDown & buttonBit) && !(window->inputStateSaved.mouseButtonsDown & buttonBit);
+    }
+
+    inline bool is_mouse_button_released(const MouseButtonCode buttonCode, const Window* const window) {
+        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+        return !(window->inputState.mouseButtonsDown & buttonBit) && (window->inputStateSaved.mouseButtonsDown & buttonBit);
+    }
 }

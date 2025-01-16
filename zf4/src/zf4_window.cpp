@@ -85,10 +85,53 @@ namespace zf4 {
         }
     }
 
-    bool Window::init(const int width, const int height, const char* const title, const WindowFlags flags) {
-        assert(!s_glfwWindow);
-        assert(width > 0 && height > 0);
-        assert(title && title[0]);
+    static void glfw_window_size_callback(GLFWwindow* const glfwWindow, const int width, const int height) {
+        const auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+        window->size.x = width;
+        window->size.y = height;
+    }
+
+    static void glfw_key_callback(GLFWwindow* const glfwWindow, const int key, const int scancode, const int action, const int mods) {
+        const auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+
+        const KeyCode keyCode = conv_glfw_key_code(key);
+
+        if (keyCode != UndefinedKeyCode) {
+            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
+
+            if (action == GLFW_PRESS) {
+                window->inputState.keysDown |= keyBit;
+            } else if (action == GLFW_RELEASE) {
+                window->inputState.keysDown &= ~keyBit;
+            }
+        }
+    }
+
+    static void glfw_mouse_button_callback(GLFWwindow* const glfwWindow, const int button, const int action, const int mods) {
+        const auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+
+        const MouseButtonCode buttonCode = conv_glfw_mouse_button_code(button);
+
+        if (buttonCode != UndefinedMouseButtonCode) {
+            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
+
+            if (action == GLFW_PRESS) {
+                window->inputState.mouseButtonsDown |= buttonBit;
+            } else if (action == GLFW_RELEASE) {
+                window->inputState.mouseButtonsDown &= ~buttonBit;
+            }
+        }
+    }
+
+    static void glfw_cursor_pos_callback(GLFWwindow* const glfwWindow, const double x, const double y) {
+        const auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfwWindow));
+        window->inputState.mousePos.x = x;
+        window->inputState.mousePos.y = y;
+    }
+
+    bool init_window(Window* const window, const zf4::Vec2DI size, const char* const title, const WindowFlags flags) {
+        assert(is_zero(window));
+        assert(size.x > 0 && size.y > 0);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gk_glVersionMajor);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gk_glVersionMinor);
@@ -96,63 +139,27 @@ namespace zf4 {
         glfwWindowHint(GLFW_RESIZABLE, flags & WindowFlags_Resizable);
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-        s_glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        window->glfwWindow = glfwCreateWindow(size.x, size.y, title, nullptr, nullptr);
 
-        if (!s_glfwWindow) {
+        if (!window->glfwWindow) {
             log_error("Failed to create GLFW window!");
             return false;
         }
 
-        glfwMakeContextCurrent(s_glfwWindow);
+        glfwMakeContextCurrent(window->glfwWindow);
 
         glfwSwapInterval(1); // Enables VSync.
 
-        glfwSetKeyCallback(s_glfwWindow, glfw_key_callback);
-        glfwSetMouseButtonCallback(s_glfwWindow, glfw_mouse_button_callback);
-        glfwSetCursorPosCallback(s_glfwWindow, glfw_cursor_pos_callback);
+        glfwSetWindowUserPointer(window->glfwWindow, window);
+        glfwSetWindowSizeCallback(window->glfwWindow, glfw_window_size_callback);
+        glfwSetKeyCallback(window->glfwWindow, glfw_key_callback);
+        glfwSetMouseButtonCallback(window->glfwWindow, glfw_mouse_button_callback);
+        glfwSetCursorPosCallback(window->glfwWindow, glfw_cursor_pos_callback);
 
-        glfwSetInputMode(s_glfwWindow, GLFW_CURSOR, (flags & WindowFlags_HideCursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(window->glfwWindow, GLFW_CURSOR, (flags & WindowFlags_HideCursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+
+        glfwGetWindowSize(window->glfwWindow, &window->size.x, &window->size.y);
 
         return true;
-    }
-
-    void Window::clean() {
-        if (s_glfwWindow) {
-            glfwDestroyWindow(s_glfwWindow);
-            s_glfwWindow = nullptr;
-        }
-    }
-
-    void Window::glfw_key_callback(GLFWwindow* const window, const int key, const int scancode, const int action, const int mods) {
-        const KeyCode keyCode = conv_glfw_key_code(key);
-
-        if (keyCode != UndefinedKeyCode) {
-            const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-
-            if (action == GLFW_PRESS) {
-                s_inputState.keysDown |= keyBit;
-            } else if (action == GLFW_RELEASE) {
-                s_inputState.keysDown &= ~keyBit;
-            }
-        }
-    }
-
-    void Window::glfw_mouse_button_callback(GLFWwindow* const window, const int button, const int action, const int mods) {
-        const MouseButtonCode buttonCode = conv_glfw_mouse_button_code(button);
-
-        if (buttonCode != UndefinedMouseButtonCode) {
-            const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-
-            if (action == GLFW_PRESS) {
-                s_inputState.mouseButtonsDown |= buttonBit;
-            } else if (action == GLFW_RELEASE) {
-                s_inputState.mouseButtonsDown &= ~buttonBit;
-            }
-        }
-    }
-
-    void Window::glfw_cursor_pos_callback(GLFWwindow* const window, const double x, const double y) {
-        s_inputState.mousePos.x = x;
-        s_inputState.mousePos.y = y;
     }
 }

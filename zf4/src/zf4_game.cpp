@@ -10,6 +10,7 @@ namespace zf4 {
     struct Game {
         MemArena permMemArena;
         MemArena tempMemArena;
+        Window window;
         Assets assets;
         InternalShaderProgs internalShaderProgs;
         Renderer renderer;
@@ -45,7 +46,7 @@ namespace zf4 {
             return false;
         }
 
-        if (!Window::init(gameInfo.windowInitSize.x, gameInfo.windowInitSize.y, gameInfo.windowTitle, gameInfo.windowFlags)) {
+        if (!init_window(&game->window, gameInfo.windowInitSize, gameInfo.windowTitle, gameInfo.windowFlags)) {
             return false;
         }
 
@@ -108,12 +109,13 @@ namespace zf4 {
         const GamePtrs gamePtrs = {
             .permMemArena = &game->permMemArena,
             .tempMemArena = &game->tempMemArena,
+            .window = &game->window,
             .assets = &game->assets,
             .renderer = &game->renderer,
             .soundSrcManager = &game->sndSrcManager,
             .musicSrcManager = &game->musicSrcManager,
-            .sprites = game->sprites,
-            .compTypes = game->compTypes,
+            .sprites = &game->sprites,
+            .compTypes = &game->compTypes,
             .entManager = &game->entManager
         };
 
@@ -123,7 +125,7 @@ namespace zf4 {
         }
 
         // Now that everything is initialised, show the window.
-        Window::show();
+        glfwShowWindow(game->window.glfwWindow);
 
         //
         // Main Loop
@@ -133,7 +135,7 @@ namespace zf4 {
 
         log("Entering the main loop...");
 
-        while (!Window::should_close()) {
+        while (!glfwWindowShouldClose(game->window.glfwWindow)) {
             game->tempMemArena.reset();
 
             const double frameTimeLast = frameTime;
@@ -158,7 +160,7 @@ namespace zf4 {
                     frameDurAccum -= ik_targTickDurSecs;
                 } while (frameDurAccum >= ik_targTickDurSecs);
 
-                Window::save_input_state();
+                game->window.inputStateSaved = game->window.inputState;
 
                 // Execute render.
                 game->renderer.begin_submission_phase();
@@ -169,24 +171,24 @@ namespace zf4 {
 
                 game->renderer.end_submission_phase();
 
-                if (!game->renderer.render(game->internalShaderProgs, game->assets, &game->tempMemArena)) {
+                if (!game->renderer.render(game->internalShaderProgs, game->assets, game->window.size, &game->tempMemArena)) {
                     return false;
                 }
 
-                Window::swap_buffers();
+                glfwSwapBuffers(game->window.glfwWindow);
             }
 
-            const zf4::Vec2DI windowSizePrepoll = Window::get_size();
+            const zf4::Vec2DI windowSizePrepoll = game->window.size;
 
             glfwPollEvents();
 
             // Check for and process window resize.
-            if (Window::get_size().x != windowSizePrepoll.x || Window::get_size().y != windowSizePrepoll.y) {
+            if (game->window.size.x != windowSizePrepoll.x || game->window.size.y != windowSizePrepoll.y) {
                 log("Processing window resize...");
 
-                glViewport(0, 0, Window::get_size().x, Window::get_size().y);
+                glViewport(0, 0, game->window.size.x, game->window.size.y);
 
-                if (!game->renderer.resize_surfaces()) {
+                if (!game->renderer.resize_surfaces(game->window.size)) {
                     return false;
                 }
             }
@@ -239,13 +241,23 @@ namespace zf4 {
         // Cleanup
         //
         gameInfo.cleanup();
+
         game.renderer.clean();
+
         clean_music_srcs(&game.musicSrcManager);
+
         clean_sound_srcs(&game.sndSrcManager);
+
         game.assets.clean();
+
         clean_audio_system();
-        Window::clean();
+
+        if (game.window.glfwWindow) {
+            glfwDestroyWindow(game.window.glfwWindow);
+        }
+
         glfwTerminate();
+        
         game.tempMemArena.clean();
         game.permMemArena.clean();
 

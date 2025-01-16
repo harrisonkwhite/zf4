@@ -14,12 +14,13 @@ namespace zf4 {
     struct GamePtrs {
         MemArena* permMemArena;
         MemArena* tempMemArena;
+        const Window* window;
         const Assets* assets;
         Renderer* renderer;
         SoundSrcManager* soundSrcManager;
         MusicSrcManager* musicSrcManager;
-        const zf4::Array<Sprite>& sprites;
-        const zf4::Array<ComponentType>& compTypes;
+        const zf4::Array<Sprite>* sprites;
+        const zf4::Array<ComponentType>* compTypes;
         EntityManager* entManager;
     };
 
