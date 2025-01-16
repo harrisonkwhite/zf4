@@ -364,7 +364,10 @@ namespace zf4 {
     void Renderer::end_submission_phase() {
         assert(m_state == RendererState::Submitting);
 
-        for (int i = 0; i <= m_batchSubmitIndex; ++i) {
+        // We discard the last batch if no slot was used.
+        const int batchesUsedCnt = m_batchSubmitIndex + 1 - (m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt == 0);
+
+        for (int i = 0; i <= batchesUsedCnt; ++i) {
             RenderBatchPermData* const batchPermData = &m_batchPermDatas[i];
             const RenderBatchTransientData& batchTransData = m_batchTransDatas[i];
 
@@ -373,7 +376,7 @@ namespace zf4 {
             m_batchLifes[i] = m_batchLifeMax;
 
             if (generateBatch) {
-                log("Generating render batch of index %d...", i);
+                log("Generating render batch of index %d and size %d...", i, batchTransData.slotsUsedCnt);
 
                 GL_CALL(glGenVertexArrays(1, &batchPermData->vertArrayGLID));
                 GL_CALL(glGenBuffers(1, &batchPermData->vertBufGLID));
@@ -423,7 +426,7 @@ namespace zf4 {
         }
 
         // Decrement the life values of batches that weren't submitted to, and deactivate them if necessary.
-        for (int i = m_batchSubmitIndex + 1; i < m_batchLimit; ++i) {
+        for (int i = batchesUsedCnt + 1; i < m_batchLimit; ++i) {
             if (m_batchLifes[i] > 0) {
                 --m_batchLifes[i];
 
