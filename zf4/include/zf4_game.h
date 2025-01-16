@@ -42,6 +42,9 @@ namespace zf4 {
         const char* windowTitle;
         WindowFlags windowFlags;
 
+        int renderBatchLimit;
+        int renderBatchLife;
+
         int spriteCnt;
         SpriteInitializer spriteInitializer;
 

@@ -69,7 +69,7 @@ namespace zf4 {
         game->internalShaderProgs = load_internal_shader_progs();
 
         // Set up the renderer.
-        if (!game->renderer.init(&game->permMemArena)) {
+        if (!game->renderer.init(&game->permMemArena, gameInfo.renderBatchLimit, gameInfo.renderBatchLife)) {
             return false;
         }
 
@@ -210,6 +210,9 @@ namespace zf4 {
             .windowInitSize = {1280, 720}, // NOTE: Could use a function pointer here instead, to allow for the size to be dynamically determined based on display size for example.
             .windowTitle = "ZF4 Game",
 
+            .renderBatchLimit = 64,
+            .renderBatchLife = 1000,
+
             .entLimit = 1024
         };
 
@@ -257,7 +260,7 @@ namespace zf4 {
         }
 
         glfwTerminate();
-        
+
         game.tempMemArena.clean();
         game.permMemArena.clean();
 

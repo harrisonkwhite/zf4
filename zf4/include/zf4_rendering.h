@@ -16,7 +16,7 @@ namespace zf4 {
 
     constexpr int gk_renderSurfaceLimit = 256;
 
-    constexpr int gk_renderInstrLimit = 1024;
+    constexpr int gk_renderInstrLimit = 8192;
 
     enum class ShaderUniformValType {
         Float,
@@ -145,7 +145,7 @@ namespace zf4 {
 
     class Renderer {
     public:
-        bool init(MemArena* const memArena, const int batchLimit = 64, const int batchLifeMax = 600); // TODO: Have the defaults be specified maybe in user game information defaults?
+        bool init(MemArena* const memArena, const int batchLimit, const int batchLifeMax);
         void clean();
 
         RenderSurfaceID add_surface(const zf4::Vec2DI windowSize);
