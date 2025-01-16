@@ -3,17 +3,38 @@
 #include <zf4c_mem.h>
 
 namespace zf4 {
+    template<SimpleType T, int Len>
+    class StaticArray {
+    public:
+        static constexpr int get_len() {
+            return Len;
+        }
+
+        T* get(const int index = 0) {
+            assert(index >= 0 && index < Len);
+            return &m_elems[index];
+        }
+
+        const T* get(const int index = 0) const {
+            assert(index >= 0 && index < Len);
+            return &m_elems[index];
+        }
+
+    private:
+        T m_elems[Len];
+    };
+
     template<SimpleType T>
     class Array {
     public:
         bool init(MemArena* const memArena, const int len);
 
-        T* get(const int index) {
+        T* get(const int index = 0) {
             assert(index >= 0 && index < m_len);
             return &m_elems[index];
         }
 
-        const T* get(const int index) const {
+        const T* get(const int index = 0) const {
             assert(index >= 0 && index < m_len);
             return &m_elems[index];
         }
@@ -27,17 +48,79 @@ namespace zf4 {
         int m_len;
     };
 
+    template<SimpleType T, int Cap>
+    class StaticStack {
+    public:
+        static constexpr int get_cap() {
+            return Cap;
+        }
+
+        T* get(const int index = 0) {
+            assert(index < m_len);
+            return m_array.get(index);
+        }
+
+        const T* get(const int index = 0) const {
+            assert(index < m_len);
+            return m_array.get(index);
+        }
+
+        int get_len() const {
+            return m_len;
+        }
+
+        bool is_empty() const {
+            return m_len == 0;
+        }
+
+        bool is_full() const {
+            return m_len == get_cap();
+        }
+
+        bool push(const T& elem) {
+            if (is_full()) {
+                return false;
+            }
+
+            *m_array.get(m_len) = elem;
+            ++m_len;
+
+            return true;
+        }
+
+        void pop() {
+            assert(m_len > 0);
+            --m_len;
+        }
+
+        T* peek() {
+            return m_array.get(m_len - 1);
+        }
+
+        const T* peek() const {
+            return m_array.get(m_len - 1);
+        }
+
+        void clear() {
+            m_len = 0;
+        }
+
+    private:
+        StaticArray<T, Cap> m_array;
+        int m_len;
+    };
+
     template<SimpleType T>
     class Stack {
     public:
         bool init(MemArena* const memArena, const int cap);
 
-        T* get(const int index) {
+        T* get(const int index = 0) {
             assert(index < m_len);
             return m_array.get(index);
         }
 
-        const T* get(const int index) const {
+        const T* get(const int index = 0) const {
             assert(index < m_len);
             return m_array.get(index);
         }
@@ -58,9 +141,15 @@ namespace zf4 {
             return m_len == get_capacity();
         }
 
-        void push(const T& elem) {
+        bool push(const T& elem) {
+            if (is_full()) {
+                return false;
+            }
+
             *m_array.get(m_len) = elem;
             ++m_len;
+
+            return true;
         }
 
         void pop() {
@@ -89,18 +178,61 @@ namespace zf4 {
         int m_len;
     };
 
-    // A form of array where each element has an "activity" state associated with it, indicated by a bit in a bitset.
+    template<SimpleType T, int Len>
+    class StaticActivityArray {
+    public:
+        static constexpr int get_len() {
+            return Len;
+        }
+
+        T* get(const int index = 0) {
+            assert(is_active(index));
+            return m_array.get(index);
+        }
+
+        const T* get(const int index = 0) const {
+            assert(is_active(index));
+            return m_array.get(index);
+        }
+
+        void activate(const int index) {
+            assert(index >= 0 && index < Len);
+            activate_bit(m_activity, index);
+        }
+
+        void deactivate(const int index) {
+            assert(index >= 0 && index < Len);
+            deactivate_bit(m_activity, index);
+        }
+
+        bool is_active(const int index) const {
+            return is_bit_active(m_activity, index);
+        }
+
+        int get_first_active_index() const {
+            return get_first_active_bit_index(m_activity, Len);
+        }
+
+        int get_first_inactive_index() const {
+            return get_first_inactive_bit_index(m_activity, Len);
+        }
+
+    private:
+        StaticArray<T, Len> m_array;
+        Byte m_activity[bits_to_bytes(Len)];
+    };
+
     template<SimpleType T>
     class ActivityArray {
     public:
         bool init(MemArena* const memArena, const int len);
 
-        T* get(const int index) {
+        T* get(const int index = 0) {
             assert(is_active(index));
             return m_array.get(index);
         }
 
-        const T* get(const int index) const {
+        const T* get(const int index = 0) const {
             assert(is_active(index));
             return m_array.get(index);
         }
