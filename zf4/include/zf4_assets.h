@@ -6,7 +6,7 @@
 #include <zf4c.h>
 
 namespace zf4 {
-    constexpr int gk_texturedQuadShaderProgVertCnt = 11;
+    constexpr int gk_texturedQuadShaderProgVertCnt = 14;
 
     struct Textures {
         SafePtr<GLuint> glIDs;

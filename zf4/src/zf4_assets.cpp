@@ -341,11 +341,11 @@ namespace zf4 {
             "layout (location = 3) in float a_rot;\n"
             "layout (location = 4) in float a_texIndex;\n"
             "layout (location = 5) in vec2 a_texCoord;\n"
-            "layout (location = 6) in float a_alpha;\n"
+            "layout (location = 6) in vec4 a_blend;\n"
             "\n"
             "out flat int v_texIndex;\n"
             "out vec2 v_texCoord;\n"
-            "out float v_alpha;\n"
+            "out vec4 v_blend;\n"
             "\n"
             "uniform mat4 u_view;\n"
             "uniform mat4 u_proj;\n"
@@ -365,7 +365,7 @@ namespace zf4 {
             "\n"
             "    v_texIndex = int(a_texIndex);\n"
             "    v_texCoord = a_texCoord;\n"
-            "    v_alpha = a_alpha;\n"
+            "    v_blend = a_blend;\n"
             "}\n";
 
         const char* const fragShaderSrc =
@@ -373,7 +373,7 @@ namespace zf4 {
             "\n"
             "in flat int v_texIndex;\n"
             "in vec2 v_texCoord;\n"
-            "in float v_alpha;\n"
+            "in vec4 v_blend;\n"
             "\n"
             "out vec4 o_fragColor;\n"
             "\n"
@@ -381,7 +381,7 @@ namespace zf4 {
             "\n"
             "void main() {\n"
             "    vec4 texColor = texture(u_textures[v_texIndex], v_texCoord);\n"
-            "    o_fragColor = texColor * vec4(1.0f, 1.0f, 1.0f, v_alpha);\n"
+            "    o_fragColor = texColor * v_blend;\n"
             "}\n";
 
         TexturedQuadShaderProg prog = {

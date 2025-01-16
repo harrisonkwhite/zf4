@@ -309,13 +309,13 @@ namespace zf4 {
         zero_out(this);
     }
 
-    int Renderer::add_surface(const zf4::Vec2DI windowSize) {
+    int Renderer::add_surface(const Vec2DI windowSize) {
         assert(m_state == RendererState::Initialized);
 
         const int surfIndex = m_surfs.get_first_inactive_index();
 
         if (surfIndex == -1) {
-            zf4::log_error("Failed to add a new render surface as no available slot was found!");
+            log_error("Failed to add a new render surface as no available slot was found!");
             return -1;
         }
 
@@ -335,7 +335,7 @@ namespace zf4 {
         clean_render_surface(m_surfs.get(surfIndex));
     }
 
-    bool Renderer::resize_surfaces(const zf4::Vec2DI windowSize) {
+    bool Renderer::resize_surfaces(const Vec2DI windowSize) {
         assert(m_state == RendererState::Initialized);
 
         for (int i = 0; i < m_surfs.get_len(); ++i) {
@@ -373,7 +373,7 @@ namespace zf4 {
             m_batchLifes[i] = m_batchLifeMax;
 
             if (generateBatch) {
-                zf4::log("Generating render batch of index %d...", i);
+                log("Generating render batch of index %d...", i);
 
                 GL_CALL(glGenVertexArrays(1, &batchPermData->vertArrayGLID));
                 GL_CALL(glGenBuffers(1, &batchPermData->vertBufGLID));
@@ -412,7 +412,7 @@ namespace zf4 {
                 GL_CALL(glVertexAttribPointer(5, 2, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 8)));
                 GL_CALL(glEnableVertexAttribArray(5));
 
-                GL_CALL(glVertexAttribPointer(6, 1, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10)));
+                GL_CALL(glVertexAttribPointer(6, 4, GL_FLOAT, false, vertsStride, reinterpret_cast<void*>(sizeof(float) * 10)));
                 GL_CALL(glEnableVertexAttribArray(6));
             }
 
@@ -429,7 +429,7 @@ namespace zf4 {
 
                 if (m_batchLifes[i] == 0) {
                     // Deactivate the batch.
-                    zf4::log("Deactivating render batch of index %d...", i);
+                    log("Deactivating render batch of index %d...", i);
 
                     GL_CALL(glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID));
                     GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID));
@@ -441,7 +441,7 @@ namespace zf4 {
         m_state = RendererState::Initialized;
     }
 
-    bool Renderer::submit_texture(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const float alpha) {
+    bool Renderer::submit_texture(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin, const float rot, const Vec2D scale, const Vec4D blend) {
         assert(m_state == RendererState::Submitting);
 
         const Vec2DI texSize = assets.get_tex_size(texIndex);
@@ -453,7 +453,7 @@ namespace zf4 {
             static_cast<float>(srcRect.height) / texSize.y
         };
 
-        if (!submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, assets.get_tex_gl_id(texIndex), texCoords, alpha)) {
+        if (!submit_to_batch(origin, scale, pos, get_rect_size(srcRect), rot, assets.get_tex_gl_id(texIndex), texCoords, blend)) {
             return false;
         }
 
@@ -501,7 +501,7 @@ namespace zf4 {
                 static_cast<float>(fontArrangementInfo.chars.srcRects[charIndex].height) / fontTexSize.y
             };
 
-            if (!submit_to_batch({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, 1.0f)) {
+            if (!submit_to_batch({}, {1.0f, 1.0f}, charPos, charSize, 0.0f, fontTexGLID, charTexCoords, {1.0f, 1.0f, 1.0f, 1.0f})) {
                 return false;
             }
         }
@@ -509,7 +509,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const zf4::Vec2DI windowSize, MemArena* const scratchSpace) {
+    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const Vec2DI windowSize, MemArena* const scratchSpace) {
         assert(m_state == RendererState::Initialized);
 
         // Enable blending.
@@ -653,7 +653,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const float alpha) {
+    bool Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const Vec4D blend) {
         assert(m_state == RendererState::Submitting);
 
         RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchSubmitIndex];
@@ -667,7 +667,7 @@ namespace zf4 {
                 return false;
             }
 
-            return submit_to_batch(origin, scale, pos, size, rot, texGLID, texCoords, alpha);
+            return submit_to_batch(origin, scale, pos, size, rot, texGLID, texCoords, blend);
         }
 
         // Write the slot vertex data.
@@ -684,43 +684,55 @@ namespace zf4 {
         slotVerts[7] = static_cast<float>(texUnit);
         slotVerts[8] = texCoords.x;
         slotVerts[9] = texCoords.y;
-        slotVerts[10] = alpha;
+        slotVerts[10] = blend.x;
+        slotVerts[11] = blend.y;
+        slotVerts[12] = blend.z;
+        slotVerts[13] = blend.w;
 
-        slotVerts[11] = (1.0f - origin.x) * scale.x;
-        slotVerts[12] = (0.0f - origin.y) * scale.y;
-        slotVerts[13] = pos.x;
-        slotVerts[14] = pos.y;
-        slotVerts[15] = size.x;
-        slotVerts[16] = size.y;
-        slotVerts[17] = rot;
-        slotVerts[18] = static_cast<float>(texUnit);
-        slotVerts[19] = get_rect_right(texCoords);
-        slotVerts[20] = texCoords.y;
-        slotVerts[21] = alpha;
+        slotVerts[14] = (1.0f - origin.x) * scale.x;
+        slotVerts[15] = (0.0f - origin.y) * scale.y;
+        slotVerts[16] = pos.x;
+        slotVerts[17] = pos.y;
+        slotVerts[18] = size.x;
+        slotVerts[19] = size.y;
+        slotVerts[20] = rot;
+        slotVerts[21] = static_cast<float>(texUnit);
+        slotVerts[22] = get_rect_right(texCoords);
+        slotVerts[23] = texCoords.y;
+        slotVerts[24] = blend.x;
+        slotVerts[25] = blend.y;
+        slotVerts[26] = blend.z;
+        slotVerts[27] = blend.w;
 
-        slotVerts[22] = (1.0f - origin.x) * scale.x;
-        slotVerts[23] = (1.0f - origin.y) * scale.y;
-        slotVerts[24] = pos.x;
-        slotVerts[25] = pos.y;
-        slotVerts[26] = size.x;
-        slotVerts[27] = size.y;
-        slotVerts[28] = rot;
-        slotVerts[29] = static_cast<float>(texUnit);
-        slotVerts[30] = get_rect_right(texCoords);
-        slotVerts[31] = get_rect_bottom(texCoords);
-        slotVerts[32] = alpha;
+        slotVerts[28] = (1.0f - origin.x) * scale.x;
+        slotVerts[29] = (1.0f - origin.y) * scale.y;
+        slotVerts[30] = pos.x;
+        slotVerts[31] = pos.y;
+        slotVerts[32] = size.x;
+        slotVerts[33] = size.y;
+        slotVerts[34] = rot;
+        slotVerts[35] = static_cast<float>(texUnit);
+        slotVerts[36] = get_rect_right(texCoords);
+        slotVerts[37] = get_rect_bottom(texCoords);
+        slotVerts[38] = blend.x;
+        slotVerts[39] = blend.y;
+        slotVerts[40] = blend.z;
+        slotVerts[41] = blend.w;
 
-        slotVerts[33] = (0.0f - origin.x) * scale.x;
-        slotVerts[34] = (1.0f - origin.y) * scale.y;
-        slotVerts[35] = pos.x;
-        slotVerts[36] = pos.y;
-        slotVerts[37] = size.x;
-        slotVerts[38] = size.y;
-        slotVerts[39] = rot;
-        slotVerts[40] = static_cast<float>(texUnit);
-        slotVerts[41] = texCoords.x;
-        slotVerts[42] = get_rect_bottom(texCoords);
-        slotVerts[43] = alpha;
+        slotVerts[42] = (0.0f - origin.x) * scale.x;
+        slotVerts[43] = (1.0f - origin.y) * scale.y;
+        slotVerts[44] = pos.x;
+        slotVerts[45] = pos.y;
+        slotVerts[46] = size.x;
+        slotVerts[47] = size.y;
+        slotVerts[48] = rot;
+        slotVerts[49] = static_cast<float>(texUnit);
+        slotVerts[50] = texCoords.x;
+        slotVerts[51] = get_rect_bottom(texCoords);
+        slotVerts[52] = blend.x;
+        slotVerts[53] = blend.y;
+        slotVerts[54] = blend.z;
+        slotVerts[55] = blend.w;
 
         ++batchTransData->slotsUsedCnt;
 
