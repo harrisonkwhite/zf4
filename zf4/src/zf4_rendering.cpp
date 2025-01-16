@@ -373,6 +373,8 @@ namespace zf4 {
             m_batchLifes[i] = m_batchLifeMax;
 
             if (generateBatch) {
+                zf4::log("Generating render batch of index %d...", i);
+
                 GL_CALL(glGenVertexArrays(1, &batchPermData->vertArrayGLID));
                 GL_CALL(glGenBuffers(1, &batchPermData->vertBufGLID));
                 GL_CALL(glGenBuffers(1, &batchPermData->elemBufGLID));
@@ -427,6 +429,8 @@ namespace zf4 {
 
                 if (m_batchLifes[i] == 0) {
                     // Deactivate the batch.
+                    zf4::log("Deactivating render batch of index %d...", i);
+
                     GL_CALL(glDeleteVertexArrays(1, &m_batchPermDatas[i].vertArrayGLID));
                     GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].vertBufGLID));
                     GL_CALL(glDeleteBuffers(1, &m_batchPermDatas[i].elemBufGLID));
