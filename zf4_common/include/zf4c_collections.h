@@ -209,12 +209,20 @@ namespace zf4 {
             return is_bit_active(m_activity, index);
         }
 
+        int get_active_index_cnt() const {
+            return get_active_bit_cnt(m_activity, bits_to_bytes(Len));
+        }
+
+        int get_inactive_index_cnt() const {
+            return get_inactive_bit_cnt(m_activity, bits_to_bytes(Len));
+        }
+
         int get_first_active_index() const {
-            return get_first_active_bit_index(m_activity, Len);
+            return get_first_active_bit_index(m_activity, bits_to_bytes(Len));
         }
 
         int get_first_inactive_index() const {
-            return get_first_inactive_bit_index(m_activity, Len);
+            return get_first_inactive_bit_index(m_activity, bits_to_bytes(Len));
         }
 
     private:
@@ -255,12 +263,20 @@ namespace zf4 {
             deactivate_bit(m_activity.get(), index);
         }
 
+        int get_active_index_cnt() const {
+            return get_active_bit_cnt(m_activity.get(), bits_to_bytes(get_len()));
+        }
+
+        int get_inactive_index_cnt() const {
+            return get_inactive_bit_cnt(m_activity.get(), bits_to_bytes(get_len()));
+        }
+
         int get_first_active_index() const {
-            return get_first_active_bit_index(m_activity.get(), get_len());
+            return get_first_active_bit_index(m_activity.get(), bits_to_bytes(get_len()));
         }
 
         int get_first_inactive_index() const {
-            return get_first_inactive_bit_index(m_activity.get(), get_len());
+            return get_first_inactive_bit_index(m_activity.get(), bits_to_bytes(get_len()));
         }
 
         Array<T> to_array() {

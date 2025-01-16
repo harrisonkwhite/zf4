@@ -1,32 +1,58 @@
 #include <zf4c_mem.h>
 
 namespace zf4 {
-    int get_first_active_bit_index(const Byte* const bytes, const int bitCnt) {
-        for (int i = 0; i < bitCnt; ++i) {
-            if (is_bit_active(bytes, i)) {
-                return i;
+    int get_active_bit_cnt(const Byte* const bytes, const int byteCnt) {
+        int cnter = 0;
+
+        for (int i = 0; i < byteCnt; ++i) {
+            cnter += gk_activeBitCnts[bytes[i]];
+        }
+
+        return cnter;
+    }
+
+    int get_inactive_bit_cnt(const Byte* const bytes, const int byteCnt) {
+        return (8 * byteCnt) - get_active_bit_cnt(bytes, byteCnt);
+    }
+
+    int get_first_active_bit_index(const Byte* const bytes, const int byteCnt) {
+        for (int i = 0; i < byteCnt; ++i) {
+            if (bytes[i]) {
+                return (i * 8) + gk_firstActiveBitIndexes[bytes[i]];
             }
         }
 
         return -1;
     }
 
-    int get_first_inactive_bit_index(const Byte* const bytes, const int bitCnt) {
-        for (int i = 0; i < bitCnt; ++i) {
-            if (!is_bit_active(bytes, i)) {
-                return i;
+    int get_first_inactive_bit_index(const Byte* const bytes, const int byteCnt) {
+        for (int i = 0; i < byteCnt; ++i) {
+            if (bytes[i] != 0xFF) {
+                return (i * 8) + gk_firstInactiveBitIndexes[bytes[i]];
             }
         }
 
         return -1;
     }
 
-    bool are_all_bits_active(const Byte* const bytes, const int bitCnt) {
-        return get_first_inactive_bit_index(bytes, bitCnt) == -1;
+    bool are_all_bits_active(const Byte* const bytes, const int byteCnt) {
+        for (int i = 0; i < byteCnt; ++i) {
+            if (bytes[i] != 0xFF) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    bool are_all_bits_inactive(const Byte* const bytes, const int bitCnt) {
-        return get_first_active_bit_index(bytes, bitCnt) == -1;
+    bool are_all_bits_inactive(const Byte* const bytes, const int byteCnt) {
+        for (int i = 0; i < byteCnt; ++i) {
+            if (bytes[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool MemArena::init(const int size) {

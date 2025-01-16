@@ -94,7 +94,7 @@ namespace zf4 {
     }
 
     EntID EntityManager::spawn_ent(const Vec2D pos, const Array<ComponentType>& compTypes) {
-        const int entIndex = get_first_inactive_bit_index(m_entActivity.get(), m_entLimit);
+        const int entIndex = get_first_inactive_bit_index(m_entActivity.get(), bits_to_bytes(m_entLimit));
 
         if (entIndex == -1) {
             return {};
@@ -162,7 +162,7 @@ namespace zf4 {
         assert(!does_ent_have_component(entID, compTypeIndex, compTypes));
 
         // Find and use the first inactive component of the type.
-        const int compIndex = get_first_inactive_bit_index(m_compActivities[compTypeIndex].get(), m_entLimit);
+        const int compIndex = get_first_inactive_bit_index(m_compActivities[compTypeIndex].get(), bits_to_bytes(m_entLimit));
 
         if (compIndex == -1) {
             return false;
