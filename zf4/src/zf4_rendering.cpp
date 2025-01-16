@@ -309,7 +309,7 @@ namespace zf4 {
         zero_out(this);
     }
 
-    RenderSurfaceID Renderer::add_surface(const zf4::Vec2DI windowSize) {
+    int Renderer::add_surface(const zf4::Vec2DI windowSize) {
         assert(m_state == RendererState::Initialized);
 
         const int surfIndex = m_surfs.get_first_inactive_index();
@@ -328,11 +328,11 @@ namespace zf4 {
         return surfIndex;
     }
 
-    void Renderer::remove_surface(const RenderSurfaceID surfID) {
+    void Renderer::remove_surface(const int surfIndex) {
         assert(m_state == RendererState::Initialized);
 
-        m_surfs.deactivate(surfID);
-        clean_render_surface(m_surfs.get(surfID));
+        m_surfs.deactivate(surfIndex);
+        clean_render_surface(m_surfs.get(surfIndex));
     }
 
     bool Renderer::resize_surfaces(const zf4::Vec2DI windowSize) {

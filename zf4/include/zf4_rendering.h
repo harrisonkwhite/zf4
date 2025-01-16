@@ -141,15 +141,13 @@ namespace zf4 {
         int height;
     };
 
-    using RenderSurfaceID = int; // NOTE: Maybe remove?
-
     class Renderer {
     public:
         bool init(MemArena* const memArena, const int batchLimit, const int batchLifeMax);
         void clean();
 
-        RenderSurfaceID add_surface(const zf4::Vec2DI windowSize);
-        void remove_surface(const RenderSurfaceID surfID);
+        int add_surface(const zf4::Vec2DI windowSize);
+        void remove_surface(const int surfIndex);
         bool resize_surfaces(const zf4::Vec2DI windowSize);
 
         void begin_submission_phase();
