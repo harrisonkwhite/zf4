@@ -10,14 +10,14 @@ namespace zf4 {
             return Len;
         }
 
-        T* get(const int index = 0) {
+        T& get(const int index = 0) {
             assert(index >= 0 && index < Len);
-            return &m_elems[index];
+            return m_elems[index];
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index = 0) const {
             assert(index >= 0 && index < Len);
-            return &m_elems[index];
+            return m_elems[index];
         }
 
     private:
@@ -27,16 +27,16 @@ namespace zf4 {
     template<SimpleType T>
     class Array {
     public:
-        bool init(MemArena* const memArena, const int len);
+        bool init(MemArena& memArena, const int len);
 
-        T* get(const int index = 0) {
+        T& get(const int index = 0) {
             assert(index >= 0 && index < m_len);
-            return &m_elems[index];
+            return m_elems[index];
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index = 0) const {
             assert(index >= 0 && index < m_len);
-            return &m_elems[index];
+            return m_elems[index];
         }
 
         int get_len() const {
@@ -55,12 +55,12 @@ namespace zf4 {
             return Cap;
         }
 
-        T* get(const int index = 0) {
+        T& get(const int index = 0) {
             assert(index < m_len);
             return m_array.get(index);
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index = 0) const {
             assert(index < m_len);
             return m_array.get(index);
         }
@@ -93,11 +93,11 @@ namespace zf4 {
             --m_len;
         }
 
-        T* peek() {
+        T& peek() {
             return m_array.get(m_len - 1);
         }
 
-        const T* peek() const {
+        const T& peek() const {
             return m_array.get(m_len - 1);
         }
 
@@ -113,14 +113,14 @@ namespace zf4 {
     template<SimpleType T>
     class Stack {
     public:
-        bool init(MemArena* const memArena, const int cap);
+        bool init(MemArena& memArena, const int cap);
 
-        T* get(const int index = 0) {
+        T& get(const int index) {
             assert(index < m_len);
             return m_array.get(index);
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index) const {
             assert(index < m_len);
             return m_array.get(index);
         }
@@ -146,7 +146,7 @@ namespace zf4 {
                 return false;
             }
 
-            *m_array.get(m_len) = elem;
+            m_array.get(m_len) = elem;
             ++m_len;
 
             return true;
@@ -157,11 +157,11 @@ namespace zf4 {
             --m_len;
         }
 
-        T* peek() {
+        T& peek() {
             return m_array.get(m_len - 1);
         }
 
-        const T* peek() const {
+        const T& peek() const {
             return m_array.get(m_len - 1);
         }
 
@@ -185,12 +185,12 @@ namespace zf4 {
             return Len;
         }
 
-        T* get(const int index = 0) {
+        T& get(const int index = 0) {
             assert(is_active(index));
             return m_array.get(index);
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index = 0) const {
             assert(is_active(index));
             return m_array.get(index);
         }
@@ -233,14 +233,14 @@ namespace zf4 {
     template<SimpleType T>
     class ActivityArray {
     public:
-        bool init(MemArena* const memArena, const int len);
+        bool init(MemArena& memArena, const int len);
 
-        T* get(const int index = 0) {
+        T& get(const int index = 0) {
             assert(is_active(index));
             return m_array.get(index);
         }
 
-        const T* get(const int index = 0) const {
+        const T& get(const int index = 0) const {
             assert(is_active(index));
             return m_array.get(index);
         }
@@ -289,11 +289,11 @@ namespace zf4 {
     };
 
     template<SimpleType T>
-    inline bool Array<T>::init(MemArena* const memArena, const int len) {
+    inline bool Array<T>::init(MemArena& memArena, const int len) {
         assert(is_zero(this));
         assert(len > 0);
 
-        m_elems = memArena->alloc<T>(len);
+        m_elems = memArena.alloc<T>(len);
 
         if (!m_elems) {
             return false;
@@ -305,7 +305,7 @@ namespace zf4 {
     }
 
     template<SimpleType T>
-    inline bool Stack<T>::init(MemArena* const memArena, const int cap) {
+    inline bool Stack<T>::init(MemArena& memArena, const int cap) {
         assert(is_zero(this));
 
         if (!m_array.init(memArena, cap)) {
@@ -316,14 +316,14 @@ namespace zf4 {
     }
 
     template<SimpleType T>
-    inline bool ActivityArray<T>::init(MemArena* const memArena, const int len) {
+    inline bool ActivityArray<T>::init(MemArena& memArena, const int len) {
         assert(is_zero(this));
 
         if (!m_array.init(memArena, len)) {
             return false;
         }
 
-        m_activity = memArena->alloc<Byte>(bits_to_bytes(len));
+        m_activity = memArena.alloc<Byte>(bits_to_bytes(len));
 
         if (!m_activity) {
             zero_out(this);

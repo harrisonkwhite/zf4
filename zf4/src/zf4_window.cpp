@@ -129,8 +129,8 @@ namespace zf4 {
         window->inputState.mousePos.y = y;
     }
 
-    bool init_window(Window* const window, const zf4::Vec2DI size, const char* const title, const WindowFlags flags) {
-        assert(is_zero(window));
+    bool init_window(Window& window, const zf4::Vec2DI size, const char* const title, const WindowFlags flags) {
+        assert(is_zero(&window));
         assert(size.x > 0 && size.y > 0);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gk_glVersionMajor);
@@ -139,26 +139,26 @@ namespace zf4 {
         glfwWindowHint(GLFW_RESIZABLE, flags & WindowFlags_Resizable);
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-        window->glfwWindow = glfwCreateWindow(size.x, size.y, title, nullptr, nullptr);
+        window.glfwWindow = glfwCreateWindow(size.x, size.y, title, nullptr, nullptr);
 
-        if (!window->glfwWindow) {
+        if (!window.glfwWindow) {
             log_error("Failed to create GLFW window!");
             return false;
         }
 
-        glfwMakeContextCurrent(window->glfwWindow);
+        glfwMakeContextCurrent(window.glfwWindow);
 
         glfwSwapInterval(1); // Enables VSync.
 
-        glfwSetWindowUserPointer(window->glfwWindow, window);
-        glfwSetWindowSizeCallback(window->glfwWindow, glfw_window_size_callback);
-        glfwSetKeyCallback(window->glfwWindow, glfw_key_callback);
-        glfwSetMouseButtonCallback(window->glfwWindow, glfw_mouse_button_callback);
-        glfwSetCursorPosCallback(window->glfwWindow, glfw_cursor_pos_callback);
+        glfwSetWindowUserPointer(window.glfwWindow, &window);
+        glfwSetWindowSizeCallback(window.glfwWindow, glfw_window_size_callback);
+        glfwSetKeyCallback(window.glfwWindow, glfw_key_callback);
+        glfwSetMouseButtonCallback(window.glfwWindow, glfw_mouse_button_callback);
+        glfwSetCursorPosCallback(window.glfwWindow, glfw_cursor_pos_callback);
 
-        glfwSetInputMode(window->glfwWindow, GLFW_CURSOR, (flags & WindowFlags_HideCursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(window.glfwWindow, GLFW_CURSOR, (flags & WindowFlags_HideCursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
-        glfwGetWindowSize(window->glfwWindow, &window->size.x, &window->size.y);
+        glfwGetWindowSize(window.glfwWindow, &window.size.x, &window.size.y);
 
         return true;
     }

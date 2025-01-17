@@ -4,7 +4,7 @@
 #include <zf4c.h>
 
 namespace zf4 {
-    using ComponentTypeLimitLoader = void (*)(int* const typeLimit, const int typeIndex);
+    using ComponentTypeLimitLoader = void (*)(int& typeLimit, const int typeIndex);
 
     struct ComponentType {
         int size;
@@ -13,7 +13,7 @@ namespace zf4 {
         void (*defaultsSetter)(Byte* const comp);
     };
 
-    using ComponentTypeInitializer = void (*)(ComponentType* const typeInfo, const int typeIndex);
+    using ComponentTypeInitializer = void (*)(ComponentType& typeInfo, const int typeIndex);
 
     struct EntID {
         int index;
@@ -26,7 +26,7 @@ namespace zf4 {
 
     class EntityManager {
     public:
-        bool init(MemArena* const memArena, const int entLimit, const Array<ComponentType>& compTypes);
+        bool init(MemArena& memArena, const int entLimit, const Array<ComponentType>& compTypes);
 
         EntID spawn_ent(const Vec2D pos, const Array<ComponentType>& compTypes);
         EntID spawn_ent(const Vec2D pos, const SafePtr<Byte> compSig, const Array<ComponentType>& compTypes);

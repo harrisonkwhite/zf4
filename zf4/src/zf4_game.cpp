@@ -21,8 +21,8 @@ namespace zf4 {
         EntityManager entManager;
     };
 
-    static bool exec_game_init_and_main_loop(Game* const game, const GameInfo& gameInfo) {
-        assert(is_zero(game));
+    static bool exec_game_init_and_main_loop(Game& game, const GameInfo& gameInfo) {
+        assert(is_zero(&game));
 
         //
         // Initialisation
@@ -30,12 +30,12 @@ namespace zf4 {
         log("Initialising...");
 
         // Set up memory arenas.
-        if (!game->permMemArena.init(gameInfo.permMemArenaSize)) {
+        if (!game.permMemArena.init(gameInfo.permMemArenaSize)) {
             log_error("Failed to initialise the permanent memory arena!");
             return false;
         }
 
-        if (!game->tempMemArena.init(gameInfo.tempMemArenaSize)) {
+        if (!game.tempMemArena.init(gameInfo.tempMemArenaSize)) {
             log_error("Failed to initialise the temporary memory arena!");
             return false;
         }
@@ -46,7 +46,7 @@ namespace zf4 {
             return false;
         }
 
-        if (!init_window(&game->window, gameInfo.windowInitSize, gameInfo.windowTitle, gameInfo.windowFlags)) {
+        if (!init_window(game.window, gameInfo.windowInitSize, gameInfo.windowTitle, gameInfo.windowFlags)) {
             return false;
         }
 
@@ -62,25 +62,25 @@ namespace zf4 {
         }
 
         // Load assets.
-        if (!game->assets.load(&game->permMemArena)) {
+        if (!game.assets.load(game.permMemArena)) {
             return false;
         }
 
-        game->internalShaderProgs = load_internal_shader_progs();
+        game.internalShaderProgs = load_internal_shader_progs();
 
         // Set up the renderer.
-        if (!game->renderer.init(&game->permMemArena, gameInfo.renderBatchLimit, gameInfo.renderBatchLife)) {
+        if (!game.renderer.init(game.permMemArena, gameInfo.renderBatchLimit, gameInfo.renderBatchLife)) {
             return false;
         }
 
         // Initialise sprites.
         if (gameInfo.spriteCnt > 0) {
-            if (!game->sprites.init(&game->permMemArena, gameInfo.spriteCnt)) {
+            if (!game.sprites.init(game.permMemArena, gameInfo.spriteCnt)) {
                 return false;
             }
 
             for (int i = 0; i < gameInfo.spriteCnt; ++i) {
-                if (!gameInfo.spriteInitializer(game->sprites.get(i), &game->permMemArena, i, game->assets)) {
+                if (!gameInfo.spriteInitializer(game.sprites.get(i), game.permMemArena, i, game.assets)) {
                     return false;
                 }
             }
@@ -88,17 +88,17 @@ namespace zf4 {
 
         // Initialise component types.
         if (gameInfo.componentTypeCnt > 0) {
-            if (!game->compTypes.init(&game->permMemArena, gameInfo.componentTypeCnt)) {
+            if (!game.compTypes.init(game.permMemArena, gameInfo.componentTypeCnt)) {
                 return false;
             }
 
             for (int i = 0; i < gameInfo.componentTypeCnt; ++i) {
-                gameInfo.componentTypeInitializer(game->compTypes.get(i), i);
+                gameInfo.componentTypeInitializer(game.compTypes.get(i), i);
             }
         }
 
         // Initialise the entity manager.
-        if (!game->entManager.init(&game->permMemArena, gameInfo.entLimit, game->compTypes)) {
+        if (!game.entManager.init(game.permMemArena, gameInfo.entLimit, game.compTypes)) {
             return false;
         }
 
@@ -107,16 +107,16 @@ namespace zf4 {
 
         // Define a struct of pointers to game data to pass to the user-defined game functions.
         const GamePtrs gamePtrs = {
-            .permMemArena = &game->permMemArena,
-            .tempMemArena = &game->tempMemArena,
-            .window = &game->window,
-            .assets = &game->assets,
-            .renderer = &game->renderer,
-            .soundSrcManager = &game->sndSrcManager,
-            .musicSrcManager = &game->musicSrcManager,
-            .sprites = &game->sprites,
-            .compTypes = &game->compTypes,
-            .entManager = &game->entManager
+            .permMemArena = game.permMemArena,
+            .tempMemArena = game.tempMemArena,
+            .window = game.window,
+            .assets = game.assets,
+            .renderer = game.renderer,
+            .soundSrcManager = game.sndSrcManager,
+            .musicSrcManager = game.musicSrcManager,
+            .sprites = game.sprites,
+            .compTypes = game.compTypes,
+            .entManager = game.entManager
         };
 
         // Call the user-defined initialisation function.
@@ -125,7 +125,7 @@ namespace zf4 {
         }
 
         // Now that everything is initialised, show the window.
-        glfwShowWindow(game->window.glfwWindow);
+        glfwShowWindow(game.window.glfwWindow);
 
         //
         // Main Loop
@@ -135,8 +135,8 @@ namespace zf4 {
 
         log("Entering the main loop...");
 
-        while (!glfwWindowShouldClose(game->window.glfwWindow)) {
-            game->tempMemArena.reset();
+        while (!glfwWindowShouldClose(game.window.glfwWindow)) {
+            game.tempMemArena.reset();
 
             const double frameTimeLast = frameTime;
             frameTime = glfwGetTime();
@@ -147,9 +147,9 @@ namespace zf4 {
             if (frameDurAccum >= ik_targTickDurSecs) {
                 do {
                     // Execute a tick.
-                    handle_auto_release_sound_srcs(&game->sndSrcManager);
+                    handle_auto_release_sound_srcs(&game.sndSrcManager);
 
-                    if (!refresh_music_src_bufs(&game->musicSrcManager, game->assets)) {
+                    if (!refresh_music_src_bufs(&game.musicSrcManager, game.assets)) {
                         return false;
                     }
 
@@ -160,35 +160,35 @@ namespace zf4 {
                     frameDurAccum -= ik_targTickDurSecs;
                 } while (frameDurAccum >= ik_targTickDurSecs);
 
-                game->window.inputStateSaved = game->window.inputState;
+                game.window.inputStateSaved = game.window.inputState;
 
                 // Execute render.
-                game->renderer.begin_submission_phase();
+                game.renderer.begin_submission_phase();
 
                 if (!gameInfo.draw(gamePtrs)) {
                     return false;
                 }
 
-                game->renderer.end_submission_phase();
+                game.renderer.end_submission_phase();
 
-                if (!game->renderer.render(game->internalShaderProgs, game->assets, game->window.size, &game->tempMemArena)) {
+                if (!game.renderer.render(game.internalShaderProgs, game.assets, game.window.size, game.tempMemArena)) {
                     return false;
                 }
 
-                glfwSwapBuffers(game->window.glfwWindow);
+                glfwSwapBuffers(game.window.glfwWindow);
             }
 
-            const zf4::Vec2DI windowSizePrepoll = game->window.size;
+            const zf4::Vec2DI windowSizePrepoll = game.window.size;
 
             glfwPollEvents();
 
             // Check for and process window resize.
-            if (game->window.size.x != windowSizePrepoll.x || game->window.size.y != windowSizePrepoll.y) {
+            if (game.window.size.x != windowSizePrepoll.x || game.window.size.y != windowSizePrepoll.y) {
                 log("Processing window resize...");
 
-                glViewport(0, 0, game->window.size.x, game->window.size.y);
+                glViewport(0, 0, game.window.size.x, game.window.size.y);
 
-                if (!game->renderer.resize_surfaces(game->window.size)) {
+                if (!game.renderer.resize_surfaces(game.window.size)) {
                     return false;
                 }
             }
@@ -217,7 +217,7 @@ namespace zf4 {
         };
 
         // Run the initialiser function, which could overwrite some of the above defaults.
-        gameInfoInitializer(&gameInfo);
+        gameInfoInitializer(gameInfo);
 
         // Verify that things have been set correctly.
         // NOTE: We might need some more checks here.
@@ -238,7 +238,7 @@ namespace zf4 {
         // Running the Game
         //
         Game game = {};
-        const bool success = exec_game_init_and_main_loop(&game, gameInfo);
+        const bool success = exec_game_init_and_main_loop(game, gameInfo);
 
         //
         // Cleanup

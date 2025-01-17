@@ -42,7 +42,7 @@ namespace zf4 {
 
     class Assets {
     public:
-        bool load(MemArena* const memArena);
+        bool load(MemArena& memArena);
         void clean();
 
         GLuint get_tex_gl_id(const int index) const {
@@ -126,11 +126,11 @@ namespace zf4 {
         TexturedQuadShaderProg texturedQuad;
     };
 
-    bool load_textures_from_fs(Textures* const textures, MemArena* const memArena, FILE* const fs);
-    bool load_fonts_from_fs(Fonts* const fonts, MemArena* const memArena, FILE* const fs);
-    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena* const memArena, FILE* const fs);
-    bool load_sounds_from_fs(Sounds* const snds, MemArena* const memArena, FILE* const fs);
-    bool load_music_from_fs(Music* const music, MemArena* const memArena, FILE* const fs);
+    bool load_textures_from_fs(Textures* const textures, MemArena& memArena, FILE* const fs);
+    bool load_fonts_from_fs(Fonts* const fonts, MemArena& memArena, FILE* const fs);
+    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena& memArena, FILE* const fs);
+    bool load_sounds_from_fs(Sounds* const snds, MemArena& memArena, FILE* const fs);
+    bool load_music_from_fs(Music* const music, MemArena& memArena, FILE* const fs);
 
     InternalShaderProgs load_internal_shader_progs();
     void unload_internal_shader_progs(InternalShaderProgs* const progs);

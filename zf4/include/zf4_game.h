@@ -12,16 +12,16 @@ namespace zf4 {
     constexpr int gk_glVersionMinor = 3;
 
     struct GamePtrs {
-        MemArena* permMemArena;
-        MemArena* tempMemArena;
-        const Window* window;
-        const Assets* assets;
-        Renderer* renderer;
-        SoundSrcManager* soundSrcManager;
-        MusicSrcManager* musicSrcManager;
-        const zf4::Array<Sprite>* sprites;
-        const zf4::Array<ComponentType>* compTypes;
-        EntityManager* entManager;
+        MemArena& permMemArena;
+        MemArena& tempMemArena;
+        const Window& window;
+        const Assets& assets;
+        Renderer& renderer;
+        SoundSrcManager& soundSrcManager;
+        MusicSrcManager& musicSrcManager;
+        const zf4::Array<Sprite>& sprites;
+        const zf4::Array<ComponentType>& compTypes;
+        EntityManager& entManager;
     };
 
     using GameInit = bool (*)(const GamePtrs& gamePtrs);
@@ -54,7 +54,7 @@ namespace zf4 {
         int entLimit;
     };
 
-    using GameInfoInitializer = void (*)(GameInfo* const info);
+    using GameInfoInitializer = void (*)(GameInfo& info);
 
     bool run_game(const GameInfoInitializer gameInfoInitializer);
 }

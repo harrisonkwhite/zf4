@@ -5,81 +5,79 @@
 #include <zf4_utils.h>
 
 namespace zf4 {
-    static bool init_and_attach_framebuffer_tex(GLuint* const texGLID, const GLuint fbGLID, const Vec2DI texSize) {
-        assert(*texGLID == 0);
-
-        GL_CALL(glGenTextures(1, texGLID));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, *texGLID));
+    static GLuint init_and_attach_framebuffer_tex(const GLuint fbGLID, const Vec2DI texSize) {
+        GLuint texGLID;
+        GL_CALL(glGenTextures(1, &texGLID));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, texGLID));
         GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSize.x, texSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbGLID));
 
-        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texGLID, 0));
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texGLID, 0));
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            GL_CALL(glDeleteTextures(1, texGLID));
-            *texGLID = 0;
-            return false;
+            GL_CALL(glDeleteTextures(1, &texGLID));
+            return 0;
         }
 
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
-        return true;
+        return texGLID;
     }
 
-    static bool init_render_surface(RenderSurface* const surf, const Vec2DI size) {
-        GL_CALL(glGenFramebuffers(1, &surf->framebufferGLID));
+    static bool init_render_surface(RenderSurface& surf, const Vec2DI size) {
+        GL_CALL(glGenFramebuffers(1, &surf.framebufferGLID));
 
-        if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
-            GL_CALL(glDeleteFramebuffers(1, &surf->framebufferGLID));
+        surf.framebufferTexGLID = init_and_attach_framebuffer_tex(surf.framebufferGLID, size);
+
+        if (!surf.framebufferTexGLID) {
+            GL_CALL(glDeleteFramebuffers(1, &surf.framebufferGLID));
             return false;
         }
 
         return true;
     }
 
-    static void clean_render_surface(RenderSurface* const surf) {
-        GL_CALL(glDeleteFramebuffers(1, &surf->framebufferGLID));
-        GL_CALL(glDeleteTextures(1, &surf->framebufferTexGLID));
+    static void clean_render_surface(RenderSurface& surf) {
+        GL_CALL(glDeleteFramebuffers(1, &surf.framebufferGLID));
+        GL_CALL(glDeleteTextures(1, &surf.framebufferTexGLID));
 
-        zero_out(surf);
+        zero_out(&surf);
     }
 
-    static bool resize_render_surface(RenderSurface* const surf, const Vec2DI size) {
+    static bool resize_render_surface(RenderSurface& surf, const Vec2DI size) {
         // Delete the old texture.
-        GL_CALL(glDeleteTextures(1, &surf->framebufferTexGLID));
-        surf->framebufferTexGLID = 0;
+        GL_CALL(glDeleteTextures(1, &surf.framebufferTexGLID));
+        surf.framebufferTexGLID = 0;
 
         // Generate a new texture of the desired size and attach it to the framebuffer.
-        if (!init_and_attach_framebuffer_tex(&surf->framebufferTexGLID, surf->framebufferGLID, size)) {
-            return false;
-        }
+        surf.framebufferTexGLID = init_and_attach_framebuffer_tex(surf.framebufferGLID, size);
 
-        return true;
+        return surf.framebufferTexGLID != 0;
     }
 
-    static int add_tex_unit_to_render_batch(RenderBatchTransientData* const batchTransData, const GLuint glID) {
+    static int add_tex_unit_to_render_batch(RenderBatchTransientData& batchTransData, const GLuint glID) {
         // Check if the texture GL ID is already in use.
-        for (int i = 0; i < batchTransData->texUnitsInUseCnt; ++i) {
-            if (batchTransData->texUnitTexGLIDs[i] == glID) {
+        for (int i = 0; i < batchTransData.texUnitsInUseCnt; ++i) {
+            if (batchTransData.texUnitTexGLIDs[i] == glID) {
                 return i;
             }
         }
 
         // Check if we can't support another texture.
-        if (batchTransData->texUnitsInUseCnt == gk_texUnitLimit) {
+        if (batchTransData.texUnitsInUseCnt == gk_texUnitLimit) {
             return -1;
         }
 
         // Use a new texture unit, since the texture GL ID is not in use.
-        batchTransData->texUnitTexGLIDs[batchTransData->texUnitsInUseCnt] = glID;
+        batchTransData.texUnitTexGLIDs[batchTransData.texUnitsInUseCnt] = glID;
 
-        return batchTransData->texUnitsInUseCnt++;
+        return batchTransData.texUnitsInUseCnt++;
     }
 
-    static bool load_str_render_info(StrRenderInfo* const renderInfo, MemArena* const memArena, const char* const str, const int fontIndex, const Assets& assets) {
+    static bool load_str_render_info(StrRenderInfo* const renderInfo, MemArena& memArena, const char* const str, const int fontIndex, const Assets& assets) {
         assert(is_zero(renderInfo));
 
         const auto strLen = static_cast<int>(strlen(str));
@@ -88,13 +86,13 @@ namespace zf4 {
         const FontArrangementInfo& fontArrangementInfo = assets.get_font_arrangement_info(fontIndex);
 
         // Reserve memory for some render information.
-        renderInfo->charDrawPositions = memArena->alloc<Vec2DI>(strLen);
+        renderInfo->charDrawPositions = memArena.alloc<Vec2DI>(strLen);
 
         if (!renderInfo->charDrawPositions.get()) {
             return false;
         }
 
-        renderInfo->lineWidths = memArena->alloc<int>(strLen + 1); // Maximised for the case where all characters are newlines.
+        renderInfo->lineWidths = memArena.alloc<int>(strLen + 1); // Maximised for the case where all characters are newlines.
 
         if (!renderInfo->lineWidths.get()) {
             return false;
@@ -185,7 +183,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::init(MemArena* const memArena, const int batchLimit, const int batchLifeMax) {
+    bool Renderer::init(MemArena& memArena, const int batchLimit, const int batchLifeMax) {
         assert(is_zero(this));
 
         //
@@ -235,19 +233,19 @@ namespace zf4 {
         m_batchLifeMax = batchLifeMax;
 
         // Reserve memory for batch data.
-        m_batchPermDatas = memArena->alloc<RenderBatchPermData>(batchLimit);
+        m_batchPermDatas = memArena.alloc<RenderBatchPermData>(batchLimit);
 
         if (!m_batchPermDatas) {
             return false;
         }
 
-        m_batchTransDatas = memArena->alloc<RenderBatchTransientData>(batchLimit);
+        m_batchTransDatas = memArena.alloc<RenderBatchTransientData>(batchLimit);
 
         if (!m_batchTransDatas) {
             return false;
         }
 
-        m_batchLifes = memArena->alloc<int>(batchLimit);
+        m_batchLifes = memArena.alloc<int>(batchLimit);
 
         if (!m_batchLifes) {
             return false;
@@ -260,7 +258,7 @@ namespace zf4 {
 
         // Generate batch indices.
         const int indicesLen = 6 * gk_renderBatchSlotLimit;
-        m_batchIndices = memArena->alloc<unsigned short>(indicesLen);
+        m_batchIndices = memArena.alloc<unsigned short>(indicesLen);
 
         if (!m_batchIndices) {
             return false;
@@ -463,7 +461,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::submit_str(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
+    bool Renderer::submit_str(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena& scratchSpace, const StrHorAlign horAlign, const StrVerAlign verAlign) {
         const FontArrangementInfo& fontArrangementInfo = assets.get_font_arrangement_info(fontIndex);
         const GLuint fontTexGLID = assets.get_font_tex_gl_id(fontIndex);
         const Vec2DI fontTexSize = assets.get_font_tex_size(fontIndex);
@@ -512,7 +510,7 @@ namespace zf4 {
         return true;
     }
 
-    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const Vec2DI windowSize, MemArena* const scratchSpace) {
+    bool Renderer::render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const Vec2DI windowSize, MemArena& scratchSpace) {
         assert(m_state == RendererState::Initialized);
 
         // Enable blending.
@@ -541,7 +539,7 @@ namespace zf4 {
         }
 
         for (int i = 0; i < m_renderInstrs.get_len(); ++i) {
-            const RenderInstr& instr = *m_renderInstrs.get(i);
+            const RenderInstr& instr = m_renderInstrs.get(i);
 
             switch (instr.type) {
                 case RenderInstrType::Clear:
@@ -580,12 +578,12 @@ namespace zf4 {
 
                 case RenderInstrType::SetSurface:
                     surfIndexes.push(instr.data.setSurface.index);
-                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, m_surfs.get(*surfIndexes.peek())->framebufferGLID));
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, m_surfs.get(surfIndexes.peek()).framebufferGLID));
                     break;
 
                 case RenderInstrType::UnsetSurface:
                     surfIndexes.pop();
-                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs.get(*surfIndexes.peek())->framebufferGLID));
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfIndexes.is_empty() ? 0 : m_surfs.get(surfIndexes.peek()).framebufferGLID));
                     break;
 
                 case RenderInstrType::SetSurfaceShaderProg:
@@ -639,7 +637,7 @@ namespace zf4 {
                         GL_CALL(glUseProgram(surfShaderProgGLID));
 
                         GL_CALL(glActiveTexture(GL_TEXTURE0));
-                        const RenderSurface& surf = *m_surfs.get(instr.data.drawSurface.index);
+                        const RenderSurface& surf = m_surfs.get(instr.data.drawSurface.index);
                         GL_CALL(glBindTexture(GL_TEXTURE_2D, surf.framebufferTexGLID));
 
                         GL_CALL(glBindVertexArray(m_surfVertArrayGLID));
@@ -659,12 +657,12 @@ namespace zf4 {
     bool Renderer::submit_to_batch(const Vec2D origin, const Vec2D scale, const Vec2D pos, const Vec2D size, const float rot, const GLuint texGLID, const Rect texCoords, const Vec4D blend) {
         assert(m_state == RendererState::Submitting);
 
-        RenderBatchTransientData* const batchTransData = &m_batchTransDatas[m_batchSubmitIndex];
+        RenderBatchTransientData& batchTransData = m_batchTransDatas[m_batchSubmitIndex];
 
         // Check if the batch is full or if it cannot support the texture.
         int texUnit;
 
-        if (batchTransData->slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_render_batch(batchTransData, texGLID)) == -1) {
+        if (batchTransData.slotsUsedCnt == gk_renderBatchSlotLimit || (texUnit = add_tex_unit_to_render_batch(batchTransData, texGLID)) == -1) {
             // Move to new batch and try this all again.
             if (!move_to_next_batch()) {
                 return false;
@@ -674,8 +672,8 @@ namespace zf4 {
         }
 
         // Write the slot vertex data.
-        const int slotIndex = batchTransData->slotsUsedCnt;
-        float* const slotVerts = &batchTransData->verts[slotIndex * gk_renderBatchSlotVertCnt];
+        const int slotIndex = batchTransData.slotsUsedCnt;
+        float* const slotVerts = &batchTransData.verts[slotIndex * gk_renderBatchSlotVertCnt];
 
         slotVerts[0] = (0.0f - origin.x) * scale.x;
         slotVerts[1] = (0.0f - origin.y) * scale.y;
@@ -737,7 +735,7 @@ namespace zf4 {
         slotVerts[54] = blend.z;
         slotVerts[55] = blend.w;
 
-        ++batchTransData->slotsUsedCnt;
+        ++batchTransData.slotsUsedCnt;
 
         // If this was the first submission to this batch, submit an instruction to draw the batch.
         if (m_batchTransDatas[m_batchSubmitIndex].slotsUsedCnt == 1) {

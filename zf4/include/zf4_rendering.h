@@ -143,7 +143,7 @@ namespace zf4 {
 
     class Renderer {
     public:
-        bool init(MemArena* const memArena, const int batchLimit, const int batchLifeMax);
+        bool init(MemArena& memArena, const int batchLimit, const int batchLifeMax);
         void clean();
 
         int add_surface(const Vec2DI windowSize);
@@ -153,12 +153,12 @@ namespace zf4 {
         void begin_submission_phase();
         void end_submission_phase();
         bool submit_texture(const int texIndex, const Assets& assets, const Vec2D pos, const RectI& srcRect, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const Vec4D blend = {1.0f, 1.0f, 1.0f, 1.0f});
-        bool submit_str(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena* const scratchSpace, const StrHorAlign horAlign = StrHorAlign_Center, const StrVerAlign verAlign = StrVerAlign_Center);
+        bool submit_str(const char* const str, const int fontIndex, const Assets& assets, const Vec2D pos, MemArena& scratchSpace, const StrHorAlign horAlign = StrHorAlign_Center, const StrVerAlign verAlign = StrVerAlign_Center);
 
-        bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const Vec2DI windowSize, MemArena* const scratchSpace);
+        bool render(const InternalShaderProgs& internalShaderProgs, const Assets& assets, const Vec2DI windowSize, MemArena& scratchSpace);
 
         bool submit_sprite(const Sprite& sprite, const int frameIndex, const Vec2D pos, const Assets& assets, const Vec2D origin = {0.5f, 0.5f}, const float rot = 0.0f, const Vec2D scale = {1.0f, 1.0f}, const Vec4D blend = {1.0f, 1.0f, 1.0f, 1.0f}) {
-            return submit_texture(sprite.texIndex, assets, pos, *sprite.frames.get(frameIndex), origin, rot, scale, blend);
+            return submit_texture(sprite.texIndex, assets, pos, sprite.frames.get(frameIndex), origin, rot, scale, blend);
         }
 
         // TODO: Change return values for these to allow for error handling. Only a subset needs to have them. Solve this somehow!

@@ -54,7 +54,7 @@ namespace zf4 {
         return progGLID;
     }
 
-    bool Assets::load(MemArena* const memArena) {
+    bool Assets::load(MemArena& memArena) {
         assert(!m_loaded);
 
         FILE* const fs = fopen(gk_assetsFileName, "rb");
@@ -121,24 +121,24 @@ namespace zf4 {
         zero_out(this);
     }
 
-    bool load_textures_from_fs(Textures* const textures, MemArena* const memArena, FILE* const fs) {
+    bool load_textures_from_fs(Textures* const textures, MemArena& memArena, FILE* const fs) {
         read_from_fs<int>(&textures->cnt, fs);
 
         if (textures->cnt > 0) {
             // Reserve space in the arena for texture data.
-            textures->glIDs = memArena->alloc<GLuint>(textures->cnt);
+            textures->glIDs = memArena.alloc<GLuint>(textures->cnt);
 
             if (!textures->glIDs) {
                 return false;
             }
 
-            textures->sizes = memArena->alloc<Vec2DI>(textures->cnt);
+            textures->sizes = memArena.alloc<Vec2DI>(textures->cnt);
 
             if (!textures->sizes) {
                 return false;
             }
 
-            textures->pxDatas = memArena->alloc<SafePtr<unsigned char>>(textures->cnt);
+            textures->pxDatas = memArena.alloc<SafePtr<unsigned char>>(textures->cnt);
 
             if (!textures->pxDatas) {
                 return false;
@@ -152,7 +152,7 @@ namespace zf4 {
                     read_from_fs<Vec2DI>(&textures->sizes[i], fs);
 
                     const int pxDataSize = gk_texChannelCnt * textures->sizes[i].x * textures->sizes[i].y;
-                    textures->pxDatas[i] = memArena->alloc<unsigned char>(pxDataSize);
+                    textures->pxDatas[i] = memArena.alloc<unsigned char>(pxDataSize);
 
                     if (!textures->pxDatas[i]) {
                         return false;
@@ -168,24 +168,24 @@ namespace zf4 {
         return true;
     }
 
-    bool load_fonts_from_fs(Fonts* const fonts, MemArena* const memArena, FILE* const fs) {
+    bool load_fonts_from_fs(Fonts* const fonts, MemArena& memArena, FILE* const fs) {
         read_from_fs<int>(&fonts->cnt, fs);
 
         if (fonts->cnt > 0) {
             // Reserve space in the arena for font data.
-            fonts->arrangementInfos = memArena->alloc<FontArrangementInfo>(fonts->cnt);
+            fonts->arrangementInfos = memArena.alloc<FontArrangementInfo>(fonts->cnt);
 
             if (!fonts->arrangementInfos) {
                 return false;
             }
 
-            fonts->texGLIDs = memArena->alloc<GLuint>(fonts->cnt);
+            fonts->texGLIDs = memArena.alloc<GLuint>(fonts->cnt);
 
             if (!fonts->texGLIDs) {
                 return false;
             }
 
-            fonts->texSizes = memArena->alloc<Vec2DI>(fonts->cnt);
+            fonts->texSizes = memArena.alloc<Vec2DI>(fonts->cnt);
 
             if (!fonts->texSizes) {
                 return false;
@@ -214,12 +214,12 @@ namespace zf4 {
         return true;
     }
 
-    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena* const memArena, FILE* const fs) {
+    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena& memArena, FILE* const fs) {
         read_from_fs<int>(&progs->cnt, fs);
 
         if (progs->cnt > 0) {
             // Reserve space in the arena for shader program GL IDs.
-            progs->glIDs = memArena->alloc<GLuint>(progs->cnt);
+            progs->glIDs = memArena.alloc<GLuint>(progs->cnt);
 
             if (!progs->glIDs) {
                 return false;
@@ -271,11 +271,11 @@ namespace zf4 {
         return true;
     }
 
-    bool load_sounds_from_fs(Sounds* const snds, MemArena* const memArena, FILE* const fs) {
+    bool load_sounds_from_fs(Sounds* const snds, MemArena& memArena, FILE* const fs) {
         read_from_fs<int>(&snds->cnt, fs);
 
         if (snds->cnt > 0) {
-            snds->bufALIDs = memArena->alloc<ALuint>(snds->cnt);
+            snds->bufALIDs = memArena.alloc<ALuint>(snds->cnt);
 
             if (!snds->bufALIDs) {
                 return false;
@@ -306,17 +306,17 @@ namespace zf4 {
         return true;
     }
 
-    bool load_music_from_fs(Music* const music, MemArena* const memArena, FILE* const fs) {
+    bool load_music_from_fs(Music* const music, MemArena& memArena, FILE* const fs) {
         read_from_fs<int>(&music->cnt, fs);
 
         if (music->cnt > 0) {
-            music->infos = memArena->alloc<AudioInfo>(music->cnt);
+            music->infos = memArena.alloc<AudioInfo>(music->cnt);
 
             if (!music->infos) {
                 return false;
             }
 
-            music->sampleDataFilePositions = memArena->alloc<int>(music->cnt);
+            music->sampleDataFilePositions = memArena.alloc<int>(music->cnt);
 
             if (!music->sampleDataFilePositions) {
                 return false;
