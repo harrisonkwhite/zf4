@@ -180,7 +180,7 @@ static bool AttachFramebufferTexture(const GLuint fb_gl_id, const GLuint tex_gl_
     return success;
 }
 
-static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const GLuint tex_gl_id, const s_vec_2d_i tex_size, const s_rect_i src_rect, const s_color blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
+static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const GLuint tex_gl_id, const s_vec_2d_i tex_size, const s_rect_i src_rect, const s_vec_4d blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
     if (draw_phase_state->tex_batch_slots_used_cnt == 0) {
         draw_phase_state->tex_batch_tex_gl_id = tex_gl_id;
     } else if (draw_phase_state->tex_batch_slots_used_cnt == TEXTURE_BATCH_SLOT_LIMIT || tex_gl_id != draw_phase_state->tex_batch_tex_gl_id) {
@@ -209,10 +209,10 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[6] = rot;
     slot_verts[7] = tex_coords.left;
     slot_verts[8] = tex_coords.top;
-    slot_verts[9] = blend.r;
-    slot_verts[10] = blend.g;
-    slot_verts[11] = blend.b;
-    slot_verts[12] = blend.a;
+    slot_verts[9] = blend.x;
+    slot_verts[10] = blend.y;
+    slot_verts[11] = blend.z;
+    slot_verts[12] = blend.w;
 
     slot_verts[13] = (1.0f - origin.x) * scale.x;
     slot_verts[14] = (0.0f - origin.y) * scale.y;
@@ -223,10 +223,10 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[19] = rot;
     slot_verts[20] = tex_coords.right;
     slot_verts[21] = tex_coords.top;
-    slot_verts[22] = blend.r;
-    slot_verts[23] = blend.g;
-    slot_verts[24] = blend.b;
-    slot_verts[25] = blend.a;
+    slot_verts[22] = blend.x;
+    slot_verts[23] = blend.y;
+    slot_verts[24] = blend.z;
+    slot_verts[25] = blend.w;
 
     slot_verts[26] = (1.0f - origin.x) * scale.x;
     slot_verts[27] = (1.0f - origin.y) * scale.y;
@@ -237,10 +237,10 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[32] = rot;
     slot_verts[33] = tex_coords.right;
     slot_verts[34] = tex_coords.bottom;
-    slot_verts[35] = blend.r;
-    slot_verts[36] = blend.g;
-    slot_verts[37] = blend.b;
-    slot_verts[38] = blend.a;
+    slot_verts[35] = blend.x;
+    slot_verts[36] = blend.y;
+    slot_verts[37] = blend.z;
+    slot_verts[38] = blend.w;
 
     slot_verts[39] = (0.0f - origin.x) * scale.x;
     slot_verts[40] = (1.0f - origin.y) * scale.y;
@@ -251,10 +251,10 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[45] = rot;
     slot_verts[46] = tex_coords.left;
     slot_verts[47] = tex_coords.bottom;
-    slot_verts[48] = blend.r;
-    slot_verts[49] = blend.g;
-    slot_verts[50] = blend.b;
-    slot_verts[51] = blend.a;
+    slot_verts[48] = blend.x;
+    slot_verts[49] = blend.y;
+    slot_verts[50] = blend.z;
+    slot_verts[51] = blend.w;
 
     ++draw_phase_state->tex_batch_slots_used_cnt;
 }
@@ -455,21 +455,21 @@ s_draw_phase_state* BeginDrawPhase(s_mem_arena* const mem_arena, const s_vec_2d_
     return phase_state;
 }
 
-void RenderClear(const s_color col) {
+void RenderClear(const s_vec_4d col) {
     assert(IsColorValid(&col));
 
-    glClearColor(col.r, col.g, col.b, col.a);
+    glClearColor(col.x, col.y, col.z, col.w);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_color blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
+void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
     assert(tex_index >= 0 && tex_index < draw_phase_state->assets->textures.cnt);
     const GLuint tex_gl_id = draw_phase_state->assets->textures.gl_ids[tex_index];
     const s_vec_2d_i tex_size = draw_phase_state->assets->textures.sizes[tex_index];
     SubmitToRenderBatch(pos, origin, scale, rot, tex_gl_id, tex_size, src_rect, blend, draw_phase_state, renderer);
 }
 
-void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_color blend, const enum str_hor_align hor_align, const enum str_ver_align ver_align, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
+void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const enum str_hor_align hor_align, const enum str_ver_align ver_align, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
     assert(str);
     assert(font_index >= 0 && font_index < draw_phase_state->assets->fonts.cnt);
     assert(IsColorValid(&blend));
@@ -527,11 +527,12 @@ void FlushTextureBatch(s_draw_phase_state* const draw_phase_state, const s_rende
 
     GL_CALL(glUseProgram(prog->gl_id));
 
-    GL_CALL(glUniformMatrix4fv(prog->proj_uniform_loc, 1, false, (const float*)&draw_phase_state->proj_mat));
-    GL_CALL(glUniformMatrix4fv(prog->view_uniform_loc, 1, false, (const float*)&draw_phase_state->view_mat));
+    GL_CALL(glUniformMatrix4fv(prog->proj_uniform_loc, 1, false, draw_phase_state->proj_mat.elems));
+    GL_CALL(glUniformMatrix4fv(prog->view_uniform_loc, 1, false, draw_phase_state->view_mat.elems));
 
     GL_CALL(glBindTexture(GL_TEXTURE_2D, draw_phase_state->tex_batch_tex_gl_id));
 
+    //GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->tex_batch_elem_buf_gl_id));
     GL_CALL(glDrawElements(GL_TRIANGLES, TEXTURE_BATCH_SLOT_INDICES_CNT * draw_phase_state->tex_batch_slots_used_cnt, GL_UNSIGNED_SHORT, NULL));
 
     // Clear batch state.
@@ -554,6 +555,7 @@ void SetRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase
 #endif
 
     // Add the surface index to the stack.
+    assert(draw_phase_state->surf_index_stack_height < RENDER_SURFACE_LIMIT); // NOTE: Maybe replace with proper error?
     draw_phase_state->surf_index_stack[draw_phase_state->surf_index_stack_height] = surf_index;
     ++draw_phase_state->surf_index_stack_height;
 
@@ -561,17 +563,26 @@ void SetRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, renderer->surfs.framebuffer_gl_ids[surf_index]));
 }
 
-void UnsetRenderSurface(s_draw_phase_state* const draw_phase_state) {
+void UnsetRenderSurface(s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer) {
     assert(draw_phase_state);
     assert(draw_phase_state->surf_index_stack_height > 0);
+    assert(draw_phase_state->tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before unsetting the surface.
 
     --draw_phase_state->surf_index_stack_height;
 
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, draw_phase_state->surf_index_stack_height > 0 ? draw_phase_state->surf_index_stack[draw_phase_state->surf_index_stack_height - 1] : 0));
+    if (draw_phase_state->surf_index_stack_height > 0) {
+        const int new_surf_index = draw_phase_state->surf_index_stack[draw_phase_state->surf_index_stack_height - 1];
+        const GLuint fb_gl_id = renderer->surfs.framebuffer_gl_ids[new_surf_index];
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb_gl_id));
+    } else {
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
 }
 
 void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state* const draw_phase_state) {
+    assert(draw_phase_state);
     assert(shader_prog_index >= 0 && shader_prog_index < draw_phase_state->assets->shader_progs.cnt);
+    assert(draw_phase_state->tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before setting a new surface.
     draw_phase_state->surf_shader_prog_gl_id = draw_phase_state->assets->shader_progs.gl_ids[shader_prog_index];
 }
 
@@ -593,8 +604,16 @@ void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shade
             GL_CALL(glUniform1f(uni_loc, val.f));
             break;
 
-        case ev_shader_uniform_val_type__vec2:
+        case ev_shader_uniform_val_type__vec2d:
             GL_CALL(glUniform2fv(uni_loc, 1, (const float*)&val.v2));
+            break;
+
+        case ev_shader_uniform_val_type__vec3d:
+            GL_CALL(glUniform3fv(uni_loc, 1, (const float*)&val.v3));
+            break;
+
+        case ev_shader_uniform_val_type__vec4d:
+            GL_CALL(glUniform4fv(uni_loc, 1, (const float*)&val.v4));
             break;
 
         case ev_shader_uniform_val_type__mat4x4:

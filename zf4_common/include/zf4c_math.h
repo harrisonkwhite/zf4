@@ -10,6 +10,10 @@
 
 #define ZF4_PI 3.14159265359f
 
+#define V2(X, Y) (s_vec_2d) { X, Y }
+#define V3(X, Y, Z) (s_vec_3d) { X, Y, Z }
+#define V4(X, Y, Z, W) (s_vec_4d) { X, Y, Z, W }
+
 typedef struct {
     float x;
     float y;
@@ -19,6 +23,19 @@ typedef struct {
     int x;
     int y;
 } s_vec_2d_i;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+} s_vec_3d;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+    float w;
+} s_vec_4d;
 
 typedef struct {
     float x;
@@ -55,10 +72,6 @@ typedef struct {
 void InitIdentityMatrix4x4(s_matrix_4x4* const mat);
 void InitOrthoMatrix4x4(s_matrix_4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
 
-inline s_vec_2d V2(const float x, const float y) {
-    return (s_vec_2d) { x, y };
-}
-
 inline s_vec_2d V2Sum(const s_vec_2d a, const s_vec_2d b) {
     return V2(a.x + b.x, a.y + b.y);
 }
@@ -79,6 +92,10 @@ inline s_vec_2d V2Normalized(const s_vec_2d vec) {
     const float mag = V2Mag(vec);
     assert(mag != 0.0f);
     return V2Scaled(vec, 1.0f / mag);
+}
+
+inline bool AreV2sEqual(const s_vec_2d a, const s_vec_2d b) {
+    return a.x == b.x && a.y == b.y;
 }
 
 inline float Dist(const s_vec_2d a, const s_vec_2d b) {

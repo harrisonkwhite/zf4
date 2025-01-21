@@ -4,9 +4,9 @@
 #include <zf4c.h>
 #include <zf4_assets.h>
 
-#define COLOR_WHITE (s_color) {1.0f, 1.0f, 1.0f, 1.0f}
-#define COLOR_BLACK (s_color) {0.0f, 0.0f, 0.0f, 1.0f}
-#define COLOR_TRANSPARENT_BLACK (s_color) {0.0f, 0.0f, 0.0f, 0.0f}
+#define COLOR_WHITE V4(1.0f, 1.0f, 1.0f, 1.0f)
+#define COLOR_BLACK V4(0.0f, 0.0f, 0.0f, 1.0f)
+#define COLOR_TRANSPARENT_BLACK V4(0.0f, 0.0f, 0.0f, 0.0f)
 
 #define RENDER_SURFACE_LIMIT 128
 
@@ -32,7 +32,9 @@ enum str_ver_align {
 enum shader_uniform_val_type {
     ev_shader_uniform_val_type__int,
     ev_shader_uniform_val_type__float,
-    ev_shader_uniform_val_type__vec2,
+    ev_shader_uniform_val_type__vec2d,
+    ev_shader_uniform_val_type__vec3d,
+    ev_shader_uniform_val_type__vec4d,
     ev_shader_uniform_val_type__mat4x4,
 
     shader_uniform_val_type_cnt
@@ -42,12 +44,10 @@ typedef union {
     int i;
     float f;
     s_vec_2d v2;
+    s_vec_3d v3;
+    s_vec_4d v4;
     s_matrix_4x4 m4x4;
 } u_shader_uniform_val;
-
-typedef struct {
-    float r, g, b, a;
-} s_color;
 
 typedef struct {
     int char_cnt;
@@ -109,21 +109,21 @@ void CleanRenderSurfaces(s_render_surfaces* const surfs);
 bool ResizeRenderSurfaces(s_render_surfaces* const surfs, const s_vec_2d_i window_size);
 
 s_draw_phase_state* BeginDrawPhase(s_mem_arena* const mem_arena, const s_vec_2d_i window_size, const s_assets* const assets);
-void RenderClear(const s_color col);
+void RenderClear(const s_vec_4d col);
 void SetRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void UnsetRenderSurface(s_draw_phase_state* const draw_phase_state);
+void UnsetRenderSurface(s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
 void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state* const draw_phase_state);
 void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const enum shader_uniform_val_type val_type, s_draw_phase_state* const draw_phase_state);
 void DrawRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_color blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_color blend, const enum str_hor_align hor_align, const enum str_ver_align ver_align, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
+void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
+void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const enum str_hor_align hor_align, const enum str_ver_align ver_align, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
 void FlushTextureBatch(s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
 
-inline bool IsColorValid(const s_color* const col) {
-    return col->r >= 0.0f && col->r <= 1.0f
-        && col->g >= 0.0f && col->g <= 1.0f
-        && col->b >= 0.0f && col->b <= 1.0f
-        && col->a >= 0.0f && col->a <= 1.0f;
+inline bool IsColorValid(const s_vec_4d* const col) {
+    return col->x >= 0.0f && col->x <= 1.0f
+        && col->y >= 0.0f && col->y <= 1.0f
+        && col->z >= 0.0f && col->z <= 1.0f
+        && col->w >= 0.0f && col->w <= 1.0f;
 }
 
 inline bool IsSrcRectValid(const s_rect_i* const src_rect, const s_vec_2d_i tex_size) {
@@ -147,7 +147,17 @@ inline void SetRenderSurfaceShaderProgUniformFloat(const char* const uni_name, c
 
 inline void SetRenderSurfaceShaderProgUniformVec2D(const char* const uni_name, const s_vec_2d val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.v2 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec2, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec2d, draw_phase_state);
+}
+
+inline void SetRenderSurfaceShaderProgUniformVec3D(const char* const uni_name, const s_vec_3d val, s_draw_phase_state* const draw_phase_state) {
+    const u_shader_uniform_val uni_val = {.v3 = val};
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec3d, draw_phase_state);
+}
+
+inline void SetRenderSurfaceShaderProgUniformVec4D(const char* const uni_name, const s_vec_4d val, s_draw_phase_state* const draw_phase_state) {
+    const u_shader_uniform_val uni_val = {.v4 = val};
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec4d, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformMat4x4(const char* const uni_name, const s_matrix_4x4 val, s_draw_phase_state* const draw_phase_state) {
