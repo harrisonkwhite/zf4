@@ -1,60 +1,43 @@
-#pragma once
+#ifndef ZF4_GAME_H
+#define ZF4_GAME_H
 
+#include <zf4c.h>
 #include <zf4_window.h>
 #include <zf4_assets.h>
 #include <zf4_rendering.h>
-#include <zf4_audio.h>
-#include <zf4_sprites.h>
-#include <zf4_ecs.h>
 
-namespace zf4 {
-    constexpr int gk_glVersionMajor = 4;
-    constexpr int gk_glVersionMinor = 3;
+#define ZF4_GL_VERSION_MAJOR 4
+#define ZF4_GL_VERSION_MINOR 3
 
-    struct GamePtrs {
-        MemArena& permMemArena;
-        MemArena& tempMemArena;
-        const Window& window;
-        const Assets& assets;
-        Renderer& renderer;
-        SoundSrcManager& soundSrcManager;
-        MusicSrcManager& musicSrcManager;
-        const zf4::Array<Sprite>& sprites;
-        const zf4::Array<ComponentType>& compTypes;
-        EntityManager& entManager;
-    };
+typedef struct {
+    s_mem_arena* perm_mem_arena;
+    s_mem_arena* temp_mem_arena;
+    const s_window* window;
+    const s_assets* assets;
+    s_renderer* renderer;
+} s_game_ptrs;
 
-    using GameInit = bool (*)(const GamePtrs& gamePtrs);
-    using GameTick = bool (*)(const GamePtrs& gamePtrs);
-    using GameDraw = bool (*)(const GamePtrs& gamePtrs);
-    using GameCleanup = void (*)();
+typedef bool (*ta_game_init_func)(const s_game_ptrs* const game_ptrs);
+typedef bool (*ta_game_tick_func)(const s_game_ptrs* const game_ptrs);
+typedef bool (*ta_game_draw_func)(s_draw_phase_state* const draw_phase_state, const s_game_ptrs* const game_ptrs);
+typedef void (*ta_game_cleanup_func)(void);
 
-    struct GameInfo {
-        GameInit init;
-        GameTick tick;
-        GameDraw draw;
-        GameCleanup cleanup;
+typedef struct {
+    ta_game_init_func init_func;
+    ta_game_tick_func tick_func;
+    ta_game_draw_func draw_func;
+    ta_game_cleanup_func cleanup_func;
 
-        int permMemArenaSize;
-        int tempMemArenaSize;
+    int perm_mem_arena_size;
+    int temp_mem_arena_size;
 
-        const Vec2DI windowInitSize;
-        const char* windowTitle;
-        WindowFlags windowFlags;
+    const s_vec_2d_i window_init_size;
+    const char* window_title;
+    enum window_flags window_flags;
+} s_game_info;
 
-        int renderBatchLimit;
-        int renderBatchLife;
+typedef void (*ta_game_info_loader)(s_game_info* const info);
 
-        int spriteCnt;
-        SpriteInitializer spriteInitializer;
+bool RunGame(const ta_game_info_loader info_loader);
 
-        int componentTypeCnt;
-        ComponentTypeInitializer componentTypeInitializer;
-
-        int entLimit;
-    };
-
-    using GameInfoInitializer = void (*)(GameInfo& info);
-
-    bool run_game(const GameInfoInitializer gameInfoInitializer);
-}
+#endif

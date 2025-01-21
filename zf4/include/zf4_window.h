@@ -1,143 +1,180 @@
-#pragma once
+#ifndef ZF4_WINDOW_H
+#define ZF4_WINDOW_H
 
-#include <cassert>
+#include <stdbool.h>
+#include <assert.h>
 #include <GLFW/glfw3.h>
 #include <zf4c.h>
 
-namespace zf4 {
-    enum WindowFlags {
-        WindowFlags_HideCursor = 1 << 0,
-        WindowFlags_Resizable = 1 << 1
-    };
+enum window_flags {
+    window_flags__none,
+    window_flags__hide_cursor = 1 << 0,
+    window_flags__resizable = 1 << 1,
 
-    enum KeyCode {
-        UndefinedKeyCode = -1,
+    window_flags_cnt
+};
 
-        KeyCode_Space,
+typedef uint64_t ta_keys_down_bits;
+typedef uint8_t ta_mouse_buttons_down_bits;
 
-        KeyCode_0,
-        KeyCode_1,
-        KeyCode_2,
-        KeyCode_3,
-        KeyCode_4,
-        KeyCode_5,
-        KeyCode_6,
-        KeyCode_7,
-        KeyCode_8,
-        KeyCode_9,
+enum key_code {
+    key_code__null,
 
-        KeyCode_A,
-        KeyCode_B,
-        KeyCode_C,
-        KeyCode_D,
-        KeyCode_E,
-        KeyCode_F,
-        KeyCode_G,
-        KeyCode_H,
-        KeyCode_I,
-        KeyCode_J,
-        KeyCode_K,
-        KeyCode_L,
-        KeyCode_M,
-        KeyCode_N,
-        KeyCode_O,
-        KeyCode_P,
-        KeyCode_Q,
-        KeyCode_R,
-        KeyCode_S,
-        KeyCode_T,
-        KeyCode_U,
-        KeyCode_V,
-        KeyCode_W,
-        KeyCode_X,
-        KeyCode_Y,
-        KeyCode_Z,
+    key_code__space,
 
-        KeyCode_Escape,
-        KeyCode_Enter,
-        KeyCode_Tab,
+    key_code__0,
+    key_code__1,
+    key_code__2,
+    key_code__3,
+    key_code__4,
+    key_code__5,
+    key_code__6,
+    key_code__7,
+    key_code__8,
+    key_code__9,
 
-        KeyCode_Right,
-        KeyCode_Left,
-        KeyCode_Down,
-        KeyCode_Up,
+    key_code__a,
+    key_code__b,
+    key_code__c,
+    key_code__d,
+    key_code__e,
+    key_code__f,
+    key_code__g,
+    key_code__h,
+    key_code__i,
+    key_code__j,
+    key_code__k,
+    key_code__l,
+    key_code__m,
+    key_code__n,
+    key_code__o,
+    key_code__p,
+    key_code__q,
+    key_code__r,
+    key_code__s,
+    key_code__t,
+    key_code__u,
+    key_code__v,
+    key_code__w,
+    key_code__x,
+    key_code__y,
+    key_code__z,
 
-        KeyCode_F1,
-        KeyCode_F2,
-        KeyCode_F3,
-        KeyCode_F4,
-        KeyCode_F5,
-        KeyCode_F6,
-        KeyCode_F7,
-        KeyCode_F8,
-        KeyCode_F9,
-        KeyCode_F10,
-        KeyCode_F11,
-        KeyCode_F12,
+    key_code__escape,
+    key_code__enter,
+    key_code__tab,
 
-        KeyCode_LeftShift,
-        KeyCode_LeftControl,
-        KeyCode_LeftAlt,
+    key_code__right,
+    key_code__left,
+    key_code__down,
+    key_code__up,
 
-        KeyCodeCnt
-    };
+    key_code__f1,
+    key_code__f2,
+    key_code__f3,
+    key_code__f4,
+    key_code__f5,
+    key_code__f6,
+    key_code__f7,
+    key_code__f8,
+    key_code__f9,
+    key_code__f10,
+    key_code__f11,
+    key_code__f12,
 
-    enum MouseButtonCode {
-        UndefinedMouseButtonCode = -1,
+    key_code__left_shift,
+    key_code__left_control,
+    key_code__left_alt,
 
-        MouseButtonCode_Left,
-        MouseButtonCode_Right,
-        MouseButtonCode_Middle,
+    key_code_cnt
+};
 
-        MouseButtonCodeCnt
-    };
+enum mouse_button_code {
+    mouse_button_code__null,
 
-    using KeysDownBitset = unsigned long long;
-    using MouseButtonsDownBitset = unsigned char;
+    mouse_button_code__left,
+    mouse_button_code__right,
+    mouse_button_code__middle,
 
-    struct InputState {
-        KeysDownBitset keysDown;
-        MouseButtonsDownBitset mouseButtonsDown;
-        Vec2D mousePos;
-    };
+    mouse_button_code_cnt
+};
 
-    struct Window {
-        GLFWwindow* glfwWindow;
-        Vec2DI size; // glfwGetWindowSize() is relatively expensive for some reason, so we cache this.
+typedef struct input_state {
+    ta_keys_down_bits keys_down;
+    ta_mouse_buttons_down_bits mouse_buttons_down;
+    s_vec_2d mouse_pos;
+} s_input_state;
 
-        InputState inputState;
-        InputState inputStateSaved; // Used as a reference point for press and release checks, among other things.
-    };
+typedef struct window {
+    GLFWwindow* glfw_window;
 
-    bool init_window(Window& window, const zf4::Vec2DI size, const char* const title, const WindowFlags flags);
+    s_vec_2d_i size_cache; // glfwGetWindowSize() is a bit expensive for some reason, so we cache this.
 
-    inline bool is_key_down(const KeyCode keyCode, const Window& window) {
-        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-        return window.inputState.keysDown & keyBit;
-    }
+    s_input_state input_state;
+    s_input_state input_state_saved;
+} s_window;
 
-    inline bool is_key_pressed(const KeyCode keyCode, const Window& window) {
-        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-        return (window.inputState.keysDown & keyBit) && !(window.inputStateSaved.keysDown & keyBit);
-    }
+bool InitWindow(s_window* const window, const s_vec_2d_i size, const char* const title, const enum window_flags flags);
+void CleanWindow(s_window* const window);
 
-    inline bool is_key_released(const KeyCode keyCode, const Window& window) {
-        const KeysDownBitset keyBit = static_cast<KeysDownBitset>(1) << keyCode;
-        return !(window.inputState.keysDown & keyBit) && (window.inputStateSaved.keysDown & keyBit);
-    }
-
-    inline bool is_mouse_button_down(const MouseButtonCode buttonCode, const Window& window) {
-        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-        return window.inputState.mouseButtonsDown & buttonBit;
-    }
-
-    inline bool is_mouse_button_pressed(const MouseButtonCode buttonCode, const Window& window) {
-        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-        return (window.inputState.mouseButtonsDown & buttonBit) && !(window.inputStateSaved.mouseButtonsDown & buttonBit);
-    }
-
-    inline bool is_mouse_button_released(const MouseButtonCode buttonCode, const Window& window) {
-        const MouseButtonsDownBitset buttonBit = static_cast<MouseButtonsDownBitset>(1) << buttonCode;
-        return !(window.inputState.mouseButtonsDown & buttonBit) && (window.inputStateSaved.mouseButtonsDown & buttonBit);
-    }
+inline bool IsInputStateValid(const s_input_state* const input_state) {
+    assert(input_state);
+    return input_state->keys_down < ((ta_keys_down_bits)1 << key_code_cnt)
+        && input_state->mouse_buttons_down < ((ta_mouse_buttons_down_bits)1 << mouse_button_code_cnt);
 }
+
+inline bool IsWindowValid(const s_window* const window) {
+    assert(window);
+    return IsInputStateValid(&window->input_state)
+        && IsInputStateValid(&window->input_state_saved);
+}
+
+inline bool KeyDown(const enum key_code key_code, const s_input_state* const input_state) {
+    assert(key_code >= 0 && key_code < key_code_cnt);
+    assert(IsInputStateValid(input_state));
+
+    const ta_keys_down_bits key_bit = (ta_keys_down_bits)1 << key_code;
+    return input_state->keys_down & key_bit;
+}
+
+inline bool KeyPressed(const enum key_code key_code, const s_input_state* const input_state, const s_input_state* const input_state_last) {
+    assert(key_code >= 0 && key_code < key_code_cnt);
+    assert(IsInputStateValid(input_state));
+    assert(IsInputStateValid(input_state_last));
+
+    return KeyDown(key_code, input_state) && !KeyDown(key_code, input_state_last);
+}
+
+inline bool KeyReleased(const enum key_code key_code, const s_input_state* const input_state, const s_input_state* const input_state_last) {
+    assert(key_code >= 0 && key_code < key_code_cnt);
+    assert(IsInputStateValid(input_state));
+    assert(IsInputStateValid(input_state_last));
+
+    return !KeyDown(key_code, input_state) && KeyDown(key_code, input_state_last);
+}
+
+inline bool MouseButtonDown(const enum mouse_button_code button_code, const s_input_state* const input_state) {
+    assert(button_code >= 0 && button_code < mouse_button_code_cnt);
+    assert(IsInputStateValid(input_state));
+
+    const ta_mouse_buttons_down_bits button_bit = (ta_mouse_buttons_down_bits)1 << button_code;
+    return input_state->mouse_buttons_down & button_bit;
+}
+
+inline bool MouseButtonPressed(const enum mouse_button_code button_code, const s_input_state* const input_state, const s_input_state* const input_state_last) {
+    assert(button_code >= 0 && button_code < mouse_button_code_cnt);
+    assert(IsInputStateValid(input_state));
+    assert(IsInputStateValid(input_state_last));
+
+    return MouseButtonDown(button_code, input_state) && !MouseButtonDown(button_code, input_state_last);
+}
+
+inline bool MouseButtonReleased(const enum mouse_button_code button_code, const s_input_state* const input_state, const s_input_state* const input_state_last) {
+    assert(button_code >= 0 && button_code < mouse_button_code_cnt);
+    assert(IsInputStateValid(input_state));
+    assert(IsInputStateValid(input_state_last));
+
+    return !MouseButtonDown(button_code, input_state) && MouseButtonDown(button_code, input_state_last);
+}
+
+#endif

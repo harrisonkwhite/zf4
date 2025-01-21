@@ -1,137 +1,64 @@
-#pragma once
+#ifndef ZF4_ASSETS_H
+#define ZF4_ASSETS_H
 
-#include <cstdio>
+#include <stdio.h>
 #include <glad/glad.h>
 #include <AL/al.h>
 #include <zf4c.h>
 
-namespace zf4 {
-    constexpr int gk_texturedQuadShaderProgVertCnt = 14;
+#define TEXTURED_QUAD_SHADER_PROG_VERT_CNT 13
 
-    struct Textures {
-        SafePtr<GLuint> glIDs;
-        SafePtr<Vec2DI> sizes;
-        SafePtr<SafePtr<unsigned char>> pxDatas;
-        int cnt;
-    };
+#define TEXTURE_LIMIT 64
+#define FONT_LIMIT 24
+#define SHADER_PROG_LIMIT 24
+#define SOUND_LIMIT 24
+#define MUSIC_LIMIT 24
 
-    struct Fonts {
-        SafePtr<FontArrangementInfo> arrangementInfos;
+typedef struct textures {
+    GLuint gl_ids[TEXTURE_LIMIT];
+    s_vec_2d_i sizes[TEXTURE_LIMIT];
 
-        SafePtr<GLuint> texGLIDs;
-        SafePtr<Vec2DI> texSizes;
+    int cnt;
+} s_textures;
 
-        int cnt;
-    };
+typedef struct fonts {
+    s_font_arrangement_info arrangement_infos[FONT_LIMIT];
 
-    struct ShaderProgs {
-        SafePtr<GLuint> glIDs;
-        int cnt;
-    };
+    GLuint tex_gl_ids[FONT_LIMIT];
+    s_vec_2d_i tex_sizes[FONT_LIMIT];
 
-    struct Sounds {
-        SafePtr<GLuint> bufALIDs;
-        int cnt;
-    };
+    int cnt;
+} s_fonts;
 
-    struct Music {
-        SafePtr<AudioInfo> infos;
-        SafePtr<int> sampleDataFilePositions;
-        int cnt;
-    };
+typedef struct shader_progs {
+    GLuint gl_ids[SHADER_PROG_LIMIT];
+    int cnt;
+} s_shader_progs;
 
-    class Assets {
-    public:
-        bool load(MemArena& memArena);
-        void clean();
+typedef struct sounds {
+    ALuint buf_al_ids[SOUND_LIMIT];
+    int cnt;
+} s_sounds;
 
-        GLuint get_tex_gl_id(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_textures.cnt);
-            return m_textures.glIDs[index];
-        }
+typedef struct music {
+    s_audio_info infos[MUSIC_LIMIT];
+    int sample_data_file_positions[MUSIC_LIMIT];
 
-        Vec2DI get_tex_size(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_textures.cnt);
-            return m_textures.sizes[index];
-        }
+    int cnt;
+} s_music;
 
-        const SafePtr<unsigned char> get_tex_px_data(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_textures.cnt);
-            return m_textures.pxDatas[index];
-        }
+typedef struct assets {
+    s_textures textures;
+    s_fonts fonts;
+    s_shader_progs shader_progs;
+    s_sounds sounds;
+    s_music music;
+} s_assets;
 
-        const FontArrangementInfo& get_font_arrangement_info(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_fonts.cnt);
-            return m_fonts.arrangementInfos[index];
-        }
+s_assets* LoadAssets(s_mem_arena* const mem_arena, s_mem_arena* const scratch_space);
+void UnloadAssets(s_assets* const assets);
 
-        GLuint get_font_tex_gl_id(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_fonts.cnt);
-            return m_fonts.texGLIDs[index];
-        }
+GLuint CreateShaderFromSrc(const char* const src, const bool frag);
+GLuint CreateShaderProgFromSrcs(const char* const vert_shader_src, const char* const frag_shader_src);
 
-        Vec2DI get_font_tex_size(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_fonts.cnt);
-            return m_fonts.texSizes[index];
-        }
-
-        GLuint get_shader_prog_gl_id(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_shaderProgs.cnt);
-            return m_shaderProgs.glIDs[index];
-        }
-
-        GLuint get_sound_buf_al_id(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_sounds.cnt);
-            return m_sounds.bufALIDs[index];
-        }
-
-        const AudioInfo& get_music_info(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_music.cnt);
-            return m_music.infos[index];
-        }
-
-        int get_music_sample_data_file_pos(const int index) const {
-            assert(m_loaded);
-            assert(index >= 0 && index < m_music.cnt);
-            return m_music.sampleDataFilePositions[index];
-        }
-
-    private:
-        bool m_loaded;
-
-        Textures m_textures;
-        Fonts m_fonts;
-        ShaderProgs m_shaderProgs;
-        Sounds m_sounds;
-        Music m_music;
-    };
-
-    struct TexturedQuadShaderProg {
-        GLuint glID;
-        int projUniLoc;
-        int viewUniLoc;
-        int texturesUniLoc;
-    };
-
-    struct InternalShaderProgs {
-        TexturedQuadShaderProg texturedQuad;
-    };
-
-    bool load_textures_from_fs(Textures* const textures, MemArena& memArena, FILE* const fs);
-    bool load_fonts_from_fs(Fonts* const fonts, MemArena& memArena, FILE* const fs);
-    bool load_shader_progs_from_fs(ShaderProgs* const progs, MemArena& memArena, FILE* const fs);
-    bool load_sounds_from_fs(Sounds* const snds, MemArena& memArena, FILE* const fs);
-    bool load_music_from_fs(Music* const music, MemArena& memArena, FILE* const fs);
-
-    InternalShaderProgs load_internal_shader_progs();
-    void unload_internal_shader_progs(InternalShaderProgs* const progs);
-}
+#endif
