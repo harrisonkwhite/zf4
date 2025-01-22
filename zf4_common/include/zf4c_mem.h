@@ -8,7 +8,12 @@
 #include <stdbool.h>
 #include <stdalign.h>
 
-#define ZF4_CREATE_TYPE_INFO(Type) (s_type_info) { sizeof(Type), alignof(Type) }
+#define BITS_TO_BYTES(X) ((X + 7) & ~7)
+#define BYTES_TO_BITS(X) (X << 3)
+#define KILOBYTES_TO_BYTES(X) (X * 1024)
+#define MEGABYTES_TO_BYTES(X) (X * 1024 * 1024)
+#define GIGABYTES_TO_BYTES(X) (X * 1024 * 1024 * 1024)
+#define IS_POWER_OF_TWO(X) (!(X & (X - 1)))
 
 extern const int g_first_active_bit_indexes[256]; // For mapping a byte to the index of its first active bit.
 extern const int g_first_inactive_bit_indexes[256]; // For mapping a byte to the index of its first inactive bit.
@@ -47,26 +52,6 @@ void CleanMemArena(s_mem_arena* const mem_arena);
 void ResetMemArena(s_mem_arena* const mem_arena);
 void* Push(const int size, s_mem_arena* const mem_arena);
 void* PushAligned(const int size, const int alignment, s_mem_arena* const mem_arena);
-
-inline int KilobytesToBytes(const int kbs) {
-    return kbs * 1024;
-}
-
-inline int MegabytesToBytes(const int mbs) {
-    return mbs * 1024 * 1024;
-}
-
-inline int GigabytesToBytes(const int gbs) {
-    return gbs * 1024 * 1024 * 1024;
-}
-
-inline int BitsToBytes(const int bits) {
-    return (bits + 7) & ~7;
-}
-
-inline bool IsPowerOfTwo(const int n) {
-    return !(n & (n - 1));
-}
 
 inline int AlignForward(const int n, const int alignment) {
     assert(n >= 0);
