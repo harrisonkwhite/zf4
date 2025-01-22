@@ -59,8 +59,6 @@ static void LoadTexturedQuadShaderProg(s_textured_quad_shader_prog* const prog) 
     prog->proj_uniform_loc = GL_CALL(glGetUniformLocation(prog->gl_id, "u_proj"));
     prog->view_uniform_loc = GL_CALL(glGetUniformLocation(prog->gl_id, "u_view"));
     prog->textures_uniform_loc = GL_CALL(glGetUniformLocation(prog->gl_id, "u_textures"));
-
-    return prog;
 }
 
 static void LoadStrDrawInfo(s_str_draw_info* const draw_info, const char* const str, const int font_index, const s_fonts* const fonts) {
@@ -408,7 +406,7 @@ bool InitRenderSurfaces(const int cnt, s_render_surfaces* const surfs, const s_v
 }
 
 void CleanRenderSurfaces(s_render_surfaces* const surfs) {
-    RenderSurfacesValidator(surfs);
+    assert(surfs);
 
     GL_CALL(glDeleteTextures(surfs->cnt, surfs->framebuffer_tex_gl_ids));
     GL_CALL(glDeleteFramebuffers(surfs->cnt, surfs->framebuffer_gl_ids));
@@ -417,19 +415,17 @@ void CleanRenderSurfaces(s_render_surfaces* const surfs) {
 }
 
 bool ResizeRenderSurfaces(s_render_surfaces* const surfs, const s_vec_2d_i window_size) {
-    RenderSurfacesValidator(surfs);
+    assert(surfs);
     assert(window_size.x > 0 && window_size.y > 0);
 
-    if (surfs->cnt == 0) {
-        return;
-    }
+    if (surfs->cnt > 0) {
+        glDeleteTextures(surfs->cnt, surfs->framebuffer_tex_gl_ids);
+        glGenTextures(surfs->cnt, surfs->framebuffer_tex_gl_ids);
 
-    glDeleteTextures(surfs->cnt, surfs->framebuffer_tex_gl_ids);
-    glGenTextures(surfs->cnt, surfs->framebuffer_tex_gl_ids);
-
-    for (int i = 0; i < surfs->cnt; ++i) {
-        if (!AttachFramebufferTexture(surfs->framebuffer_gl_ids[i], surfs->framebuffer_tex_gl_ids[i], window_size)) {
-            return false;
+        for (int i = 0; i < surfs->cnt; ++i) {
+            if (!AttachFramebufferTexture(surfs->framebuffer_gl_ids[i], surfs->framebuffer_tex_gl_ids[i], window_size)) {
+                return false;
+            }
         }
     }
 
@@ -527,8 +523,8 @@ void FlushTextureBatch(s_draw_phase_state* const draw_phase_state, const s_rende
 
     GL_CALL(glUseProgram(prog->gl_id));
 
-    GL_CALL(glUniformMatrix4fv(prog->proj_uniform_loc, 1, false, draw_phase_state->proj_mat.elems));
-    GL_CALL(glUniformMatrix4fv(prog->view_uniform_loc, 1, false, draw_phase_state->view_mat.elems));
+    GL_CALL(glUniformMatrix4fv(prog->proj_uniform_loc, 1, false, (const float*)&draw_phase_state->proj_mat));
+    GL_CALL(glUniformMatrix4fv(prog->view_uniform_loc, 1, false, (const float*)&draw_phase_state->view_mat));
 
     GL_CALL(glBindTexture(GL_TEXTURE_2D, draw_phase_state->tex_batch_tex_gl_id));
 
@@ -596,28 +592,28 @@ void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shade
     assert(uni_loc != -1);
 
     switch (val_type) {
-        case ev_shader_uniform_val_type__int:
+        case ek_shader_uniform_val_type_int:
             GL_CALL(glUniform1i(uni_loc, val.i));
             break;
 
-        case ev_shader_uniform_val_type__float:
+        case ek_shader_uniform_val_type_float:
             GL_CALL(glUniform1f(uni_loc, val.f));
             break;
 
-        case ev_shader_uniform_val_type__vec2d:
+        case ek_shader_uniform_val_type_v2:
             GL_CALL(glUniform2fv(uni_loc, 1, (const float*)&val.v2));
             break;
 
-        case ev_shader_uniform_val_type__vec3d:
+        case ek_shader_uniform_val_type_v3:
             GL_CALL(glUniform3fv(uni_loc, 1, (const float*)&val.v3));
             break;
 
-        case ev_shader_uniform_val_type__vec4d:
+        case ek_shader_uniform_val_type_v4:
             GL_CALL(glUniform4fv(uni_loc, 1, (const float*)&val.v4));
             break;
 
-        case ev_shader_uniform_val_type__mat4x4:
-            GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, (const float*)&val.m4x4));
+        case ek_shader_uniform_val_type_mat4x4:
+            GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, (const float*)&val.mat4x4));
             break;
 
         default:

@@ -4,7 +4,7 @@
 
 static const char* const i_packing_instrs_file_name = "packing_instrs.json";
 
-static const char* const i_asset_type_array_names[ev_asset_type_cnt] = {
+static const char* const i_asset_type_array_names[ecs_asset_type_cnt] = {
     "textures",
     "fonts",
     "shader_progs",
@@ -12,7 +12,7 @@ static const char* const i_asset_type_array_names[ev_asset_type_cnt] = {
     "music"
 };
 
-static const ta_asset_type_packer i_asset_type_packers[ev_asset_type_cnt] = {
+static const ta_asset_type_packer i_asset_type_packers[ecs_asset_type_cnt] = {
     PackTextures,
     PackFonts,
     PackShaders,
@@ -90,7 +90,7 @@ bool RunAssetPacker(s_asset_packer* const packer, const char* const src_dir, con
     }
 
     // Perform packing for each asset type using the packing instructions file.
-    for (int i = 0; i < ev_asset_type_cnt; ++i) {
+    for (int i = 0; i < ecs_asset_type_cnt; ++i) {
         cJSON* const cj_assets = cJSON_GetObjectItemCaseSensitive(packer->instrs_cj, i_asset_type_array_names[i]);
 
         if (!cJSON_IsArray(cj_assets)) {

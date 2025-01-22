@@ -23,16 +23,16 @@
 typedef float ta_audio_sample;
 
 enum asset_type {
-    ev_texture_asset_type,
-    ev_font_asset_type,
-    ev_shader_prog_asset_type,
-    ev_sound_asset_type,
-    ev_music_asset_type,
+    ec_asset_type_texture,
+    ec_asset_type_font,
+    ec_asset_type_shader_prog,
+    ec_asset_type_sound,
+    ec_asset_type_music,
 
-    ev_asset_type_cnt
+    ecs_asset_type_cnt
 };
 
-typedef struct font_chars_arrangement_info {
+typedef struct {
     int hor_offsets[FONT_CHAR_RANGE_LEN];
     int ver_offsets[FONT_CHAR_RANGE_LEN];
     int hor_advances[FONT_CHAR_RANGE_LEN];
@@ -42,12 +42,12 @@ typedef struct font_chars_arrangement_info {
     int kernings[FONT_CHAR_RANGE_LEN * FONT_CHAR_RANGE_LEN];
 } s_font_chars_arrangement_info;
 
-typedef struct font_arrangement_info {
+typedef struct {
     int line_height;
     s_font_chars_arrangement_info chars;
 } s_font_arrangement_info;
 
-typedef struct audio_info {
+typedef struct {
     int channel_cnt;
     long long sample_cnt_per_channel;
     int sample_rate;

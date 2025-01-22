@@ -18,26 +18,26 @@
 #define STR_DRAW_LEN_LIMIT 256 // NOTE: A bit arbitrary, could remove.
 
 enum str_hor_align {
-    str_hor_align__left,
-    str_hor_align__center,
-    str_hor_align__right
+    ek_str_hor_align_left,
+    ek_str_hor_align_center,
+    ek_str_hor_align_right
 };
 
 enum str_ver_align {
-    str_ver_align__top,
-    str_ver_align__center,
-    str_ver_align__bottom
+    ek_str_ver_align_top,
+    ek_str_ver_align_center,
+    ek_str_ver_align_bottom
 };
 
 enum shader_uniform_val_type {
-    ev_shader_uniform_val_type__int,
-    ev_shader_uniform_val_type__float,
-    ev_shader_uniform_val_type__vec2d,
-    ev_shader_uniform_val_type__vec3d,
-    ev_shader_uniform_val_type__vec4d,
-    ev_shader_uniform_val_type__mat4x4,
+    ek_shader_uniform_val_type_int,
+    ek_shader_uniform_val_type_float,
+    ek_shader_uniform_val_type_v2,
+    ek_shader_uniform_val_type_v3,
+    ek_shader_uniform_val_type_v4,
+    ek_shader_uniform_val_type_mat4x4,
 
-    shader_uniform_val_type_cnt
+    eks_shader_uniform_val_type_cnt
 };
 
 typedef union {
@@ -46,7 +46,7 @@ typedef union {
     s_vec_2d v2;
     s_vec_3d v3;
     s_vec_4d v4;
-    s_matrix_4x4 m4x4;
+    s_matrix_4x4 mat4x4;
 } u_shader_uniform_val;
 
 typedef struct {
@@ -130,39 +130,34 @@ inline bool IsSrcRectValid(const s_rect_i* const src_rect, const s_vec_2d_i tex_
     return src_rect->x >= 0 && src_rect->y >= 0 && src_rect->width > 0 && src_rect->height > 0 && src_rect->x + src_rect->width <= tex_size.x && src_rect->y + src_rect->height <= tex_size.y;
 }
 
-inline void RenderSurfacesValidator(const s_render_surfaces* const surfs) {
-    assert(surfs);
-    assert(surfs->cnt >= 0 && surfs->cnt <= RENDER_SURFACE_LIMIT);
-}
-
 inline void SetRenderSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.i = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__int, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_int, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformFloat(const char* const uni_name, const float val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.f = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__float, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_float, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformVec2D(const char* const uni_name, const s_vec_2d val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.v2 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec2d, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v2, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformVec3D(const char* const uni_name, const s_vec_3d val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.v3 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec3d, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v3, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformVec4D(const char* const uni_name, const s_vec_4d val, s_draw_phase_state* const draw_phase_state) {
     const u_shader_uniform_val uni_val = {.v4 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__vec4d, draw_phase_state);
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v4, draw_phase_state);
 }
 
 inline void SetRenderSurfaceShaderProgUniformMat4x4(const char* const uni_name, const s_matrix_4x4 val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.m4x4 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ev_shader_uniform_val_type__mat4x4, draw_phase_state);
+    const u_shader_uniform_val uni_val = {.mat4x4 = val};
+    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_mat4x4, draw_phase_state);
 }
 
 #endif
