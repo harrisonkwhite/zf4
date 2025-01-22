@@ -11,6 +11,9 @@
 #define ZF4_PI 3.14159265359f
 
 #define V2(X, Y) (s_vec_2d) { X, Y }
+#define V2_ZERO(X, Y) (s_vec_2d) { 0.0f, 0.0f }
+#define V2_ONE(X, Y) (s_vec_2d) { 1.0f, 1.0f }
+
 #define V3(X, Y, Z) (s_vec_3d) { X, Y, Z }
 #define V4(X, Y, Z, W) (s_vec_4d) { X, Y, Z, W }
 

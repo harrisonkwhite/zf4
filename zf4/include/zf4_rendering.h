@@ -6,6 +6,13 @@
 
 #define COLOR_WHITE V4(1.0f, 1.0f, 1.0f, 1.0f)
 #define COLOR_BLACK V4(0.0f, 0.0f, 0.0f, 1.0f)
+#define COLOR_RED V4(1.0f, 0.0f, 0.0f, 1.0f)
+#define COLOR_GREEN V4(0.0f, 1.0f, 0.0f, 1.0f)
+#define COLOR_BLUE V4(0.0f, 0.0f, 1.0f, 1.0f)
+#define COLOR_YELLOW V4(1.0f, 1.0f, 0.0f, 1.0f)
+#define COLOR_CYAN V4(0.0f, 1.0f, 1.0f, 1.0f)
+#define COLOR_MAGENTA V4(1.0f, 0.0f, 1.0f, 1.0f)
+#define COLOR_TRANSPARENT_WHITE V4(1.0f, 1.0f, 1.0f, 0.0f)
 #define COLOR_TRANSPARENT_BLACK V4(0.0f, 0.0f, 0.0f, 0.0f)
 
 #define RENDER_SURFACE_LIMIT 128
