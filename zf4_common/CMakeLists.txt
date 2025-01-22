@@ -1,5 +1,9 @@
 project(zf4_common)
 
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W2 /WX")
+endif()
+
 add_library(zf4_common STATIC
     src/zf4c_io.c
     src/zf4c_math.c

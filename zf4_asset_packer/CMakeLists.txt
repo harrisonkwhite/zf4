@@ -2,6 +2,10 @@ get_filename_component(PARENT_DIR "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
 
 project(zf4_asset_packer)
 
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W2 /WX")
+endif()
+
 find_package(cJSON CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(SndFile CONFIG REQUIRED)
