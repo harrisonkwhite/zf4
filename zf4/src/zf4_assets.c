@@ -30,7 +30,7 @@ static bool LoadTexturesFromFS(s_textures* const textures, FILE* const fs, s_mem
 
     if (textures->cnt > 0) {
         // Reserve scratch space memory for pixel data, to be reused for all textures.
-        const unsigned char* const px_data = Push(TEXTURE_PX_DATA_SIZE_LIMIT, scratch_space);
+        unsigned char* const px_data = Push(TEXTURE_PX_DATA_SIZE_LIMIT, scratch_space);
 
         if (!px_data) {
             return false;
@@ -63,7 +63,7 @@ static bool LoadFontsFromFS(s_fonts* const fonts, FILE* const fs, s_mem_arena* c
 
     if (fonts->cnt > 0) {
         // Reserve scratch space memory for pixel data, to be reused for all font textures.
-        const unsigned char* const px_data = Push(TEXTURE_PX_DATA_SIZE_LIMIT, scratch_space);
+        unsigned char* const px_data = Push(TEXTURE_PX_DATA_SIZE_LIMIT, scratch_space);
 
         if (!px_data) {
             return false;

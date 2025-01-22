@@ -64,7 +64,7 @@ static void LoadTexturedQuadShaderProg(s_textured_quad_shader_prog* const prog) 
 static void LoadStrDrawInfo(s_str_draw_info* const draw_info, const char* const str, const int font_index, const s_fonts* const fonts) {
     assert(IsClear(draw_info, sizeof(*draw_info)));
 
-    const int str_len = strlen(str);
+    const int str_len = (int)strlen(str);
     assert(str_len > 0 && str_len <= STR_DRAW_LEN_LIMIT);
 
     const s_font_arrangement_info* const font_arrangement_info = &fonts->arrangement_infos[font_index];
@@ -202,8 +202,8 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[1] = (0.0f - origin.y) * scale.y;
     slot_verts[2] = pos.x;
     slot_verts[3] = pos.y;
-    slot_verts[4] = src_rect.width;
-    slot_verts[5] = src_rect.height;
+    slot_verts[4] = (float)src_rect.width;
+    slot_verts[5] = (float)src_rect.height;
     slot_verts[6] = rot;
     slot_verts[7] = tex_coords.left;
     slot_verts[8] = tex_coords.top;
@@ -216,8 +216,8 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[14] = (0.0f - origin.y) * scale.y;
     slot_verts[15] = pos.x;
     slot_verts[16] = pos.y;
-    slot_verts[17] = src_rect.width;
-    slot_verts[18] = src_rect.height;
+    slot_verts[17] = (float)src_rect.width;
+    slot_verts[18] = (float)src_rect.height;
     slot_verts[19] = rot;
     slot_verts[20] = tex_coords.right;
     slot_verts[21] = tex_coords.top;
@@ -230,8 +230,8 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[27] = (1.0f - origin.y) * scale.y;
     slot_verts[28] = pos.x;
     slot_verts[29] = pos.y;
-    slot_verts[30] = src_rect.width;
-    slot_verts[31] = src_rect.height;
+    slot_verts[30] = (float)src_rect.width;
+    slot_verts[31] = (float)src_rect.height;
     slot_verts[32] = rot;
     slot_verts[33] = tex_coords.right;
     slot_verts[34] = tex_coords.bottom;
@@ -244,8 +244,8 @@ static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const
     slot_verts[40] = (1.0f - origin.y) * scale.y;
     slot_verts[41] = pos.x;
     slot_verts[42] = pos.y;
-    slot_verts[43] = src_rect.width;
-    slot_verts[44] = src_rect.height;
+    slot_verts[43] = (float)src_rect.width;
+    slot_verts[44] = (float)src_rect.height;
     slot_verts[45] = rot;
     slot_verts[46] = tex_coords.left;
     slot_verts[47] = tex_coords.bottom;
@@ -334,12 +334,12 @@ s_renderer* LoadRenderer(s_mem_arena* const mem_arena, s_mem_arena* const scratc
         }
 
         for (int i = 0; i < TEXTURE_BATCH_SLOT_LIMIT; i++) {
-            indices[(i * 6) + 0] = (i * 4) + 0;
-            indices[(i * 6) + 1] = (i * 4) + 1;
-            indices[(i * 6) + 2] = (i * 4) + 2;
-            indices[(i * 6) + 3] = (i * 4) + 2;
-            indices[(i * 6) + 4] = (i * 4) + 3;
-            indices[(i * 6) + 5] = (i * 4) + 0;
+            indices[(i * 6) + 0] = (unsigned short)((i * 4) + 0);
+            indices[(i * 6) + 1] = (unsigned short)((i * 4) + 1);
+            indices[(i * 6) + 2] = (unsigned short)((i * 4) + 2);
+            indices[(i * 6) + 3] = (unsigned short)((i * 4) + 2);
+            indices[(i * 6) + 4] = (unsigned short)((i * 4) + 3);
+            indices[(i * 6) + 5] = (unsigned short)((i * 4) + 0);
         }
 
         GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(*indices) * indices_len, indices, GL_STATIC_DRAW));
@@ -439,7 +439,7 @@ s_draw_phase_state* BeginDrawPhase(s_mem_arena* const mem_arena, const s_vec_2d_
     s_draw_phase_state* const phase_state = PushAligned(sizeof(*phase_state), alignof(s_draw_phase_state), mem_arena);
 
     if (phase_state) {
-        InitOrthoMatrix4x4(&phase_state->proj_mat, 0.0f, window_size.x, window_size.y, 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
+        InitOrthoMatrix4x4(&phase_state->proj_mat, 0.0f, (float)window_size.x, (float)window_size.y, 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
         InitIdentityMatrix4x4(&phase_state->view_mat);
 
         phase_state->assets = assets;

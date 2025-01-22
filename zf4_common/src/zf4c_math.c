@@ -24,6 +24,4 @@ void InitOrthoMatrix4x4(s_matrix_4x4* const mat, const float left, const float r
     mat->elems[3][1] = -(top + bottom) / (top - bottom);
     mat->elems[3][2] = -(far + near) / (far - near);
     mat->elems[3][3] = 1.0f;
-
-    return mat;
 }

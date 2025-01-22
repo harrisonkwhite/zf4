@@ -124,8 +124,8 @@ static void GLFWMouseButtonCallback(GLFWwindow* const glfwWindow, const int butt
 
 static void GLFWCursorPosCallback(GLFWwindow* const glfwWindow, const double x, const double y) {
     s_window* const window = glfwGetWindowUserPointer(glfwWindow);
-    window->input_state.mouse_pos.x = x;
-    window->input_state.mouse_pos.y = y;
+    window->input_state.mouse_pos.x = (float)x;
+    window->input_state.mouse_pos.y = (float)y;
 }
 
 bool InitWindow(s_window* const window, const s_vec_2d_i size, const char* const title, const enum window_flags flags) {
