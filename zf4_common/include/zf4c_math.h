@@ -109,6 +109,10 @@ inline float Dir(const s_vec_2d a, const s_vec_2d b) {
     return atan2f(-(b.y - a.y), b.x - a.x);
 }
 
+inline s_vec_2d LenDir(const float len, const float dir) {
+    return V2(len * cosf(dir), -len * sinf(dir));
+}
+
 inline s_vec_2d RectPos(const s_rect* const rect) {
     return V2(rect->x, rect->y);
 }
