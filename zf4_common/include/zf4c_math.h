@@ -13,9 +13,17 @@
 #define V2(X, Y) (s_vec_2d) { X, Y }
 #define V2_ZERO V2(0.0f, 0.0f)
 #define V2_ONE V2(1.0f, 1.0f)
+#define V2_TO_V2I(V) (s_vec_2d_i) { (int)V.x, (int)V.y }
+
+#define V2I(X, Y) (s_vec_2d_i) { X, Y }
+#define V2I_ZERO V2I(0, 0)
+#define V2I_TO_V2(V) (s_vec_2d) { (float)V.x, (float)V.y }
 
 #define V3(X, Y, Z) (s_vec_3d) { X, Y, Z }
+#define V3_ZERO V3(0.0f, 0.0f, 0.0f)
+
 #define V4(X, Y, Z, W) (s_vec_4d) { X, Y, Z, W }
+#define V4_ZERO V4(0.0f, 0.0f, 0.0f, 0.0f)
 
 typedef struct {
     float x;
