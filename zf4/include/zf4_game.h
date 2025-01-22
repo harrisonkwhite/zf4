@@ -18,8 +18,8 @@ typedef struct {
 } s_game_ptrs;
 
 typedef bool (*ta_game_init_func)(const s_game_ptrs* const game_ptrs);
-typedef bool (*ta_game_tick_func)(const s_game_ptrs* const game_ptrs);
-typedef bool (*ta_game_draw_func)(s_draw_phase_state* const draw_phase_state, const s_game_ptrs* const game_ptrs);
+typedef bool (*ta_game_tick_func)(const s_game_ptrs* const game_ptrs, const double fps);
+typedef bool (*ta_game_draw_func)(s_draw_phase_state* const draw_phase_state, const s_game_ptrs* const game_ptrs, const double fps);
 typedef void (*ta_game_cleanup_func)(void);
 
 typedef struct {

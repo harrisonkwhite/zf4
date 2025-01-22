@@ -3,8 +3,8 @@
 #include <zf4c_mem.h>
 #include <zf4_rand.h>
 
-#define TARG_FPS 60
-#define TARG_TICK_DUR_SECS (1.0 / TARG_FPS)
+#define TARG_TICKS_PER_SEC 60
+#define TARG_TICK_DUR_SECS (1.0 / TARG_TICKS_PER_SEC)
 
 typedef struct game {
     s_mem_arena perm_mem_arena;
@@ -68,7 +68,7 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
     // Set up the random number generator.
     InitRNG();
 
-    // Define a struct of references to game data to pass to the user-defined game functions.
+    // Define a struct of pointers to game data to pass to the user-defined game functions.
     const s_game_ptrs game_ptrs = {
         .perm_mem_arena = &game->perm_mem_arena,
         .temp_mem_arena = &game->temp_mem_arena,
@@ -103,9 +103,11 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
         frame_dur_accum += frame_dur;
 
         if (frame_dur_accum >= TARG_TICK_DUR_SECS) {
+            const double fps = 1.0 / frame_dur;
+
             do {
                 // Execute a tick.
-                if (!game_info->tick_func(&game_ptrs)) {
+                if (!game_info->tick_func(&game_ptrs, fps)) {
                     return false;
                 }
 
@@ -117,7 +119,7 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
             // Execute draw.
             s_draw_phase_state* const draw_phase_state = BeginDrawPhase(&game->temp_mem_arena, game->window.size_cache, game->assets);
 
-            if (!game_info->draw_func(draw_phase_state, &game_ptrs)) {
+            if (!game_info->draw_func(draw_phase_state, &game_ptrs, fps)) {
                 return false;
             }
 
