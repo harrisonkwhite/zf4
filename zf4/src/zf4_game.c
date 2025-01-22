@@ -154,8 +154,8 @@ bool RunGame(const ta_game_info_loader info_loader) {
     // Loading Game Information
     //
     s_game_info info = {
-        .perm_mem_arena_size = MegabytesToBytes(80),
-        .temp_mem_arena_size = MegabytesToBytes(40),
+        .perm_mem_arena_size = MEGABYTES_TO_BYTES(80),
+        .temp_mem_arena_size = MEGABYTES_TO_BYTES(40),
 
         .window_init_size = {1280, 720},
         .window_title = "ZF4 Game"

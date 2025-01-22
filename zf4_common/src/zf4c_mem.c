@@ -79,52 +79,57 @@ bool IsClear(const void* const buf, const int size) {
     return true;
 }
 
-int ActiveBitCnt(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
+int ActiveBitCnt(const ta_byte* const bytes, const int bit_cnt) {
+    assert(bytes);
+    assert(bit_cnt > 0);
 
     int cnt = 0;
 
-    for (int i = 0; i < BitsToBytes(bitset->bit_cnt); ++i) {
-        cnt += g_active_bit_cnts[bitset->bytes[i]];
+    for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
+        cnt += g_active_bit_cnts[bytes[i]];
     }
 
     return cnt;
 }
 
-int InactiveBitCnt(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
-    return bitset->bit_cnt - ActiveBitCnt(bitset);
+int InactiveBitCnt(const ta_byte* const bytes, const int bit_cnt) {
+    assert(bytes);
+    assert(bit_cnt > 0);
+    return bit_cnt - ActiveBitCnt(bytes, bit_cnt);
 }
 
-int IndexOfFirstActiveBit(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
+int IndexOfFirstActiveBit(const ta_byte* const bytes, const int bit_cnt) {
+    assert(bytes);
+    assert(bit_cnt > 0);
 
-    for (int i = 0; i < BitsToBytes(bitset->bit_cnt); ++i) {
-        if (bitset->bytes[i]) {
-            return (i * 8) + g_first_active_bit_indexes[bitset->bytes[i]];
+    for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
+        if (bytes[i]) {
+            return (i * 8) + g_first_active_bit_indexes[bytes[i]];
         }
     }
 
     return -1;
 }
 
-int IndexOfFirstInactiveBit(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
+int IndexOfFirstInactiveBit(const ta_byte* const bytes, const int bit_cnt) {
+assert(bytes);
+    assert(bit_cnt > 0);
 
-    for (int i = 0; i < BitsToBytes(bitset->bit_cnt); ++i) {
-        if (bitset->bytes[i] != 0xFF) {
-            return (i * 8) + g_first_inactive_bit_indexes[bitset->bytes[i]];
+    for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
+        if (bytes[i] != 0xFF) {
+            return (i * 8) + g_first_inactive_bit_indexes[bytes[i]];
         }
     }
 
     return -1;
 }
 
-bool AreAllBitsActive(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
+bool AreAllBitsActive(const ta_byte* const bytes, const int bit_cnt) {
+assert(bytes);
+    assert(bit_cnt > 0);
 
-    for (int i = 0; i < BitsToBytes(bitset->bit_cnt); ++i) {
-        if (bitset->bytes[i] != 0xFF) {
+    for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
+        if (bytes[i] != 0xFF) {
             return false;
         }
     }
@@ -132,11 +137,12 @@ bool AreAllBitsActive(const s_bitset_view* const bitset) {
     return true;
 }
 
-bool AreAllBitsInactive(const s_bitset_view* const bitset) {
-    assert(IsBitsetValid(bitset));
+bool AreAllBitsInactive(const ta_byte* const bytes, const int bit_cnt) {
+assert(bytes);
+    assert(bit_cnt > 0);
 
-    for (int i = 0; i < BitsToBytes(bitset->bit_cnt); ++i) {
-        if (bitset->bytes[i]) {
+    for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
+        if (bytes[i]) {
             return false;
         }
     }

@@ -22,16 +22,6 @@ extern const int g_active_bit_cnts[256]; // For mapping a byte to the number of 
 typedef uint8_t ta_byte;
 
 typedef struct {
-    ta_byte* bytes;
-    int bit_cnt;
-} s_bitset;
-
-typedef struct {
-    const ta_byte* bytes;
-    int bit_cnt;
-} s_bitset_view;
-
-typedef struct {
     void* buf;
     int size;
     int offs;
@@ -40,12 +30,12 @@ typedef struct {
 void Clear(void* const buf, const int size);
 bool IsClear(const void* const buf, const int size);
 
-int ActiveBitCnt(const s_bitset_view* const bitset);
-int InactiveBitCnt(const s_bitset_view* const bitset);
-int IndexOfFirstActiveBit(const s_bitset_view* const bitset);
-int IndexOfFirstInactiveBit(const s_bitset_view* const bitset);
-bool AreAllBitsActive(const s_bitset_view* const bitset);
-bool AreAllBitsInactive(const s_bitset_view* const bitset);
+int ActiveBitCnt(const ta_byte* const bytes, const int bit_cnt);
+int InactiveBitCnt(const ta_byte* const bytes, const int bit_cnt);
+int IndexOfFirstActiveBit(const ta_byte* const bytes, const int bit_cnt);
+int IndexOfFirstInactiveBit(const ta_byte* const bytes, const int bit_cnt);
+bool AreAllBitsActive(const ta_byte* const bytes, const int bit_cnt);
+bool AreAllBitsInactive(const ta_byte* const bytes, const int bit_cnt);
 
 bool InitMemArena(s_mem_arena* const mem_arena, const int size);
 void CleanMemArena(s_mem_arena* const mem_arena);
@@ -55,33 +45,26 @@ void* PushAligned(const int size, const int alignment, s_mem_arena* const mem_ar
 
 inline int AlignForward(const int n, const int alignment) {
     assert(n >= 0);
-    assert(IsPowerOfTwo(alignment));
+    assert(IS_POWER_OF_TWO(alignment));
     return (n + alignment - 1) & ~(alignment - 1);
 }
 
-inline bool IsBitsetValid(const s_bitset* const bitset) {
-    assert(bitset);
-
-    if (IsClear(bitset, sizeof(*bitset))) {
-        return true;
-    }
-
-    return bitset->bytes && bitset->bit_cnt > 0;
+inline void ActivateBit(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
+    assert(bit_index >= 0 && bit_index < bit_cnt);
+    assert(bytes);
+    bytes[bit_index / 8] |= 1 << (bit_index % 8);
 }
 
-inline void ActivateBit(s_bitset* const bitset, const int bit_index) {
-    assert(bit_index >= 0 && bit_index < bitset->bit_cnt);
-    bitset->bytes[bit_index / 8] |= 1 << (bit_index % 8);
+inline void DeactivateBit(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
+    assert(bit_index >= 0 && bit_index < bit_cnt);
+    assert(bytes);
+    bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
 }
 
-inline void DeactivateBit(s_bitset* const bitset, const int bit_index) {
-    assert(bit_index >= 0 && bit_index < bitset->bit_cnt);
-    bitset->bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
-}
-
-inline bool IsBitActive(const s_bitset_view* const bitset, const int bit_index) {
-    assert(bit_index >= 0 && bit_index < bitset->bit_cnt);
-    return bitset->bytes[bit_index / 8] & (1 << (bit_index % 8));
+inline bool IsBitActive(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
+    assert(bit_index >= 0 && bit_index < bit_cnt);
+    assert(bytes);
+    return bytes[bit_index / 8] & (1 << (bit_index % 8));
 }
 
 inline bool IsMemArenaValid(const s_mem_arena* const mem_arena) {
