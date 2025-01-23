@@ -105,6 +105,10 @@ inline s_vec_2d V2Normalized(const s_vec_2d vec) {
     return V2Scaled(vec, 1.0f / mag);
 }
 
+inline s_vec_2d V2FromDir(const float dir) {
+    return V2(cosf(dir), -sinf(dir));
+}
+
 inline bool AreV2sEqual(const s_vec_2d a, const s_vec_2d b) {
     return a.x == b.x && a.y == b.y;
 }
