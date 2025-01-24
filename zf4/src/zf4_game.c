@@ -6,12 +6,13 @@
 #define TARG_TICKS_PER_SEC 60
 #define TARG_TICK_DUR_SECS (1.0 / TARG_TICKS_PER_SEC)
 
-typedef struct game {
+typedef struct {
     s_mem_arena perm_mem_arena;
     s_mem_arena temp_mem_arena;
     s_window window;
     s_assets* assets;
     s_renderer* renderer;
+    void* custom_data;
 } s_game;
 
 static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const game_info) {
@@ -68,13 +69,24 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
     // Set up the random number generator.
     InitRNG();
 
+    // Reserve memory in the permanent arena for user data.
+    if (game_info->custom_data_size > 0) {
+        game->custom_data = PushAligned(game_info->custom_data_size, game_info->custom_data_alignment, &game->perm_mem_arena);
+
+        if (!game->custom_data) {
+            LogError("Failed to reserve memory for user data!");
+            return false;
+        }
+    }
+
     // Define a struct of pointers to game data to pass to the user-defined game functions.
     const s_game_ptrs game_ptrs = {
         .perm_mem_arena = &game->perm_mem_arena,
         .temp_mem_arena = &game->temp_mem_arena,
         .window = &game->window,
         .assets = game->assets,
-        .renderer = game->renderer
+        .renderer = game->renderer,
+        .custom_data = game->custom_data
     };
 
     // Call the user-defined initialisation function.
@@ -123,7 +135,7 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
                 return false;
             }
 
-            assert(draw_phase_state->tex_batch_slots_used_cnt == 0); // Make sure that the last batch was flushed.
+            assert(draw_phase_state->tex_batch_slots_used_cnt == 0); // Make sure the last batch was flushed.
 
             glfwSwapBuffers(game->window.glfw_window);
         }
@@ -168,11 +180,12 @@ bool RunGame(const ta_game_info_loader info_loader) {
     assert(info.init_func);
     assert(info.tick_func);
     assert(info.draw_func);
-    assert(info.cleanup_func);
     assert(info.perm_mem_arena_size > 0);
     assert(info.temp_mem_arena_size > 0);
     assert(info.window_init_size.x > 0 && info.window_init_size.y > 0);
     assert(info.window_title);
+    assert(info.custom_data_size >= 0);
+    assert(info.custom_data_size > 0 ? info.custom_data_alignment >= 0 : info.custom_data_alignment == 0);
 
     //
     // Running the Game
@@ -184,8 +197,6 @@ bool RunGame(const ta_game_info_loader info_loader) {
     //
     // Cleanup
     //
-    info.cleanup_func();
-
     if (game.renderer) {
         CleanRenderer(game.renderer);
     }
