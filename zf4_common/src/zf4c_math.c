@@ -3,6 +3,20 @@
 #include <assert.h>
 #include <zf4c_mem.h>
 
+bool DoesRectIntersectWithOtherRects(const s_rect* const rect, const s_rect* const other_rects, const int other_rect_cnt) {
+    assert(rect);
+    assert(other_rects);
+    assert(other_rect_cnt > 0);
+
+    for (int i = 0; i < other_rect_cnt; ++i) {
+        if (DoRectsIntersect(rect, &other_rects[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void InitIdentityMatrix4x4(s_matrix_4x4* const mat) {
     assert(mat);
     assert(IsClear(mat, sizeof(*mat)));

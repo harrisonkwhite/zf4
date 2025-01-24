@@ -80,6 +80,8 @@ typedef struct {
     float elems[4][4];
 } s_matrix_4x4;
 
+bool DoesRectIntersectWithOtherRects(const s_rect* const rect, const s_rect* const other_rects, const int other_rect_cnt);
+
 void InitIdentityMatrix4x4(s_matrix_4x4* const mat);
 void InitOrthoMatrix4x4(s_matrix_4x4* const mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
 
@@ -162,6 +164,14 @@ inline float RectWidth(const s_rect_edges* const edges) {
 
 inline float RectHeight(const s_rect_edges* const edges) {
     return edges->bottom - edges->top;
+}
+
+inline s_rect RectTranslated(const s_rect* const rect, const s_vec_2d trans) {
+    return (s_rect) { rect->x + trans.x, rect->y + trans.y, rect->width, rect->height };
+}
+
+inline s_rect_i RectTranslatedI(const s_rect_i* const rect, const s_vec_2d_i trans) {
+    return (s_rect_i) { rect->x + trans.x, rect->y + trans.y, rect->width, rect->height };
 }
 
 inline bool DoRectsIntersect(const s_rect* const a, const s_rect* const b) {
