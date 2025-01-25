@@ -112,7 +112,7 @@ int IndexOfFirstActiveBit(const ta_byte* const bytes, const int bit_cnt) {
 }
 
 int IndexOfFirstInactiveBit(const ta_byte* const bytes, const int bit_cnt) {
-assert(bytes);
+    assert(bytes);
     assert(bit_cnt > 0);
 
     for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
@@ -125,7 +125,7 @@ assert(bytes);
 }
 
 bool AreAllBitsActive(const ta_byte* const bytes, const int bit_cnt) {
-assert(bytes);
+    assert(bytes);
     assert(bit_cnt > 0);
 
     for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
@@ -138,7 +138,7 @@ assert(bytes);
 }
 
 bool AreAllBitsInactive(const ta_byte* const bytes, const int bit_cnt) {
-assert(bytes);
+    assert(bytes);
     assert(bit_cnt > 0);
 
     for (int i = 0; i < BITS_TO_BYTES(bit_cnt); ++i) {
@@ -167,7 +167,7 @@ bool InitMemArena(s_mem_arena* const mem_arena, const int size) {
 }
 
 void CleanMemArena(s_mem_arena* const mem_arena) {
-    assert(mem_arena);
+    assert(IsMemArenaValid(mem_arena));
 
     if (mem_arena->buf) {
         free(mem_arena->buf);
@@ -176,14 +176,22 @@ void CleanMemArena(s_mem_arena* const mem_arena) {
     Clear(mem_arena, sizeof(*mem_arena));
 }
 
-void ResetMemArena(s_mem_arena* const mem_arena) {
-    assert(mem_arena);
+void EmptyMemArena(s_mem_arena* const mem_arena) {
+    assert(IsMemArenaValid(mem_arena));
 
     if (mem_arena->offs > 0) {
         Clear(mem_arena->buf, mem_arena->offs);
     }
 
     mem_arena->offs = 0;
+}
+
+void RewindMemArena(s_mem_arena* const mem_arena, const int offs) {
+    assert(IsMemArenaValid(mem_arena));
+    assert(offs >= 0 && offs < mem_arena->size);
+
+    const int clear_size = mem_arena->size - offs;
+    memset((char*)mem_arena->buf + offs, 0, clear_size);
 }
 
 void* Push(const int size, s_mem_arena* const mem_arena) {

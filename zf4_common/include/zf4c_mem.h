@@ -39,7 +39,9 @@ bool AreAllBitsInactive(const ta_byte* const bytes, const int bit_cnt);
 
 bool InitMemArena(s_mem_arena* const mem_arena, const int size);
 void CleanMemArena(s_mem_arena* const mem_arena);
-void ResetMemArena(s_mem_arena* const mem_arena);
+void EmptyMemArena(s_mem_arena* const mem_arena);
+void RewindMemArena(s_mem_arena* const mem_arena, const int offs);
+
 void* Push(const int size, s_mem_arena* const mem_arena);
 void* PushAligned(const int size, const int alignment, s_mem_arena* const mem_arena);
 

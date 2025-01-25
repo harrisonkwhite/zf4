@@ -106,7 +106,7 @@ static bool ExecGameInitAndMainLoop(s_game* const game, const s_game_info* const
     Log("Entering the main loop...");
 
     while (!glfwWindowShouldClose(game->window.glfw_window)) {
-        ResetMemArena(&game->temp_mem_arena);
+        EmptyMemArena(&game->temp_mem_arena);
 
         const double frame_time_last = frame_time;
         frame_time = glfwGetTime();

@@ -24,7 +24,12 @@ static bool LoadTexturesFromFS(s_textures* const textures, FILE* const fs, s_mem
     assert(textures);
     assert(IsClear(textures, sizeof(*textures)));
     assert(fs);
+    assert(IsMemArenaValid(scratch_space));
 
+    // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
+    const int scratch_space_begin_offs = scratch_space->offs;
+
+    // Read and verify texture count.
     fread(&textures->cnt, sizeof(textures->cnt), 1, fs);
     assert(textures->cnt >= 0 && textures->cnt <= TEXTURE_LIMIT);
 
@@ -49,6 +54,9 @@ static bool LoadTexturesFromFS(s_textures* const textures, FILE* const fs, s_mem
         }
     }
 
+    // Clear out the memory in the scratch space that we used in this function.
+    RewindMemArena(scratch_space, scratch_space_begin_offs);
+
     return true;
 }
 
@@ -56,8 +64,12 @@ static bool LoadFontsFromFS(s_fonts* const fonts, FILE* const fs, s_mem_arena* c
     assert(fonts);
     assert(IsClear(fonts, sizeof(*fonts)));
     assert(fs);
-    assert(scratch_space);
+    assert(IsMemArenaValid(scratch_space));
 
+    // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
+    const int scratch_space_begin_offs = scratch_space->offs;
+
+    // Read and verify font count.
     fread(&fonts->cnt, sizeof(fonts->cnt), 1, fs);
     assert(fonts->cnt >= 0 && fonts->cnt <= FONT_LIMIT);
 
@@ -80,6 +92,9 @@ static bool LoadFontsFromFS(s_fonts* const fonts, FILE* const fs, s_mem_arena* c
         }
     }
 
+    // Clear out the memory in the scratch space that we used in this function.
+    RewindMemArena(scratch_space, scratch_space_begin_offs);
+
     return true;
 }
 
@@ -87,8 +102,12 @@ static bool LoadShaderProgsFromFS(s_shader_progs* const progs, FILE* const fs, s
     assert(progs);
     assert(IsClear(progs, sizeof(*progs)));
     assert(fs);
-    assert(scratch_space);
+    assert(IsMemArenaValid(scratch_space));
 
+    // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
+    const int scratch_space_begin_offs = scratch_space->offs;
+
+    // Read and verify the shader program count.
     fread(&progs->cnt, sizeof(progs->cnt), 1, fs);
     assert(progs->cnt >= 0 && progs->cnt <= SHADER_PROG_LIMIT);
 
@@ -137,6 +156,10 @@ static bool LoadSoundsFromFS(s_sounds* const snds, FILE* const fs, s_mem_arena* 
     assert(fs);
     assert(scratch_space);
 
+    // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
+    const int scratch_space_begin_offs = scratch_space->offs;
+
+    // Read and verify sound count.
     fread(&snds->cnt, sizeof(snds->cnt), 1, fs);
     assert(snds->cnt >= 0 && snds->cnt <= SOUND_LIMIT);
 
