@@ -7,7 +7,7 @@ namespace zf4 {
     struct s_font_data {
         s_font_arrangement_info arrangement_info;
         s_vec_2d_i tex_size;
-        ta_byte tex_px_data[g_texture_px_data_size_limit];
+        a_byte tex_px_data[g_texture_px_data_size_limit];
     };
 
     static inline int GetLineHeight(const FT_Face ft_face) {

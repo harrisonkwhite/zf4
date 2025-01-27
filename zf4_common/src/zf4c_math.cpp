@@ -1,16 +1,6 @@
 #include <zf4c_math.h>
 
 namespace zf4 {
-    bool DoesRectIntersectWithOtherRects(const s_rect rect, const s_array<s_rect> other_rects) {
-        for (int i = 0; i < other_rects.len; ++i) {
-            if (DoRectsIntersect(rect, other_rects[i])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     void InitIdentityMatrix4x4(s_matrix_4x4& mat) {
         assert(IsStructZero(mat));
 

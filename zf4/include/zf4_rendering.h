@@ -112,7 +112,7 @@ namespace zf4 {
     void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state& draw_phase_state);
     void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
     void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
-    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_renderer& renderer, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
     void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
     void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
 

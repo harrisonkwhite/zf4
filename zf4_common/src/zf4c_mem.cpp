@@ -58,7 +58,7 @@ namespace zf4 {
         4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
     };
 
-    int ActiveBitCnt(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    int ActiveBitCnt(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
 
@@ -71,13 +71,13 @@ namespace zf4 {
         return cnt;
     }
 
-    int InactiveBitCnt(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    int InactiveBitCnt(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
         return bit_cnt - ActiveBitCnt(bytes, bit_cnt);
     }
 
-    int IndexOfFirstActiveBit(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    int IndexOfFirstActiveBit(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
 
@@ -90,7 +90,7 @@ namespace zf4 {
         return -1;
     }
 
-    int IndexOfFirstInactiveBit(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    int IndexOfFirstInactiveBit(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
 
@@ -103,7 +103,7 @@ namespace zf4 {
         return -1;
     }
 
-    bool AreAllBitsActive(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    bool AreAllBitsActive(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
 
@@ -116,7 +116,7 @@ namespace zf4 {
         return true;
     }
 
-    bool AreAllBitsInactive(const s_array<const ta_byte> bytes, const int bit_cnt) {
+    bool AreAllBitsInactive(const s_array<const a_byte> bytes, const int bit_cnt) {
         assert(bit_cnt > 0);
         assert(BytesToBits(bytes.len) >= bit_cnt);
 

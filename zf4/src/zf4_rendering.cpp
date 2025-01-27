@@ -340,7 +340,7 @@ void main() {
                 indices[(i * 6) + 5] = (unsigned short)((i * 4) + 0);
             }
 
-            ZF4_GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(indices), indices.elems_raw, GL_STATIC_DRAW));
+            ZF4_GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(CreateView(indices)), indices.elems_raw, GL_STATIC_DRAW));
         }
 
         // Set vertex attribute pointers.
@@ -445,7 +445,7 @@ void main() {
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_renderer& renderer) {
+    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_renderer& renderer, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
         assert(tex_index >= 0 && tex_index < draw_phase_state.assets->textures.cnt);
         const GLuint tex_gl_id = draw_phase_state.assets->textures.gl_ids[tex_index];
         const s_vec_2d_i tex_size = draw_phase_state.assets->textures.sizes[tex_index];

@@ -221,8 +221,6 @@ namespace zf4 {
         s_static_array<s_static_array<float, 4>, 4> elems;
     };
 
-    bool DoesRectIntersectWithOtherRects(const s_rect rect, const s_array<s_rect> other_rects);
-
     void InitIdentityMatrix4x4(s_matrix_4x4& mat);
     void InitOrthoMatrix4x4(s_matrix_4x4& mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
 
