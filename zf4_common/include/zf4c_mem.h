@@ -1,84 +1,190 @@
-#ifndef ZF4C_MEM_H
-#define ZF4C_MEM_H
+#pragma once
 
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdalign.h>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <type_traits>
 
-#define BITS_TO_BYTES(X) ((X + 7) & ~7)
-#define BYTES_TO_BITS(X) (X << 3)
-#define KILOBYTES_TO_BYTES(X) (X * 1024)
-#define MEGABYTES_TO_BYTES(X) (X * 1024 * 1024)
-#define GIGABYTES_TO_BYTES(X) (X * 1024 * 1024 * 1024)
-#define IS_POWER_OF_TWO(X) (!(X & (X - 1)))
+namespace zf4 {
+    typedef unsigned char ta_byte;
 
-extern const int g_first_active_bit_indexes[256]; // For mapping a byte to the index of its first active bit.
-extern const int g_first_inactive_bit_indexes[256]; // For mapping a byte to the index of its first inactive bit.
-extern const int g_active_bit_cnts[256]; // For mapping a byte to the number of active bits it contains.
+    template<typename tp_type>
+    struct s_array {
+        tp_type* elems_raw;
+        int len;
 
-typedef uint8_t ta_byte;
+        tp_type& operator[](const int index) {
+            assert(index >= 0 && index < len);
+            return elems_raw[index];
+        }
 
-typedef struct {
-    void* buf;
-    int size;
-    int offs;
-} s_mem_arena;
+        tp_type& operator[](const int index) const {
+            assert(index >= 0 && index < len);
+            return elems_raw[index];
+        }
 
-void Clear(void* const buf, const int size);
-bool IsClear(const void* const buf, const int size);
+        operator s_array<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .len = len
+            };
+        }
+    };
 
-int ActiveBitCnt(const ta_byte* const bytes, const int bit_cnt);
-int InactiveBitCnt(const ta_byte* const bytes, const int bit_cnt);
-int IndexOfFirstActiveBit(const ta_byte* const bytes, const int bit_cnt);
-int IndexOfFirstInactiveBit(const ta_byte* const bytes, const int bit_cnt);
-bool AreAllBitsActive(const ta_byte* const bytes, const int bit_cnt);
-bool AreAllBitsInactive(const ta_byte* const bytes, const int bit_cnt);
+    template<typename tp_type, int tp_len>
+    struct s_static_array {
+        tp_type elems_raw[tp_len];
 
-bool InitMemArena(s_mem_arena* const mem_arena, const int size);
-void CleanMemArena(s_mem_arena* const mem_arena);
-void EmptyMemArena(s_mem_arena* const mem_arena);
-void RewindMemArena(s_mem_arena* const mem_arena, const int offs);
+        tp_type& operator[](const int index) {
+            assert(index >= 0 && index < tp_len);
+            return elems_raw[index];
+        }
 
-void* Push(const int size, s_mem_arena* const mem_arena);
-void* PushAligned(const int size, const int alignment, s_mem_arena* const mem_arena);
+        const tp_type& operator[](const int index) const {
+            assert(index >= 0 && index < tp_len);
+            return elems_raw[index];
+        }
+    };
 
-inline int AlignForward(const int n, const int alignment) {
-    assert(n >= 0);
-    assert(IS_POWER_OF_TWO(alignment));
-    return (n + alignment - 1) & ~(alignment - 1);
-}
+    extern const s_static_array<const int, 256> g_first_active_bit_indexes; // For mapping a byte to the index of its first active bit.
+    extern const s_static_array<const int, 256> g_first_inactive_bit_indexes; // For mapping a byte to the index of its first inactive bit.
+    extern const s_static_array<const int, 256> g_active_bit_cnts; // For mapping a byte to the number of active bits it contains.
 
-inline void ActivateBit(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
-    assert(bit_index >= 0 && bit_index < bit_cnt);
-    assert(bytes);
-    bytes[bit_index / 8] |= 1 << (bit_index % 8);
-}
+    struct s_mem_arena {
+        void* buf;
+        int size;
+        int offs;
+    };
 
-inline void DeactivateBit(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
-    assert(bit_index >= 0 && bit_index < bit_cnt);
-    assert(bytes);
-    bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
-}
+    int ActiveBitCnt(const s_array<const ta_byte> bytes, const int bit_cnt);
+    int InactiveBitCnt(const s_array<const ta_byte> bytes, const int bit_cnt);
+    int IndexOfFirstActiveBit(const s_array<const ta_byte> bytes, const int bit_cnt);
+    int IndexOfFirstInactiveBit(const s_array<const ta_byte> bytes, const int bit_cnt);
+    bool AreAllBitsActive(const s_array<const ta_byte> bytes, const int bit_cnt);
+    bool AreAllBitsInactive(const s_array<const ta_byte> bytes, const int bit_cnt);
 
-inline bool IsBitActive(const int bit_index, ta_byte* const bytes, const int bit_cnt) {
-    assert(bit_index >= 0 && bit_index < bit_cnt);
-    assert(bytes);
-    return bytes[bit_index / 8] & (1 << (bit_index % 8));
-}
+    bool InitMemArena(s_mem_arena& arena, const int size);
+    void CleanMemArena(s_mem_arena& arena);
+    void EmptyMemArena(s_mem_arena& arena);
+    void RewindMemArena(s_mem_arena& arena, const int offs);
 
-inline bool IsMemArenaValid(const s_mem_arena* const mem_arena) {
-    assert(mem_arena);
+    void* Push(const int size, const int alignment, s_mem_arena& arena);
 
-    if (IsClear(mem_arena, sizeof(*mem_arena))) {
+    constexpr int BitsToBytes(const int bits) {
+        return (bits + 7) & ~7;
+    }
+
+    constexpr int BytesToBits(const int bytes) {
+        return bytes << 3;
+    }
+
+    constexpr int KilobytesToBytes(const int kb) {
+        return kb * 1024;
+    }
+
+    constexpr int MegabytesToBytes(const int mb) {
+        return mb * 1024 * 1024;
+    }
+
+    constexpr int GigabytesToBytes(const int gb) {
+        return gb * 1024 * 1024 * 1024;
+    }
+
+    constexpr bool IsPowerOfTwo(const int n) {
+        return !(n & (n - 1));
+    }
+
+    inline int AlignForward(const int n, const int alignment) {
+        assert(n >= 0);
+        assert(IsPowerOfTwo(alignment));
+        return (n + alignment - 1) & ~(alignment - 1);
+    }
+
+    template<typename tp_type>
+    inline void ZeroOutStruct(tp_type& st) {
+        static_assert(std::is_class_v<tp_type>);
+        memset(&st, 0, sizeof(st));
+    }
+
+    template<typename tp_type>
+    inline void ZeroOutArrayElems(const s_array<tp_type> array) {
+        memset(array.elems_raw, 0, sizeof(tp_type) * array.len);
+    }
+
+    template<typename tp_type, int tp_len>
+    inline void ZeroOutArrayElems(s_static_array<tp_type, tp_len>& array) {
+        memset(array.elems_raw, 0, sizeof(tp_type) * tp_len);
+    }
+
+    template<typename tp_type>
+    bool IsStructZero(const tp_type& st) {
+        static_assert(std::is_class_v<tp_type>);
+
+        const auto bytes = (const ta_byte*)&st;
+
+        for (int i = 0; i < sizeof(st); ++i) {
+            if (bytes[i]) {
+                return false;
+            }
+        }
+
         return true;
     }
 
-    return mem_arena->buf
-        && mem_arena->size > 0
-        && mem_arena->offs >= 0 && mem_arena->offs <= mem_arena->size;
-}
+    template<typename tp_type>
+    inline int ArraySizeInBytes(const s_array<tp_type>& array) {
+        return sizeof(tp_type) * array.len;
+    }
 
-#endif
+    template<typename tp_type, int tp_len>
+    inline int ArraySizeInBytes(const s_static_array<tp_type, tp_len>& array) {
+        return sizeof(tp_type) * tp_len;
+    }
+
+    template<typename tp_type, int tp_len>
+    inline s_array<tp_type> StaticArrayToArray(s_static_array<tp_type, tp_len> static_array) {
+        return {
+            .elems = static_array.elems_raw,
+            .len = tp_len
+        };
+    }
+
+    inline void ActivateBit(const int bit_index, const s_array<ta_byte> bytes, const int bit_cnt) {
+        assert(bit_index >= 0 && bit_index < bit_cnt);
+        assert(bit_cnt > 0);
+        assert(bit_cnt <= BytesToBits(bytes.len));
+        bytes[bit_index / 8] |= 1 << (bit_index % 8);
+    }
+
+    inline void DeactivateBit(const int bit_index, const s_array<ta_byte> bytes, const int bit_cnt) {
+        assert(bit_index >= 0 && bit_index < bit_cnt);
+        assert(bit_cnt > 0);
+        assert(bit_cnt <= BytesToBits(bytes.len));
+        bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
+    }
+
+    inline bool IsBitActive(const int bit_index, const s_array<ta_byte> bytes, const int bit_cnt) {
+        assert(bit_index >= 0 && bit_index < bit_cnt);
+        assert(bit_cnt > 0);
+        assert(bit_cnt <= BytesToBits(bytes.len));
+        return bytes[bit_index / 8] & (1 << (bit_index % 8));
+    }
+
+    template<typename tp_type>
+    inline tp_type* PushType(s_mem_arena& arena) {
+        return static_cast<tp_type*>(Push(sizeof(tp_type), alignof(tp_type), arena));
+    }
+
+    template<typename tp_type>
+    s_array<tp_type> PushArray(const int len, s_mem_arena& arena) {
+        s_array array = {
+            .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena))
+        };
+
+        if (array.elems_raw) {
+            array.len = len;
+        }
+
+        return array;
+    }
+}

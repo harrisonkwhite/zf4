@@ -1,56 +1,54 @@
-#ifndef ZF4C_ASSETS_H
-#define ZF4C_ASSETS_H
+#pragma once
 
 #include <zf4c_math.h>
 
-#define ASSETS_FILE_NAME "assets.dat"
+namespace zf4 {
+    const char* const g_assets_file_name = "assets.dat";
 
-#define TEXTURE_WIDTH_LIMIT 2048
-#define TEXTURE_HEIGHT_LIMIT 2048
-#define TEXTURE_CHANNEL_CNT 4
-#define TEXTURE_PX_LIMIT (TEXTURE_WIDTH_LIMIT * TEXTURE_HEIGHT_LIMIT)
-#define TEXTURE_PX_DATA_SIZE_LIMIT (TEXTURE_CHANNEL_CNT * TEXTURE_PX_LIMIT)
+    constexpr s_vec_2d_i g_texture_size_limit = {2048, 2048};
+    constexpr int g_texture_channel_cnt = 4;
+    constexpr int g_texture_px_limit = g_texture_size_limit.x * g_texture_size_limit.y;
+    constexpr int g_texture_px_data_size_limit = g_texture_channel_cnt * g_texture_px_limit;
 
-#define FONT_CHAR_RANGE_BEGIN 32
-#define FONT_CHAR_RANGE_LEN 95
+    constexpr int g_font_char_range_begin = 32;
+    constexpr int g_font_char_range_len = 95;
 
-#define SHADER_SRC_LEN_LIMIT 4095
+    constexpr int g_shader_src_len_limit = 4095;
 
-#define AUDIO_SAMPLES_PER_CHUNK 44100
+    constexpr int g_audio_samples_per_chunk = 44100;
 
-#define SOUND_SAMPLE_LIMIT 441000
+    constexpr int g_sound_sample_limit = 441000;
 
-typedef float ta_audio_sample;
+    typedef float ta_audio_sample;
 
-enum asset_type {
-    ec_asset_type_texture,
-    ec_asset_type_font,
-    ec_asset_type_shader_prog,
-    ec_asset_type_sound,
-    ec_asset_type_music,
+    enum e_asset_type {
+        ek_asset_type_texture,
+        ek_asset_type_font,
+        ek_asset_type_shader_prog,
+        ek_asset_type_sound,
+        ek_asset_type_music,
 
-    ecs_asset_type_cnt
-};
+        eks_asset_type_cnt
+    };
 
-typedef struct {
-    int hor_offsets[FONT_CHAR_RANGE_LEN];
-    int ver_offsets[FONT_CHAR_RANGE_LEN];
-    int hor_advances[FONT_CHAR_RANGE_LEN];
+    struct s_font_chars_arrangement_info {
+        s_static_array<int, g_font_char_range_len> hor_offsets;
+        s_static_array<int, g_font_char_range_len> ver_offsets;
+        s_static_array<int, g_font_char_range_len> hor_advances;
 
-    s_rect_i src_rects[FONT_CHAR_RANGE_LEN];
+        s_static_array<s_rect_i, g_font_char_range_len> src_rects;
 
-    int kernings[FONT_CHAR_RANGE_LEN * FONT_CHAR_RANGE_LEN];
-} s_font_chars_arrangement_info;
+        s_static_array<int, g_font_char_range_len* g_font_char_range_len> kernings;
+    };
 
-typedef struct {
-    int line_height;
-    s_font_chars_arrangement_info chars;
-} s_font_arrangement_info;
+    struct s_font_arrangement_info {
+        int line_height;
+        s_font_chars_arrangement_info chars;
+    };
 
-typedef struct {
-    int channel_cnt;
-    long long sample_cnt_per_channel;
-    int sample_rate;
-} s_audio_info;
-
-#endif
+    struct s_audio_info {
+        int channel_cnt;
+        long long sample_cnt_per_channel;
+        int sample_rate;
+    };
+}

@@ -1,9 +1,8 @@
-#ifndef ZF4_RAND_H
-#define ZF4_RAND_H
+#pragma once
 
-void InitRNG(void);
-int RandInt(const int min, const int max);
-float RandFloat(const float min, const float max);
-float RandPerc(void);
-
-#endif
+namespace zf4 {
+    void InitRNG(void);
+    int RandInt(const int min, const int max);
+    float RandFloat(const float min, const float max);
+    float RandPerc(void);
+}

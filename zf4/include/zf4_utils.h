@@ -1,3 +1,5 @@
-#include <assert.h>
+#pragma once
 
-#define GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)
+#include <cassert>
+
+#define ZF4_GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)

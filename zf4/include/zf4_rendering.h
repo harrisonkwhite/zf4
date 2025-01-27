@@ -1,170 +1,148 @@
-#ifndef ZF4_RENDERING_H
-#define ZF4_RENDERING_H
+#pragma once
 
 #include <zf4c.h>
 #include <zf4_assets.h>
 
-#define COLOR_WHITE V4(1.0f, 1.0f, 1.0f, 1.0f)
-#define COLOR_BLACK V4(0.0f, 0.0f, 0.0f, 1.0f)
-#define COLOR_RED V4(1.0f, 0.0f, 0.0f, 1.0f)
-#define COLOR_GREEN V4(0.0f, 1.0f, 0.0f, 1.0f)
-#define COLOR_BLUE V4(0.0f, 0.0f, 1.0f, 1.0f)
-#define COLOR_YELLOW V4(1.0f, 1.0f, 0.0f, 1.0f)
-#define COLOR_CYAN V4(0.0f, 1.0f, 1.0f, 1.0f)
-#define COLOR_MAGENTA V4(1.0f, 0.0f, 1.0f, 1.0f)
-#define COLOR_TRANSPARENT_WHITE V4(1.0f, 1.0f, 1.0f, 0.0f)
-#define COLOR_TRANSPARENT_BLACK V4(0.0f, 0.0f, 0.0f, 0.0f)
+namespace zf4 {
+    constexpr int g_render_surface_limit = 128;
 
-#define RENDER_SURFACE_LIMIT 128
+    constexpr int g_texture_batch_slot_vert_cnt = (g_textured_quad_shader_prog_cnt * 4);
+    constexpr int g_texture_batch_slot_verts_size = (sizeof(float) * g_texture_batch_slot_vert_cnt);
+    constexpr int g_texture_batch_slot_indices_cnt = 6;
+    constexpr int g_texture_batch_slot_limit = 2048;
 
-#define TEXTURE_BATCH_SLOT_VERT_CNT (TEXTURED_QUAD_SHADER_PROG_VERT_CNT * 4)
-#define TEXTURE_BATCH_SLOT_VERTS_SIZE (sizeof(float) * TEXTURE_BATCH_SLOT_VERT_CNT)
-#define TEXTURE_BATCH_SLOT_INDICES_CNT 6
-#define TEXTURE_BATCH_SLOT_LIMIT 2048
+    constexpr int g_str_draw_len_limit = 256;
 
-#define STR_DRAW_LEN_LIMIT 256 // NOTE: A bit arbitrary, could remove.
+    enum e_str_hor_align {
+        ek_str_hor_align_left,
+        ek_str_hor_align_center,
+        ek_str_hor_align_right
+    };
 
-enum str_hor_align {
-    ek_str_hor_align_left,
-    ek_str_hor_align_center,
-    ek_str_hor_align_right
-};
+    enum e_str_ver_align {
+        ek_str_ver_align_top,
+        ek_str_ver_align_center,
+        ek_str_ver_align_bottom
+    };
 
-enum str_ver_align {
-    ek_str_ver_align_top,
-    ek_str_ver_align_center,
-    ek_str_ver_align_bottom
-};
+    enum e_shader_uniform_val_type {
+        ek_shader_uniform_val_type_int,
+        ek_shader_uniform_val_type_float,
+        ek_shader_uniform_val_type_v2,
+        ek_shader_uniform_val_type_v3,
+        ek_shader_uniform_val_type_v4,
+        ek_shader_uniform_val_type_mat4x4,
 
-enum shader_uniform_val_type {
-    ek_shader_uniform_val_type_int,
-    ek_shader_uniform_val_type_float,
-    ek_shader_uniform_val_type_v2,
-    ek_shader_uniform_val_type_v3,
-    ek_shader_uniform_val_type_v4,
-    ek_shader_uniform_val_type_mat4x4,
+        eks_shader_uniform_val_type_cnt
+    };
 
-    eks_shader_uniform_val_type_cnt
-};
+    union u_shader_uniform_val {
+        int i;
+        float f;
+        s_vec_2d v2;
+        s_vec_3d v3;
+        s_vec_4d v4;
+        s_matrix_4x4 mat4x4;
+    };
 
-typedef union {
-    int i;
-    float f;
-    s_vec_2d v2;
-    s_vec_3d v3;
-    s_vec_4d v4;
-    s_matrix_4x4 mat4x4;
-} u_shader_uniform_val;
+    struct s_str_draw_info {
+        int char_cnt;
+        s_vec_2d_i char_draw_positions[g_str_draw_len_limit];
 
-typedef struct {
-    int char_cnt;
-    s_vec_2d_i char_draw_positions[STR_DRAW_LEN_LIMIT];
+        int line_cnt;
+        int line_widths[g_str_draw_len_limit + 1]; // Maximised for the case where all characters are newlines.
 
-    int line_cnt;
-    int line_widths[STR_DRAW_LEN_LIMIT + 1]; // Maximised for the case where all characters are newlines.
+        int height;
+    };
 
-    int height;
-} s_str_draw_info;
+    struct s_textured_quad_shader_prog {
+        GLuint gl_id;
+        int proj_uniform_loc;
+        int view_uniform_loc;
+        int textures_uniform_loc;
+    };
 
-typedef struct {
-    GLuint gl_id;
-    int proj_uniform_loc;
-    int view_uniform_loc;
-    int textures_uniform_loc;
-} s_textured_quad_shader_prog;
+    struct s_render_surfaces {
+        s_static_array<GLuint, g_render_surface_limit> framebuffer_gl_ids;
+        s_static_array<GLuint, g_render_surface_limit> framebuffer_tex_gl_ids;
 
-typedef struct {
-    GLuint framebuffer_gl_ids[RENDER_SURFACE_LIMIT];
-    GLuint framebuffer_tex_gl_ids[RENDER_SURFACE_LIMIT];
-    int cnt;
-} s_render_surfaces;
+        int cnt;
+    };
 
-typedef struct {
-    s_textured_quad_shader_prog textured_quad_shader_prog;
+    struct s_renderer {
+        s_textured_quad_shader_prog textured_quad_shader_prog;
 
-    s_render_surfaces surfs;
-    GLuint surf_vert_array_gl_id;
-    GLuint surf_vert_buf_gl_id;
-    GLuint surf_elem_buf_gl_id;
+        s_render_surfaces surfs;
+        GLuint surf_vert_array_gl_id;
+        GLuint surf_vert_buf_gl_id;
+        GLuint surf_elem_buf_gl_id;
 
-    GLuint tex_batch_vert_array_gl_id;
-    GLuint tex_batch_vert_buf_gl_id;
-    GLuint tex_batch_elem_buf_gl_id;
-} s_renderer;
+        GLuint tex_batch_vert_array_gl_id;
+        GLuint tex_batch_vert_buf_gl_id;
+        GLuint tex_batch_elem_buf_gl_id;
+    };
 
-typedef struct {
-    GLuint surf_shader_prog_gl_id; // When we draw a surface, it will use this shader program.
+    struct s_draw_phase_state {
+        GLuint surf_shader_prog_gl_id; // When we draw a surface, it will use this shader program.
 
-    int surf_index_stack[RENDER_SURFACE_LIMIT];
-    int surf_index_stack_height;
+        s_static_array<int, g_render_surface_limit> surf_index_stack;
+        int surf_index_stack_height;
 
-    float tex_batch_slot_verts[TEXTURE_BATCH_SLOT_LIMIT][TEXTURE_BATCH_SLOT_VERT_CNT];
-    int tex_batch_slots_used_cnt;
-    GLuint tex_batch_tex_gl_id; // NOTE: In the future we will support multiple texture units. This is just for simplicity right now.
+        s_static_array<s_static_array<float, g_texture_batch_slot_vert_cnt>, g_texture_batch_slot_limit> tex_batch_slot_verts;
+        int tex_batch_slots_used_cnt;
+        GLuint tex_batch_tex_gl_id; // NOTE: In the future we will support multiple texture units. This is just for simplicity right now.
 
-    s_matrix_4x4 proj_mat;
-    s_matrix_4x4 view_mat;
+        s_matrix_4x4 proj_mat;
+        s_matrix_4x4 view_mat;
 
-    const s_assets* assets;
-} s_draw_phase_state;
+        const s_assets* assets;
+    };
 
-s_renderer* LoadRenderer(s_mem_arena* const mem_arena, s_mem_arena* const scratch_space);
-void CleanRenderer(s_renderer* const renderer);
+    s_renderer* LoadRenderer(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
+    void CleanRenderer(s_renderer& renderer);
 
-bool InitRenderSurfaces(const int cnt, s_render_surfaces* const surfs, const s_vec_2d_i window_size);
-void CleanRenderSurfaces(s_render_surfaces* const surfs);
-bool ResizeRenderSurfaces(s_render_surfaces* const surfs, const s_vec_2d_i window_size);
+    bool InitRenderSurfaces(const int cnt, s_render_surfaces& surfs, const s_vec_2d_i window_size);
+    void CleanRenderSurfaces(s_render_surfaces& surfs);
+    bool ResizeRenderSurfaces(s_render_surfaces& surfs, const s_vec_2d_i window_size);
 
-s_draw_phase_state* BeginDrawPhase(s_mem_arena* const mem_arena, const s_vec_2d_i window_size, const s_assets* const assets);
-void RenderClear(const s_vec_4d col);
-void SetRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void UnsetRenderSurface(s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state* const draw_phase_state);
-void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const enum shader_uniform_val_type val_type, s_draw_phase_state* const draw_phase_state);
-void DrawRenderSurface(const int surf_index, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const enum str_hor_align hor_align, const enum str_ver_align ver_align, s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
-void FlushTextureBatch(s_draw_phase_state* const draw_phase_state, const s_renderer* const renderer);
+    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size, const s_assets& assets);
+    void RenderClear(const s_vec_4d col = {});
+    void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state& draw_phase_state);
+    void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
+    void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
 
-inline bool IsColorValid(const s_vec_4d* const col) {
-    return col->x >= 0.0f && col->x <= 1.0f
-        && col->y >= 0.0f && col->y <= 1.0f
-        && col->z >= 0.0f && col->z <= 1.0f
-        && col->w >= 0.0f && col->w <= 1.0f;
+    inline void SetRenderSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.i = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_int, draw_phase_state);
+    }
+
+    inline void SetRenderSurfaceShaderProgUniformFloat(const char* const uni_name, const float val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.f = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_float, draw_phase_state);
+    }
+
+    inline void SetRenderSurfaceShaderProgUniformVec2D(const char* const uni_name, const s_vec_2d val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.v2 = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v2, draw_phase_state);
+    }
+
+    inline void SetRenderSurfaceShaderProgUniformVec3D(const char* const uni_name, const s_vec_3d val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.v3 = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v3, draw_phase_state);
+    }
+
+    inline void SetRenderSurfaceShaderProgUniformVec4D(const char* const uni_name, const s_vec_4d val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.v4 = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v4, draw_phase_state);
+    }
+
+    inline void SetRenderSurfaceShaderProgUniformMat4x4(const char* const uni_name, const s_matrix_4x4 val, s_draw_phase_state& draw_phase_state) {
+        const u_shader_uniform_val uni_val = {.mat4x4 = val};
+        SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_mat4x4, draw_phase_state);
+    }
 }
-
-inline bool IsSrcRectValid(const s_rect_i* const src_rect, const s_vec_2d_i tex_size) {
-    return src_rect->x >= 0 && src_rect->y >= 0 && src_rect->width > 0 && src_rect->height > 0 && src_rect->x + src_rect->width <= tex_size.x && src_rect->y + src_rect->height <= tex_size.y;
-}
-
-inline void SetRenderSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.i = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_int, draw_phase_state);
-}
-
-inline void SetRenderSurfaceShaderProgUniformFloat(const char* const uni_name, const float val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.f = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_float, draw_phase_state);
-}
-
-inline void SetRenderSurfaceShaderProgUniformVec2D(const char* const uni_name, const s_vec_2d val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.v2 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v2, draw_phase_state);
-}
-
-inline void SetRenderSurfaceShaderProgUniformVec3D(const char* const uni_name, const s_vec_3d val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.v3 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v3, draw_phase_state);
-}
-
-inline void SetRenderSurfaceShaderProgUniformVec4D(const char* const uni_name, const s_vec_4d val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.v4 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_v4, draw_phase_state);
-}
-
-inline void SetRenderSurfaceShaderProgUniformMat4x4(const char* const uni_name, const s_matrix_4x4 val, s_draw_phase_state* const draw_phase_state) {
-    const u_shader_uniform_val uni_val = {.mat4x4 = val};
-    SetRenderSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_mat4x4, draw_phase_state);
-}
-
-#endif

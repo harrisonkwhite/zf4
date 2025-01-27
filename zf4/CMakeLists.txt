@@ -10,11 +10,11 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
-    src/zf4_game.c
-    src/zf4_window.c
-    src/zf4_assets.c
-    src/zf4_rendering.c
-    src/zf4_rand.c
+    src/zf4_game.cpp
+    src/zf4_window.cpp
+    src/zf4_assets.cpp
+    src/zf4_rendering.cpp
+    src/zf4_rand.cpp
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
     include/zf4.h
