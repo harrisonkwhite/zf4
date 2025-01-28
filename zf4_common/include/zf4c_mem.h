@@ -17,11 +17,13 @@ namespace zf4 {
         int len;
 
         tp_type& operator[](const int index) {
+            assert(elems_raw);
             assert(index >= 0 && index < len);
             return elems_raw[index];
         }
 
         tp_type& operator[](const int index) const {
+            assert(elems_raw);
             assert(index >= 0 && index < len);
             return elems_raw[index];
         }
