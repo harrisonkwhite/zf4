@@ -391,4 +391,24 @@ namespace zf4 {
     constexpr s_vec_2d Lerp(const s_vec_2d a, const s_vec_2d b, const float t) {
         return {Lerp(a.x, b.x, t), Lerp(a.y, b.y, t)};
     }
+
+    constexpr int Clamp(const int val, const int min, const int max) {
+        if (val < min) {
+            return min;
+        } else if (val > max) {
+            return max;
+        } else {
+            return val;
+        }
+    }
+
+    constexpr float Clamp(const float val, const float min, const float max) {
+        if (val < min) {
+            return min;
+        } else if (val > max) {
+            return max;
+        } else {
+            return val;
+        }
+    }
 }

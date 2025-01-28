@@ -30,7 +30,7 @@ namespace zf4 {
     template<c_simple_type tp_type, int tp_len>
     struct s_static_array {
         static constexpr int len = tp_len;
-        
+
         tp_type elems_raw[tp_len];
 
         tp_type& operator[](const int index) {
@@ -47,7 +47,7 @@ namespace zf4 {
     template<c_simple_type tp_type, int tp_cap>
     struct s_static_list {
         static constexpr int cap = tp_cap;
-        
+
         tp_type elems_raw[tp_cap];
         int len;
 
