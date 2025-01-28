@@ -127,7 +127,7 @@ void main() {
                     first_line_min_ver_offs = font_arrangement_info->chars.ver_offsets[char_index];
                     first_line_min_ver_offs_defined = true;
                 } else {
-                    first_line_min_ver_offs = ZF4_MIN(font_arrangement_info->chars.ver_offsets[char_index], first_line_min_ver_offs);
+                    first_line_min_ver_offs = Min(font_arrangement_info->chars.ver_offsets[char_index], first_line_min_ver_offs);
                 }
             }
 
@@ -138,7 +138,7 @@ void main() {
                 last_line_max_height = height;
                 last_line_max_height_updated = true;
             } else {
-                last_line_max_height_updated = ZF4_MAX(height, last_line_max_height);
+                last_line_max_height_updated = Max(height, last_line_max_height);
             }
         }
 

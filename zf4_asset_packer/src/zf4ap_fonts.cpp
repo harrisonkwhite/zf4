@@ -1,5 +1,7 @@
 #include "zf4ap.h"
 
+#include <algorithm>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -34,7 +36,7 @@ namespace zf4 {
         const int ideal_tex_width = largest_glyph_bitmap_width * g_font_char_range_len;
 
         const s_vec_2d_i size = {
-            .x = ZF4_MIN(ideal_tex_width, g_texture_size_limit.x),
+            .x = std::min(ideal_tex_width, g_texture_size_limit.x),
             .y = GetLineHeight(ft_face) * ((ideal_tex_width / g_texture_size_limit.x) + 1)
         };
 

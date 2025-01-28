@@ -4,9 +4,6 @@
 #include <cassert>
 #include <zf4c_mem.h>
 
-#define ZF4_MIN(A, B) ((A) < (B) ? (A) : (B))
-#define ZF4_MAX(A, B) ((A) > (B) ? (A) : (B))
-
 namespace zf4 {
     constexpr float g_pi = 3.14159265359f;
 
@@ -14,29 +11,29 @@ namespace zf4 {
         float x;
         float y;
 
-        s_vec_2d operator+(const s_vec_2d& other) const {
+        constexpr s_vec_2d operator+(const s_vec_2d other) const {
             return {x + other.x, y + other.y};
         }
 
-        s_vec_2d operator-(const s_vec_2d& other) const {
+        constexpr s_vec_2d operator-(const s_vec_2d other) const {
             return {x - other.x, y - other.y};
         }
 
-        s_vec_2d operator*(const float scalar) const {
+        constexpr s_vec_2d operator*(const float scalar) const {
             return {x * scalar, y * scalar};
         }
 
-        s_vec_2d operator/(const float scalar) const {
+        constexpr s_vec_2d operator/(const float scalar) const {
             return {x / scalar, y / scalar};
         }
 
-        s_vec_2d& operator+=(const s_vec_2d& other) {
+        s_vec_2d& operator+=(const s_vec_2d other) {
             x += other.x;
             y += other.y;
             return *this;
         }
 
-        s_vec_2d& operator-=(const s_vec_2d& other) {
+        s_vec_2d& operator-=(const s_vec_2d other) {
             x -= other.x;
             y -= other.y;
             return *this;
@@ -54,11 +51,11 @@ namespace zf4 {
             return *this;
         }
 
-        bool operator==(const s_vec_2d& other) const {
+        constexpr bool operator==(const s_vec_2d other) const {
             return x == other.x && y == other.y;
         }
 
-        bool operator!=(const s_vec_2d& other) const {
+        constexpr bool operator!=(const s_vec_2d other) const {
             return x != other.x || y != other.y;
         }
     };
@@ -67,45 +64,45 @@ namespace zf4 {
         int x;
         int y;
 
-        s_vec_2d_i operator+(const s_vec_2d_i& other) const {
+        constexpr s_vec_2d_i operator+(const s_vec_2d_i other) const {
             return {x + other.x, y + other.y};
         }
 
-        s_vec_2d operator+(const s_vec_2d& other) const {
+        constexpr s_vec_2d operator+(const s_vec_2d other) const {
             return {x + other.x, y + other.y};
         }
 
-        s_vec_2d_i operator-(const s_vec_2d_i& other) const {
+        constexpr s_vec_2d_i operator-(const s_vec_2d_i other) const {
             return {x - other.x, y - other.y};
         }
 
-        s_vec_2d operator-(const s_vec_2d& other) const {
+        constexpr s_vec_2d operator-(const s_vec_2d other) const {
             return {x - other.x, y - other.y};
         }
 
-        s_vec_2d_i operator*(const int scalar) const {
+        constexpr s_vec_2d_i operator*(const int scalar) const {
             return {x * scalar, y * scalar};
         }
 
-        s_vec_2d operator*(const float scalar) const {
+        constexpr s_vec_2d operator*(const float scalar) const {
             return {x * scalar, y * scalar};
         }
 
-        s_vec_2d_i operator/(const int scalar) const {
+        constexpr s_vec_2d_i operator/(const int scalar) const {
             return {x / scalar, y / scalar};
         }
 
-        s_vec_2d operator/(const float scalar) const {
+        constexpr s_vec_2d operator/(const float scalar) const {
             return {x / scalar, y / scalar};
         }
 
-        s_vec_2d_i& operator+=(const s_vec_2d_i& other) {
+        s_vec_2d_i& operator+=(const s_vec_2d_i other) {
             x += other.x;
             y += other.y;
             return *this;
         }
 
-        s_vec_2d_i& operator-=(const s_vec_2d_i& other) {
+        s_vec_2d_i& operator-=(const s_vec_2d_i other) {
             x -= other.x;
             y -= other.y;
             return *this;
@@ -123,15 +120,15 @@ namespace zf4 {
             return *this;
         }
 
-        bool operator==(const s_vec_2d_i& other) const {
+        constexpr bool operator==(const s_vec_2d_i other) const {
             return x == other.x && y == other.y;
         }
 
-        bool operator!=(const s_vec_2d_i& other) const {
+        constexpr bool operator!=(const s_vec_2d_i other) const {
             return x != other.x || y != other.y;
         }
 
-        operator s_vec_2d() const {
+        constexpr operator s_vec_2d() const {
             return {static_cast<float>(x), static_cast<float>(y)};
         }
     };
@@ -141,30 +138,30 @@ namespace zf4 {
         float y;
         float z;
 
-        s_vec_3d operator+(const s_vec_3d& other) const {
+        constexpr s_vec_3d operator+(const s_vec_3d other) const {
             return {x + other.x, y + other.y, z + other.z};
         }
 
-        s_vec_3d operator-(const s_vec_3d& other) const {
+        constexpr s_vec_3d operator-(const s_vec_3d other) const {
             return {x - other.x, y - other.y, z - other.z};
         }
 
-        s_vec_3d operator*(const float scalar) const {
+        constexpr s_vec_3d operator*(const float scalar) const {
             return {x * scalar, y * scalar, z * scalar};
         }
 
-        s_vec_3d operator/(const float scalar) const {
+        constexpr s_vec_3d operator/(const float scalar) const {
             return {x / scalar, y / scalar, z / scalar};
         }
 
-        s_vec_3d& operator+=(const s_vec_3d& other) {
+        s_vec_3d& operator+=(const s_vec_3d other) {
             x += other.x;
             y += other.y;
             z += other.z;
             return *this;
         }
 
-        s_vec_3d& operator-=(const s_vec_3d& other) {
+        s_vec_3d& operator-=(const s_vec_3d other) {
             x -= other.x;
             y -= other.y;
             z -= other.z;
@@ -185,11 +182,11 @@ namespace zf4 {
             return *this;
         }
 
-        bool operator==(const s_vec_3d& other) const {
+        constexpr bool operator==(const s_vec_3d other) const {
             return x == other.x && y == other.y && z == other.z;
         }
 
-        bool operator!=(const s_vec_3d& other) const {
+        constexpr bool operator!=(const s_vec_3d other) const {
             return x != other.x || y != other.y || z != other.z;
         }
     };
@@ -200,23 +197,23 @@ namespace zf4 {
         float z;
         float w;
 
-        s_vec_4d operator+(const s_vec_4d& other) const {
+        constexpr s_vec_4d operator+(const s_vec_4d other) const {
             return {x + other.x, y + other.y, z + other.z, w + other.w};
         }
 
-        s_vec_4d operator-(const s_vec_4d& other) const {
+        constexpr s_vec_4d operator-(const s_vec_4d other) const {
             return {x - other.x, y - other.y, z - other.z, w - other.w};
         }
 
-        s_vec_4d operator*(const float scalar) const {
+        constexpr s_vec_4d operator*(const float scalar) const {
             return {x * scalar, y * scalar, z * scalar, w * scalar};
         }
 
-        s_vec_4d operator/(const float scalar) const {
+        constexpr s_vec_4d operator/(const float scalar) const {
             return {x / scalar, y / scalar, z / scalar, w / scalar};
         }
 
-        s_vec_4d& operator+=(const s_vec_4d& other) {
+        s_vec_4d& operator+=(const s_vec_4d other) {
             x += other.x;
             y += other.y;
             z += other.z;
@@ -224,7 +221,7 @@ namespace zf4 {
             return *this;
         }
 
-        s_vec_4d& operator-=(const s_vec_4d& other) {
+        s_vec_4d& operator-=(const s_vec_4d other) {
             x -= other.x;
             y -= other.y;
             z -= other.z;
@@ -248,11 +245,11 @@ namespace zf4 {
             return *this;
         }
 
-        bool operator==(const s_vec_4d& other) const {
+        constexpr bool operator==(const s_vec_4d other) const {
             return x == other.x && y == other.y && z == other.z && w == other.w;
         }
 
-        bool operator!=(const s_vec_4d& other) const {
+        constexpr bool operator!=(const s_vec_4d other) const {
             return x != other.x || y != other.y || z != other.z || w != other.w;
         }
     };
@@ -292,8 +289,24 @@ namespace zf4 {
     void InitIdentityMatrix4x4(s_matrix_4x4& mat);
     void InitOrthoMatrix4x4(s_matrix_4x4& mat, const float left, const float right, const float bottom, const float top, const float near, const float far);
 
+    constexpr int Min(const int a, const int b) {
+        return a < b ? a : b;
+    }
+
+    constexpr float Min(const float a, const float b) {
+        return a < b ? a : b;
+    }
+
+    constexpr int Max(const int a, const int b) {
+        return a > b ? a : b;
+    }
+
+    constexpr float Max(const float a, const float b) {
+        return a > b ? a : b;
+    }
+
     inline float Magnitude(const s_vec_2d vec) {
-        return sqrtf((vec.x * vec.x) + (vec.y * vec.y));
+        return std::sqrt((vec.x * vec.x) + (vec.y * vec.y));
     }
 
     inline s_vec_2d Normal(const s_vec_2d vec) {
@@ -307,75 +320,75 @@ namespace zf4 {
     }
 
     inline float Dir(const s_vec_2d a, const s_vec_2d b) {
-        return atan2f(-(b.y - a.y), b.x - a.x);
+        return std::atan2(-(b.y - a.y), b.x - a.x);
     }
 
     inline s_vec_2d Dir(const float dir) {
-        return {cosf(dir), -sinf(dir)};
+        return {std::cos(dir), -std::sin(dir)};
     }
 
     inline s_vec_2d LenDir(const float len, const float dir) {
-        return {len * cosf(dir), -len * sinf(dir)};
+        return {len * std::cos(dir), -len * std::sin(dir)};
     }
 
-    inline s_vec_2d RectPos(const s_rect rect) {
+    constexpr s_vec_2d RectPos(const s_rect rect) {
         return {rect.x, rect.y};
     }
 
-    inline s_vec_2d RectSize(const s_rect rect) {
+    constexpr s_vec_2d RectSize(const s_rect rect) {
         return {rect.width, rect.height};
     }
 
-    inline s_vec_2d RectCenter(const s_rect rect) {
+    constexpr s_vec_2d RectCenter(const s_rect rect) {
         return {
             rect.x + (rect.width / 2.0f),
             rect.y + (rect.height / 2.0f)
         };
     }
 
-    inline float RectRight(const s_rect rect) {
+    constexpr float RectRight(const s_rect rect) {
         return rect.x + rect.width;
     }
 
-    inline int RectRight(const s_rect_i rect) {
+    constexpr int RectRight(const s_rect_i rect) {
         return rect.x + rect.width;
     }
 
-    inline float RectBottom(const s_rect rect) {
+    constexpr float RectBottom(const s_rect rect) {
         return rect.y + rect.height;
     }
 
-    inline int RectBottom(const s_rect_i rect) {
+    constexpr int RectBottom(const s_rect_i rect) {
         return rect.y + rect.height;
     }
 
-    inline s_rect RectTranslated(const s_rect rect, const s_vec_2d trans) {
+    constexpr s_rect RectTranslated(const s_rect rect, const s_vec_2d trans) {
         return {rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
     }
 
-    inline s_rect_i RectTranslated(const s_rect_i rect, const s_vec_2d_i trans) {
+    constexpr s_rect_i RectTranslated(const s_rect_i rect, const s_vec_2d_i trans) {
         return {rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
     }
 
-    inline bool DoRectsIntersect(const s_rect a, const s_rect b) {
+    constexpr bool DoRectsIntersect(const s_rect a, const s_rect b) {
         return a.x < RectRight(b)
             && RectRight(a) > b.x
             && a.y < RectBottom(b)
             && RectBottom(a) > b.y;
     }
 
-    inline bool DoRectsIntersect(const s_rect_i a, const s_rect_i b) {
+    constexpr bool DoRectsIntersect(const s_rect_i a, const s_rect_i b) {
         return a.x < RectRight(b)
             && RectRight(a) > b.x
             && a.y < RectBottom(b)
             && RectBottom(a) > b.y;
     }
 
-    inline float Lerp(const float a, const float b, const float t) {
+    constexpr float Lerp(const float a, const float b, const float t) {
         return a + ((b - a) * t);
     }
 
-    inline s_vec_2d Lerp(const s_vec_2d a, const s_vec_2d b, const float t) {
+    constexpr s_vec_2d Lerp(const s_vec_2d a, const s_vec_2d b, const float t) {
         return {Lerp(a.x, b.x, t), Lerp(a.y, b.y, t)};
     }
 }
