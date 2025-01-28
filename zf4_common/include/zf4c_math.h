@@ -66,6 +66,74 @@ namespace zf4 {
     struct s_vec_2d_i {
         int x;
         int y;
+
+        s_vec_2d_i operator+(const s_vec_2d_i& other) const {
+            return {x + other.x, y + other.y};
+        }
+
+        s_vec_2d operator+(const s_vec_2d& other) const {
+            return {x + other.x, y + other.y};
+        }
+
+        s_vec_2d_i operator-(const s_vec_2d_i& other) const {
+            return {x - other.x, y - other.y};
+        }
+
+        s_vec_2d operator-(const s_vec_2d& other) const {
+            return {x - other.x, y - other.y};
+        }
+
+        s_vec_2d_i operator*(const int scalar) const {
+            return {x * scalar, y * scalar};
+        }
+
+        s_vec_2d operator*(const float scalar) const {
+            return {x * scalar, y * scalar};
+        }
+
+        s_vec_2d_i operator/(const int scalar) const {
+            return {x / scalar, y / scalar};
+        }
+
+        s_vec_2d operator/(const float scalar) const {
+            return {x / scalar, y / scalar};
+        }
+
+        s_vec_2d_i& operator+=(const s_vec_2d_i& other) {
+            x += other.x;
+            y += other.y;
+            return *this;
+        }
+
+        s_vec_2d_i& operator-=(const s_vec_2d_i& other) {
+            x -= other.x;
+            y -= other.y;
+            return *this;
+        }
+
+        s_vec_2d_i& operator*=(const int scalar) {
+            x *= scalar;
+            y *= scalar;
+            return *this;
+        }
+
+        s_vec_2d_i& operator/=(const int scalar) {
+            x /= scalar;
+            y /= scalar;
+            return *this;
+        }
+
+        bool operator==(const s_vec_2d_i& other) const {
+            return x == other.x && y == other.y;
+        }
+
+        bool operator!=(const s_vec_2d_i& other) const {
+            return x != other.x || y != other.y;
+        }
+
+        operator s_vec_2d() const {
+            return {static_cast<float>(x), static_cast<float>(y)};
+        }
     };
 
     struct s_vec_3d {
