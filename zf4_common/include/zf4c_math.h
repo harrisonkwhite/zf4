@@ -58,6 +58,10 @@ namespace zf4 {
         constexpr bool operator!=(const s_vec_2d other) const {
             return x != other.x || y != other.y;
         }
+
+        constexpr s_vec_2d operator-() const {
+            return {-x, -y};
+        }
     };
 
     struct s_vec_2d_i {
@@ -128,6 +132,10 @@ namespace zf4 {
             return x != other.x || y != other.y;
         }
 
+        constexpr s_vec_2d_i operator-() const {
+            return {-x, -y};
+        }
+
         constexpr operator s_vec_2d() const {
             return {static_cast<float>(x), static_cast<float>(y)};
         }
@@ -188,6 +196,10 @@ namespace zf4 {
 
         constexpr bool operator!=(const s_vec_3d other) const {
             return x != other.x || y != other.y || z != other.z;
+        }
+
+        constexpr s_vec_3d operator-() const {
+            return {-x, -y, -z};
         }
     };
 
@@ -251,6 +263,10 @@ namespace zf4 {
 
         constexpr bool operator!=(const s_vec_4d other) const {
             return x != other.x || y != other.y || z != other.z || w != other.w;
+        }
+
+        constexpr s_vec_4d operator-() const {
+            return {-x, -y, -z, -w};
         }
     };
 
