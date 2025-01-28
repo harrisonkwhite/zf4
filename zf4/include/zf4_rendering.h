@@ -13,6 +13,18 @@ namespace zf4 {
 
     constexpr int g_str_draw_len_limit = 256;
 
+    namespace colors {
+        constexpr s_vec_4d g_white = {1.0f, 1.0f, 1.0f, 1.0f};
+        constexpr s_vec_4d g_black = {0.0f, 0.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_gray = {0.5f, 0.5f, 0.5f, 1.0f};
+        constexpr s_vec_4d g_red = {1.0f, 0.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_green = {0.0f, 1.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_blue = {0.0f, 0.0f, 1.0f, 1.0f};
+        constexpr s_vec_4d g_yellow = {1.0f, 1.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_cyan = {0.0f, 1.0f, 1.0f, 1.0f};
+        constexpr s_vec_4d g_magenta = {1.0f, 0.0f, 1.0f, 1.0f};
+    }
+
     enum e_str_hor_align {
         ek_str_hor_align_left,
         ek_str_hor_align_center,
