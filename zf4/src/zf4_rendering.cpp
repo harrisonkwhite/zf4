@@ -428,8 +428,8 @@ void main() {
         const auto phase_state = PushType<s_draw_phase_state>(mem_arena);
 
         if (phase_state) {
-            InitOrthoMatrix4x4(phase_state->proj_mat, 0.0f, (float)window_size.x, (float)window_size.y, 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
-            InitIdentityMatrix4x4(phase_state->view_mat);
+            phase_state->proj_mat = GenOrthoMatrix4x4(0.0f, static_cast<float>(window_size.x), static_cast<float>(window_size.y), 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
+            phase_state->view_mat = GenIdentityMatrix4x4();
 
             phase_state->assets = &assets; // NOTE: Remove?
         }
