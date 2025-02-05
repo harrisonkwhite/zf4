@@ -321,6 +321,14 @@ namespace zf4 {
         return a > b ? a : b;
     }
 
+    constexpr int Sign(const int val) {
+        return val < 0 ? -1 : 1;
+    }
+
+    constexpr int Sign(const float val) {
+        return val < 0.0f ? -1 : 1;
+    }
+
     inline float Magnitude(const s_vec_2d vec) {
         return std::sqrt((vec.x * vec.x) + (vec.y * vec.y));
     }
