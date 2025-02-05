@@ -27,6 +27,13 @@ namespace zf4 {
             assert(index >= 0 && index < len);
             return elems_raw[index];
         }
+
+        operator s_array<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .len = len
+            };
+        }
     };
 
     template<c_simple_type tp_type, int tp_len>
@@ -43,6 +50,20 @@ namespace zf4 {
         const tp_type& operator[](const int index) const {
             assert(index >= 0 && index < tp_len);
             return elems_raw[index];
+        }
+
+        operator s_array<tp_type>() {
+            return {
+                .elems_raw = elems_raw,
+                .len = tp_len
+            };
+        }
+
+        operator s_array<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .len = tp_len
+            };
         }
     };
 
@@ -160,22 +181,6 @@ namespace zf4 {
     template<c_simple_type tp_type>
     inline int ArraySizeInBytes(const s_array<const tp_type> array) {
         return sizeof(tp_type) * array.len;
-    }
-
-    template<c_simple_type tp_type, int tp_len>
-    inline s_array<tp_type> StaticArrayToArray(s_static_array<tp_type, tp_len>& static_array) {
-        return {
-            .elems_raw = (tp_type*)static_array.elems_raw,
-            .len = tp_len
-        };
-    }
-
-    template<c_simple_type tp_type, int tp_len>
-    inline s_array<const tp_type> StaticArrayToArray(const s_static_array<tp_type, tp_len>& static_array) {
-        return {
-            .elems_raw = (const tp_type*)static_array.elems_raw,
-            .len = tp_len
-        };
     }
 
     inline void ActivateBit(const int bit_index, const s_array<a_byte> bytes, const int bit_cnt) {
