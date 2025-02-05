@@ -62,6 +62,18 @@ namespace zf4 {
         ek_key_code_escape,
         ek_key_code_enter,
         ek_key_code_tab,
+        ek_key_code_backspace,
+        ek_key_code_insert,
+        ek_key_code_delete,
+        ek_key_code_home,
+        ek_key_code_end,
+        ek_key_code_page_up,
+        ek_key_code_page_down,
+        ek_key_code_caps_lock,
+        ek_key_code_scroll_lock,
+        ek_key_code_num_lock,
+        ek_key_code_print_screen,
+        ek_key_code_pause,
 
         ek_key_code_right,
         ek_key_code_left,
@@ -84,6 +96,13 @@ namespace zf4 {
         ek_key_code_left_shift,
         ek_key_code_left_control,
         ek_key_code_left_alt,
+        ek_key_code_left_super,
+        ek_key_code_right_shift,
+        ek_key_code_right_control,
+        ek_key_code_right_alt,
+        ek_key_code_right_super,
+
+        ek_key_code_menu,
 
         eks_key_code_cnt
     };
