@@ -329,6 +329,14 @@ namespace zf4 {
         return val < 0.0f ? -1 : 1;
     }
 
+    constexpr float DegsToRads(const float degs) {
+        return degs * (g_pi / 180.0f);
+    }
+
+    constexpr float RadsToDegs(const float rads) {
+        return rads * (180.0f / g_pi);
+    }
+
     inline float Magnitude(const s_vec_2d vec) {
         return std::sqrt((vec.x * vec.x) + (vec.y * vec.y));
     }
