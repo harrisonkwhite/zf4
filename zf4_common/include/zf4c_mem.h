@@ -183,6 +183,12 @@ namespace zf4 {
         return sizeof(tp_type) * array.len;
     }
 
+    template<c_simple_type tp_type, int tp_len>
+    inline void Append(zf4::s_static_list<tp_type, tp_len>& list, const tp_type& elem) {
+        assert(list.len < tp_len);
+        list[list.len++] = elem;
+    }
+
     inline void ActivateBit(const int bit_index, const s_array<a_byte> bytes, const int bit_cnt) {
         assert(bit_index >= 0 && bit_index < bit_cnt);
         assert(bit_cnt > 0);
