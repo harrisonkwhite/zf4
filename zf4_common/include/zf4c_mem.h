@@ -7,7 +7,7 @@
 
 namespace zf4 {
     template<typename tp_type>
-    concept c_simple_type = std::is_trivial_v<tp_type> && std::is_standard_layout_v<tp_type>;
+    concept c_simple_type = std::is_trivial_v<tp_type>;
 
     typedef unsigned char a_byte;
 
