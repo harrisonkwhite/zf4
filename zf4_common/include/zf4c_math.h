@@ -402,6 +402,16 @@ namespace zf4 {
         return {rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
     }
 
+    constexpr bool IsPointInRect(const zf4::s_vec_2d pt, const s_rect rect) {
+        return pt.x >= rect.x && pt.x < RectRight(rect)
+            && pt.y >= rect.y && pt.y < RectBottom(rect);
+    }
+
+    constexpr bool IsPointInRect(const zf4::s_vec_2d_i pt, const s_rect_i rect) {
+        return pt.x >= rect.x && pt.x < RectRight(rect)
+            && pt.y >= rect.y && pt.y < RectBottom(rect);
+    }
+
     constexpr bool DoRectsIntersect(const s_rect a, const s_rect b) {
         return a.x < RectRight(b)
             && RectRight(a) > b.x
