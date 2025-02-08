@@ -12,7 +12,7 @@ namespace zf4 {
         s_mem_arena temp_mem_arena;
         s_window window;
         s_assets* assets;
-        s_renderer* renderer;
+        s_pers_render_data* pers_render_data;
         void* custom_data;
     };
 
@@ -59,11 +59,11 @@ namespace zf4 {
             return false;
         }
 
-        // Load the renderer.
-        game.renderer = LoadRenderer(game.perm_mem_arena, game.temp_mem_arena);
+        // Load persistent render data.
+        game.pers_render_data = LoadPersRenderData(game.perm_mem_arena, game.temp_mem_arena);
 
-        if (!game.renderer) {
-            LogError("Failed to load renderer!");
+        if (!game.pers_render_data) {
+            LogError("Failed to load persistent render data!");
             return false;
         }
 
@@ -86,7 +86,7 @@ namespace zf4 {
             .temp_mem_arena = game.temp_mem_arena,
             .window = game.window,
             .assets = *game.assets,
-            .renderer = *game.renderer,
+            .pers_render_data = *game.pers_render_data,
             .custom_data = game.custom_data
         };
 
@@ -120,8 +120,10 @@ namespace zf4 {
 
                 do {
                     // Execute a tick.
-                    if (!game_info.tick_func(game_ptrs, fps)) {
-                        return false;
+                    const e_game_tick_func_result tick_result = game_info.tick_func(game_ptrs, fps);
+
+                    if (tick_result != ek_game_tick_func_result_continue) {
+                        return tick_result == ek_game_tick_func_result_success_quit;
                     }
 
                     frame_dur_accum -= g_targ_tick_dur_secs;
@@ -155,7 +157,7 @@ namespace zf4 {
 
                 glViewport(0, 0, game.window.size_cache.x, game.window.size_cache.y);
 
-                if (!ResizeRenderSurfaces(game.renderer->surfs, game.window.size_cache)) {
+                if (!ResizeRenderSurfaces(game.pers_render_data->surfs, game.window.size_cache)) {
                     return false;
                 }
             }
@@ -164,7 +166,7 @@ namespace zf4 {
         return true;
     }
 
-    bool RunGame(const ta_game_info_loader info_loader) {
+    bool RunGame(const a_game_info_loader info_loader) {
         //
         // Loading Game Information
         //
@@ -177,7 +179,7 @@ namespace zf4 {
         };
 
         // Run the user-defined function which should overwrite some of the defaults.
-        info_loader(&info);
+        info_loader(info);
 
         // Check that the fields are set correctly.
         assert(info.init_func);
@@ -200,8 +202,8 @@ namespace zf4 {
         //
         // Cleanup
         //
-        if (game.renderer) {
-            CleanRenderer(*game.renderer);
+        if (game.pers_render_data) {
+            CleanPersRenderData(*game.pers_render_data);
         }
 
         if (game.assets) {

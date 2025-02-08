@@ -47,7 +47,7 @@ namespace zf4 {
                 const int tex_px_data_size = TexturePixelDataSize(textures.sizes[i]);
                 fread(px_data.elems_raw, tex_px_data_size, 1, fs);
 
-                SetUpGLTexture(textures.gl_ids[i], textures.sizes[i], CreateView(px_data));
+                SetUpGLTexture(textures.gl_ids[i], textures.sizes[i], px_data);
             }
         }
 
@@ -82,7 +82,7 @@ namespace zf4 {
                 fread(&fonts.arrangement_infos[i], sizeof(fonts.arrangement_infos[i]), 1, fs);
                 fread(&fonts.tex_sizes[i], sizeof(fonts.tex_sizes[i]), 1, fs);
                 fread(px_data.elems_raw, g_texture_px_data_size_limit, 1, fs);
-                SetUpGLTexture(fonts.tex_gl_ids[i], fonts.tex_sizes[i], CreateView(px_data));
+                SetUpGLTexture(fonts.tex_gl_ids[i], fonts.tex_sizes[i], px_data);
             }
         }
 

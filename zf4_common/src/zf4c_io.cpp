@@ -8,8 +8,8 @@ namespace zf4 {
     void Log(const char* const format, ...) {
         va_list args;
         va_start(args, format);
-        vprintf(format, args);
-        printf("\n");
+        std::vprintf(format, args);
+        std::printf("\n");
         va_end(args);
     }
 
@@ -17,43 +17,43 @@ namespace zf4 {
         va_list args;
         va_start(args, format);
 
-        fprintf(stderr, "ERROR: ");
-        vfprintf(stderr, format, args);
-        fprintf(stderr, "\n");
+        std::fprintf(stderr, "ERROR: ");
+        std::vfprintf(stderr, format, args);
+        std::fprintf(stderr, "\n");
 
         va_end(args);
     }
 
-    char* GetFileContents(const char* const filename, int* const len) {
+    char* GetFileContentsStr(const char* const filename, int* const len) {
         assert(filename);
 
         // Open the file.
-        FILE* const fs = fopen(filename, "rb");
+        FILE* const fs = std::fopen(filename, "rb");
 
         if (!fs) {
             return nullptr;
         }
 
         // Get the file size.
-        fseek(fs, 0, SEEK_END);
-        const long file_size = ftell(fs);
-        fseek(fs, 0, SEEK_SET);
+        std::fseek(fs, 0, SEEK_END);
+        const long file_size = std::ftell(fs);
+        std::fseek(fs, 0, SEEK_SET);
 
         // Allocate memory to store the file contents.
         const int contents_len = file_size;
         const int contents_size = contents_len + 1; // Account for the '\0'.
-        const auto contents = (char*)calloc(contents_size, 1);
+        const auto contents = static_cast<char*>(std::calloc(contents_size, 1));
 
         if (!contents) {
-            fclose(fs);
+            std::fclose(fs);
             return nullptr;
         }
 
         // Read the contents into the buffer.
-        fread(contents, 1, contents_size, fs);
+        std::fread(contents, 1, contents_size, fs);
         contents[contents_size - 1] = '\0';
 
-        fclose(fs);
+        std::fclose(fs);
 
         // Update the length variable if provided.
         if (len) {

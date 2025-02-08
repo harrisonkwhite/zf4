@@ -126,7 +126,7 @@ namespace zf4 {
     struct s_window {
         GLFWwindow* glfw_window;
 
-        s_vec_2d_i size_cache; // glfwGetWindowSize() is a bit expensive for some reason, so we cache this.
+        s_vec_2d_i size_cache; // glfwGetWindowSize() is a bit expensive for some reason, so we cache this on resize.
 
         s_input_state input_state;
         s_input_state input_state_saved;

@@ -23,7 +23,7 @@ namespace zf4 {
 
                 // Load and write out shader source.
                 int shader_src_len;
-                char* const shader_src = GetFileContents(src_asset_file_path_buf, &shader_src_len);
+                char* const shader_src = GetFileContentsStr(src_asset_file_path_buf, &shader_src_len);
 
                 if (!shader_src) {
                     LogError("Failed to load contents of shader file with path \"%s\"!", src_asset_file_path_buf);

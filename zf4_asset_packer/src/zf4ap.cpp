@@ -48,7 +48,7 @@ namespace zf4 {
         }
 
         // Get its contents (dynamically allocated).
-        char* const contents = GetFileContents(src_asset_file_path_buf, nullptr);
+        char* const contents = GetFileContentsStr(src_asset_file_path_buf, nullptr);
 
         if (!contents) {
             LogError("Failed to get packing instructions file contents!", src_asset_file_path_buf);

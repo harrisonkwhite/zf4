@@ -7,11 +7,11 @@
 
 namespace zf4 {
     template<typename tp_type>
-    concept c_simple_type = std::is_trivial_v<tp_type>;
+    concept c_trivial_type = std::is_trivial_v<tp_type>;
 
     typedef unsigned char a_byte;
 
-    template<c_simple_type tp_type>
+    template<c_trivial_type tp_type>
     struct s_array {
         tp_type* elems_raw;
         int len;
@@ -36,10 +36,8 @@ namespace zf4 {
         }
     };
 
-    template<c_simple_type tp_type, int tp_len>
+    template<c_trivial_type tp_type, int tp_len>
     struct s_static_array {
-        static constexpr int len = tp_len;
-
         tp_type elems_raw[tp_len];
 
         tp_type& operator[](const int index) {
@@ -67,10 +65,8 @@ namespace zf4 {
         }
     };
 
-    template<c_simple_type tp_type, int tp_cap>
+    template<c_trivial_type tp_type, int tp_cap>
     struct s_static_list {
-        static constexpr int cap = tp_cap;
-
         tp_type elems_raw[tp_cap];
         int len;
 
@@ -81,6 +77,26 @@ namespace zf4 {
 
         const tp_type& operator[](const int index) const {
             assert(index >= 0 && index < len);
+            return elems_raw[index];
+        }
+    };
+
+    constexpr int BitsToBytes(const int bits);
+
+    template<c_trivial_type tp_type, int tp_len>
+    struct s_static_activity_array {
+        tp_type elems_raw[tp_len];
+        s_static_array<a_byte, BitsToBytes(tp_len)> activity;
+
+        tp_type& operator[](const int index) {
+            assert(index >= 0 && index < tp_len);
+            assert(IsBitActive(index, activity, tp_len));
+            return elems_raw[index];
+        }
+
+        const tp_type& operator[](const int index) const {
+            assert(index >= 0 && index < tp_len);
+            assert(IsBitActive(index, activity, tp_len));
             return elems_raw[index];
         }
     };
@@ -139,23 +155,13 @@ namespace zf4 {
         return (n + alignment - 1) & ~(alignment - 1);
     }
 
-    template<c_simple_type tp_type>
+    template<c_trivial_type tp_type>
     inline void ZeroOutStruct(tp_type& st) {
         static_assert(std::is_class_v<tp_type>);
-        memset(&st, 0, sizeof(st));
+        std::memset(&st, 0, sizeof(st));
     }
 
-    template<c_simple_type tp_type>
-    inline void ZeroOutArrayElems(const s_array<tp_type> array) {
-        memset(array.elems_raw, 0, sizeof(tp_type) * array.len);
-    }
-
-    template<c_simple_type tp_type, int tp_len>
-    inline void ZeroOutArrayElems(s_static_array<tp_type, tp_len>& array) {
-        memset(array.elems_raw, 0, sizeof(tp_type) * tp_len);
-    }
-
-    template<c_simple_type tp_type>
+    template<c_trivial_type tp_type>
     bool IsStructZero(const tp_type& st) {
         static_assert(std::is_class_v<tp_type>);
 
@@ -170,23 +176,55 @@ namespace zf4 {
         return true;
     }
 
-    template<c_simple_type tp_type>
-    inline s_array<const tp_type> CreateView(const s_array<tp_type> array) {
-        return {
-            .elems_raw = array.elems_raw,
-            .len = array.len
-        };
+    template<c_trivial_type tp_type>
+    inline int ArraySizeInBytes(const s_array<tp_type> array) {
+        return array.len * sizeof(tp_type);
     }
 
-    template<c_simple_type tp_type>
-    inline int ArraySizeInBytes(const s_array<const tp_type> array) {
-        return sizeof(tp_type) * array.len;
-    }
-
-    template<c_simple_type tp_type, int tp_len>
-    inline void Append(zf4::s_static_list<tp_type, tp_len>& list, const tp_type& elem) {
-        assert(list.len < tp_len);
+    template<c_trivial_type tp_type, int tp_cap>
+    inline void ListAppend(s_static_list<tp_type, tp_cap>& list, const tp_type& elem) {
+        assert(list.len < tp_cap);
         list[list.len++] = elem;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline void ListPop(s_static_list<tp_type, tp_cap>& list) {
+        assert(list.len > 0);
+        --list.len;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline tp_type& ListEnd(s_static_list<tp_type, tp_cap>& list) {
+        assert(list.len > 0);
+        return list[list.len - 1];
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline bool IsListEmpty(const s_static_list<tp_type, tp_cap>& list) {
+        return list.len == 0;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline bool IsListFull(const s_static_list<tp_type, tp_cap>& list) {
+        return list.len == tp_cap;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline void ActivateElem(const int index, s_static_activity_array<tp_type, tp_cap>& array) {
+        assert(index >= 0 && index < tp_cap);
+        ActivateBit(index, array.activity, tp_cap);
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline void DeactivateElem(const int index, s_static_activity_array<tp_type, tp_cap>& array) {
+        assert(index >= 0 && index < tp_cap);
+        DeactivateBit(index, array.activity, tp_cap);
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline bool IsElemActive(const int index, const s_static_activity_array<tp_type, tp_cap>& array) {
+        assert(index >= 0 && index < tp_cap);
+        return IsBitActive(index, array.activity, tp_cap);
     }
 
     inline void ActivateBit(const int bit_index, const s_array<a_byte> bytes, const int bit_cnt) {
@@ -210,12 +248,12 @@ namespace zf4 {
         return bytes[bit_index / 8] & (1 << (bit_index % 8));
     }
 
-    template<c_simple_type tp_type>
+    template<c_trivial_type tp_type>
     inline tp_type* PushType(s_mem_arena& arena) {
         return static_cast<tp_type*>(Push(sizeof(tp_type), alignof(tp_type), arena));
     }
 
-    template<c_simple_type tp_type>
+    template<c_trivial_type tp_type>
     s_array<tp_type> PushArray(const int len, s_mem_arena& arena) {
         s_array array = {
             .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena))

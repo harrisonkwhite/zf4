@@ -81,7 +81,7 @@ namespace zf4 {
         int cnt;
     };
 
-    struct s_renderer {
+    struct s_pers_render_data {
         s_textured_quad_shader_prog textured_quad_shader_prog;
 
         s_render_surfaces surfs;
@@ -97,8 +97,7 @@ namespace zf4 {
     struct s_draw_phase_state {
         GLuint surf_shader_prog_gl_id; // When we draw a surface, it will use this shader program.
 
-        s_static_array<int, g_render_surface_limit> surf_index_stack;
-        int surf_index_stack_height;
+        s_static_list<int, g_render_surface_limit> surf_index_stack;
 
         s_static_array<s_static_array<float, g_texture_batch_slot_vert_cnt>, g_texture_batch_slot_limit> tex_batch_slot_verts;
         int tex_batch_slots_used_cnt;
@@ -110,8 +109,8 @@ namespace zf4 {
         const s_assets* assets;
     };
 
-    s_renderer* LoadRenderer(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
-    void CleanRenderer(s_renderer& renderer);
+    s_pers_render_data* LoadPersRenderData(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
+    void CleanPersRenderData(s_pers_render_data& pers_render_data);
 
     bool InitRenderSurfaces(const int cnt, s_render_surfaces& surfs, const s_vec_2d_i window_size);
     void CleanRenderSurfaces(s_render_surfaces& surfs);
@@ -119,14 +118,16 @@ namespace zf4 {
 
     s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size, const s_assets& assets);
     void RenderClear(const s_vec_4d col = {});
-    void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
-    void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
     void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state& draw_phase_state);
     void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
-    void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
-    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_renderer& renderer, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
-    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
-    void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_renderer& renderer);
+    void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
+    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+
+    s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts);
 
     inline void SetRenderSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state& draw_phase_state) {
         const u_shader_uniform_val uni_val = {.i = val};

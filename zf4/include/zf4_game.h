@@ -14,12 +14,18 @@ namespace zf4 {
         s_mem_arena& temp_mem_arena;
         const s_window& window;
         const s_assets& assets;
-        s_renderer& renderer;
+        s_pers_render_data& pers_render_data;
         void* custom_data;
     };
 
+    enum e_game_tick_func_result {
+        ek_game_tick_func_result_continue,
+        ek_game_tick_func_result_success_quit,
+        ek_game_tick_func_result_error_quit
+    };
+
     typedef bool (*ta_game_init_func)(const s_game_ptrs& const game_ptrs);
-    typedef bool (*ta_game_tick_func)(const s_game_ptrs& const game_ptrs, const double fps);
+    typedef e_game_tick_func_result (*ta_game_tick_func)(const s_game_ptrs& const game_ptrs, const double fps);
     typedef bool (*ta_game_draw_func)(s_draw_phase_state& const draw_phase_state, const s_game_ptrs& const game_ptrs, const double fps);
 
     // TODO: Figure out how to do a cleanup user function.
@@ -40,7 +46,7 @@ namespace zf4 {
         int custom_data_alignment;
     };
 
-    typedef void (*ta_game_info_loader)(s_game_info* const info);
+    using a_game_info_loader = void (*)(s_game_info& info);
 
-    bool RunGame(const ta_game_info_loader info_loader);
+    bool RunGame(const a_game_info_loader info_loader);
 }

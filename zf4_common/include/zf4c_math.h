@@ -351,11 +351,15 @@ namespace zf4 {
         return Magnitude(b - a);
     }
 
+    inline float Dir(const s_vec_2d vec) {
+        return std::atan2(-vec.y, vec.x);
+    }
+
     inline float Dir(const s_vec_2d a, const s_vec_2d b) {
         return std::atan2(-(b.y - a.y), b.x - a.x);
     }
 
-    inline s_vec_2d Dir(const float dir) {
+    inline s_vec_2d DirVec(const float dir) {
         return {std::cos(dir), -std::sin(dir)};
     }
 
