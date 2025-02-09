@@ -10,7 +10,7 @@ namespace zf4 {
     char* GetFileContentsStr(const char* const filename, int* const len);
 
     template<c_trivial_type tp_type>
-    inline tp_type& ReadFromFS(FILE* const fs, const int cnt = 1) {
+    inline tp_type ReadFromFS(FILE* const fs, const int cnt = 1) {
         assert(fs);
         assert(cnt >= 1);
 

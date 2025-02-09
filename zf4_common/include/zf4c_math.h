@@ -306,6 +306,10 @@ namespace zf4 {
         int y;
         int width;
         int height;
+
+        operator s_rect() const {
+            return s_rect(x, y, width, height);
+        }
     };
 
     struct s_rect_edges {
@@ -401,6 +405,14 @@ namespace zf4 {
 
     inline s_vec_2d LenDir(const float len, const float dir) {
         return {len * cos(dir), -len * sin(dir)};
+    }
+
+    constexpr s_rect GenRect(const s_vec_2d pos, const s_vec_2d size) {
+        return {pos.x, pos.y, size.x, size.y};
+    }
+
+    constexpr s_rect_i GenRect(const s_vec_2d_i pos, const s_vec_2d_i size) {
+        return {pos.x, pos.y, size.x, size.y};
     }
 
     constexpr s_vec_2d RectPos(const s_rect rect) {

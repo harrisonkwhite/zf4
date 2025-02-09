@@ -551,7 +551,7 @@ void main() {
 
         const s_vec_2d_i tex_size = textures.sizes[tex_index];
         const s_rect_edges tex_coords = CalcTexCoords(src_rect, tex_size);
-        SubmitToRenderBatch(textures.gl_ids[tex_index], tex_coords, pos, {tex_size.x * scale.x, tex_size.y * scale.y}, draw_phase_state, pers_render_data, origin, rot, blend);
+        SubmitToRenderBatch(textures.gl_ids[tex_index], tex_coords, pos, {src_rect.width * scale.x, src_rect.height * scale.y}, draw_phase_state, pers_render_data, origin, rot, blend);
     }
 
     void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
@@ -587,9 +587,7 @@ void main() {
 
             const s_rect_i char_src_rect = font_arrangement_info.chars.src_rects[char_index];
 
-            SubmitToRenderBatch(font_tex_gl_id, {}, char_pos, {1.0f, 1.0f}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, blend);
-
-            //SubmitToRenderBatch(char_pos, {}, {1.0f, 1.0f}, 0.0f, font_tex_gl_id, font_tex_size, char_src_rect, blend, draw_phase_state, pers_render_data);
+            SubmitToRenderBatch(font_tex_gl_id, CalcTexCoords(char_src_rect, font_tex_size), char_pos, RectSize(char_src_rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
         }
     }
 
@@ -700,6 +698,10 @@ void main() {
         };
     }
 
+    void DrawRect(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
+        SubmitToRenderBatch(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, RectPos(rect), RectSize(rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
+    }
+
     void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
         assert(width > 0.0f);
 
@@ -708,20 +710,14 @@ void main() {
         SubmitToRenderBatch(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, start, {len, width}, draw_phase_state, pers_render_data, {0.0f, 0.5f}, rot, blend);
     }
 
-    enum e_bar_dir {
-        ek_bar_dir_right,
-        ek_bar_dir_left,
-        ek_bar_dir_down,
-        ek_bar_dir_up
-    };
-
-    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
         assert(perc >= 0.0f && perc <= 1.0f);
         assert(alpha >= 0.0f, && alpha <= 1.0f);
 
         // TODO: Support different bar directions.
 
-        SubmitToRenderBatch(0, {0.0f, 0.0f, 1.0f, 1.0f}, pos - (size / 2.0f), {size.x * perc, size.y}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, {col_front.x, col_front.y, col_front.z, alpha});
-        SubmitToRenderBatch(0, {0.0f, 0.0f, 1.0f, 1.0f}, pos - (size / 2.0f) + zf4::s_vec_2d(size.x * perc, 0.0f), {size.x * (1.0f - perc), size.y}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, {col_back.x, col_back.y, col_back.z, alpha});
+        const s_vec_2d topleft = pos - (size / 2.0f);
+        DrawRect({topleft.x, topleft.y, size.x * perc, size.y}, {col_front.x, col_front.y, col_front.z, alpha}, draw_phase_state, pers_render_data, builtin_assets);
+        DrawRect({topleft.x + (size.x * perc), topleft.y, size.x * (1.0f - perc), size.y}, {col_back.x, col_back.y, col_back.z, alpha}, draw_phase_state, pers_render_data, builtin_assets);
     }
 }
