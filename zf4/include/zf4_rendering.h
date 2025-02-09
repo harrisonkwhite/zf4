@@ -6,8 +6,8 @@
 namespace zf4 {
     constexpr int g_render_surface_limit = 128;
 
-    constexpr int g_texture_batch_slot_vert_cnt = (g_textured_quad_shader_prog_cnt * 4);
-    constexpr int g_texture_batch_slot_verts_size = (sizeof(float) * g_texture_batch_slot_vert_cnt);
+    constexpr int g_texture_batch_slot_vert_cnt = g_textured_quad_shader_prog_cnt * 4;
+    constexpr int g_texture_batch_slot_verts_size = sizeof(float) * g_texture_batch_slot_vert_cnt;
     constexpr int g_texture_batch_slot_indices_cnt = 6;
     constexpr int g_texture_batch_slot_limit = 2048;
 
@@ -105,8 +105,6 @@ namespace zf4 {
 
         s_matrix_4x4 proj_mat;
         s_matrix_4x4 view_mat;
-
-        const s_assets* assets;
     };
 
     s_pers_render_data* LoadPersRenderData(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
@@ -116,18 +114,24 @@ namespace zf4 {
     void CleanRenderSurfaces(s_render_surfaces& surfs);
     bool ResizeRenderSurfaces(s_render_surfaces& surfs, const s_vec_2d_i window_size);
 
-    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size, const s_assets& assets);
+    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size);
     void RenderClear(const s_vec_4d col = {});
     void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
     void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state& draw_phase_state);
+    void SetRenderSurfaceShaderProg(const int prog_index, const s_shader_progs& progs, s_draw_phase_state& draw_phase_state);
     void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
     void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
-    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    void SubmitToRenderBatch(const GLuint tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const float rot = 0.0f, const s_vec_4d blend = colors::g_white);
+    void SubmitTextureToRenderBatch(const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
+    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    void FlushRenderBatch(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
 
     s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts);
+
+    s_rect_edges CalcTexCoords(const s_rect_i src_rect, const s_vec_2d_i tex_size);
+
+    void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
+    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
 
     inline void SetRenderSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state& draw_phase_state) {
         const u_shader_uniform_val uni_val = {.i = val};

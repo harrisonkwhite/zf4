@@ -7,44 +7,38 @@
 namespace zf4 {
     constexpr int g_textured_quad_shader_prog_cnt = 13;
 
-    constexpr int g_texture_limit = 64;
-    constexpr int g_font_limit = 24;
-    constexpr int g_shader_prog_limit = 24;
-    constexpr int g_sound_limit = 24;
-    constexpr int g_music_limit = 24;
-
     struct s_textures {
-        s_static_array<GLuint, g_texture_limit> gl_ids;
-        s_static_array<s_vec_2d_i, g_texture_limit> sizes;
+        s_array<const GLuint> gl_ids;
+        s_array<const s_vec_2d_i> sizes;
         int cnt;
     };
 
     struct s_fonts {
-        s_static_array<s_font_arrangement_info, g_font_limit> arrangement_infos;
+        s_array<const s_font_arrangement_info> arrangement_infos;
 
-        s_static_array<GLuint, g_font_limit> tex_gl_ids;
-        s_static_array<s_vec_2d_i, g_font_limit> tex_sizes;
+        s_array<const GLuint> tex_gl_ids;
+        s_array<const s_vec_2d_i> tex_sizes;
 
         int cnt;
     };
 
     struct s_shader_progs {
-        s_static_array<GLuint, g_shader_prog_limit> gl_ids;
+        s_array<const GLuint> gl_ids;
         int cnt;
     };
 
     struct s_sounds {
-        s_static_array<ALuint, g_sound_limit> buf_al_ids;
+        s_array<const ALuint> buf_al_ids;
         int cnt;
     };
 
     struct s_music {
-        s_static_array<s_audio_info, g_music_limit> infos;
-        s_static_array<int, g_music_limit> sample_data_file_positions;
+        s_array<const s_audio_info> infos;
+        s_array<const int> sample_data_file_positions;
         int cnt;
     };
 
-    struct s_assets {
+    struct s_user_assets {
         s_textures textures;
         s_fonts fonts;
         s_shader_progs shader_progs;
@@ -52,8 +46,35 @@ namespace zf4 {
         s_music music;
     };
 
-    s_assets* LoadAssets(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
-    void UnloadAssets(s_assets& assets);
+    enum e_builtin_texture {
+        ek_builtin_texture_pixel,
+
+        eks_builtin_texture_cnt
+    };
+
+    enum e_builtin_shader_prog {
+        ek_builtin_shader_prog_blend,
+        ek_builtin_shader_prog_outline,
+        ek_builtin_shader_prog_circle,
+
+        eks_builtin_shader_prog_cnt
+    };
+
+    struct s_builtin_assets {
+        GLuint pixel_tex_gl_id;
+
+        GLuint blend_shader_prog_gl_id;
+        //GLuint outline_shader_prog_gl_id;
+        //GLuint circle_shader_prog_gl_id;
+    };
+
+    bool LoadUserAssets(s_user_assets& assets, s_mem_arena& mem_arena, s_mem_arena& scratch_space);
+    void UnloadUserAssets(s_user_assets& assets);
+
+    s_builtin_assets LoadBuiltinAssets();
+    void UnloadBuiltinAssets(s_builtin_assets& assets);
+
+    void SetUpGeneratedGLTexture(const GLuint gl_id, const s_vec_2d_i size, const s_array<const unsigned char> px_data);
 
     GLuint CreateShaderFromSrc(const char* const src, const bool frag);
     GLuint CreateShaderProgFromSrcs(const char* const vert_shader_src, const char* const frag_shader_src);

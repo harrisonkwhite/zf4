@@ -11,7 +11,8 @@ namespace zf4 {
         s_mem_arena perm_mem_arena;
         s_mem_arena temp_mem_arena;
         s_window window;
-        s_assets* assets;
+        s_user_assets user_assets;
+        s_builtin_assets builtin_assets;
         s_pers_render_data* pers_render_data;
         void* custom_data;
     };
@@ -51,13 +52,14 @@ namespace zf4 {
             return false;
         }
 
-        // Load assets.
-        game.assets = LoadAssets(game.perm_mem_arena, game.temp_mem_arena);
-
-        if (!game.assets) {
-            LogError("Failed to load assets!");
+        // Load user assets.
+        if (!LoadUserAssets(game.user_assets, game.perm_mem_arena, game.temp_mem_arena)) {
+            LogError("Failed to load user assets!");
             return false;
         }
+
+        // Load built-in assets.
+        game.builtin_assets = LoadBuiltinAssets();
 
         // Load persistent render data.
         game.pers_render_data = LoadPersRenderData(game.perm_mem_arena, game.temp_mem_arena);
@@ -85,7 +87,8 @@ namespace zf4 {
             .perm_mem_arena = game.perm_mem_arena,
             .temp_mem_arena = game.temp_mem_arena,
             .window = game.window,
-            .assets = *game.assets,
+            .user_assets = game.user_assets,
+            .builtin_assets = game.builtin_assets,
             .pers_render_data = *game.pers_render_data,
             .custom_data = game.custom_data
         };
@@ -132,7 +135,7 @@ namespace zf4 {
                 game.window.input_state_saved = game.window.input_state;
 
                 // Execute draw.
-                s_draw_phase_state* const draw_phase_state = BeginDrawPhase(game.temp_mem_arena, game.window.size_cache, *game.assets);
+                s_draw_phase_state* const draw_phase_state = BeginDrawPhase(game.temp_mem_arena, game.window.size_cache);
 
                 if (!draw_phase_state) {
                     return false;
@@ -185,6 +188,7 @@ namespace zf4 {
         assert(info.init_func);
         assert(info.tick_func);
         assert(info.draw_func);
+        assert(info.cleanup_func);
         assert(info.perm_mem_arena_size > 0);
         assert(info.temp_mem_arena_size > 0);
         assert(info.window_init_size.x > 0 && info.window_init_size.y > 0);
@@ -202,13 +206,14 @@ namespace zf4 {
         //
         // Cleanup
         //
+        info.cleanup_func(game.custom_data);
+
         if (game.pers_render_data) {
             CleanPersRenderData(*game.pers_render_data);
         }
 
-        if (game.assets) {
-            UnloadAssets(*game.assets);
-        }
+        UnloadBuiltinAssets(game.builtin_assets);
+        UnloadUserAssets(game.user_assets);
 
         CleanWindow(game.window);
 

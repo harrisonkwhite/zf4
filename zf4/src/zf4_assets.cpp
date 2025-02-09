@@ -10,7 +10,7 @@ namespace zf4 {
         return g_texture_channel_cnt * tex_size.x * tex_size.y;
     }
 
-    static void SetUpGLTexture(const GLuint gl_id, const s_vec_2d_i size, const s_array<const unsigned char> px_data) {
+    static void SetUpGeneratedGLTexture(const GLuint gl_id, const s_vec_2d_i size, const s_array<const unsigned char> px_data) {
         assert(gl_id);
         assert(TexturePixelDataSize(size) <= px_data.len);
 
@@ -20,213 +20,238 @@ namespace zf4 {
         ZF4_GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, px_data.elems_raw));
     }
 
-    static bool LoadTexturesFromFS(s_textures& textures, FILE* const fs, s_mem_arena& scratch_space) {
+    static bool LoadUserTexturesFromFS(s_textures& textures, FILE* const fs, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
         assert(IsStructZero(textures));
 
-        // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
         const int scratch_space_begin_offs = scratch_space.offs;
 
-        // Read and verify texture count.
-        fread(&textures.cnt, sizeof(textures.cnt), 1, fs);
-        assert(textures.cnt >= 0 && textures.cnt <= g_texture_limit);
+        const auto tex_cnt = ReadFromFS<int>(fs);
 
-        if (textures.cnt > 0) {
-            // Reserve scratch space memory for pixel data, to be reused for all textures.
+        if (tex_cnt > 0) {
+            const auto gl_ids = PushArray<GLuint>(tex_cnt, mem_arena);
+            const auto sizes = PushArray<s_vec_2d_i>(tex_cnt, mem_arena);
+
+            if (IsStructZero(gl_ids) || IsStructZero(sizes)) {
+                return false;
+            }
+
             const auto px_data = PushArray<unsigned char>(g_texture_px_data_size_limit, scratch_space);
 
             if (IsStructZero(px_data)) {
                 return false;
             }
 
-            // Load textures.
-            ZF4_GL_CALL(glGenTextures(textures.cnt, textures.gl_ids.elems_raw));
+            ZF4_GL_CALL(glGenTextures(tex_cnt, gl_ids.elems_raw));
 
-            for (int i = 0; i < textures.cnt; ++i) {
-                fread(&textures.sizes[i], sizeof(textures.sizes[i]), 1, fs);
+            for (int i = 0; i < tex_cnt; ++i) {
+                fread(&sizes[i], sizeof(sizes[i]), 1, fs);
 
-                const int tex_px_data_size = TexturePixelDataSize(textures.sizes[i]);
+                const int tex_px_data_size = TexturePixelDataSize(sizes[i]);
                 fread(px_data.elems_raw, tex_px_data_size, 1, fs);
 
-                SetUpGLTexture(textures.gl_ids[i], textures.sizes[i], px_data);
+                SetUpGeneratedGLTexture(gl_ids[i], sizes[i], px_data);
             }
+
+            textures.gl_ids = gl_ids;
+            textures.sizes = sizes;
+            textures.cnt = tex_cnt;
         }
 
-        // Clear out the memory in the scratch space that we used in this function.
         RewindMemArena(scratch_space, scratch_space_begin_offs);
 
         return true;
     }
 
-    static bool LoadFontsFromFS(s_fonts& fonts, FILE* const fs, s_mem_arena& scratch_space) {
+    static bool LoadUserFontsFromFS(s_fonts& fonts, FILE* const fs, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
         assert(IsStructZero(fonts));
 
-        // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
         const int scratch_space_begin_offs = scratch_space.offs;
 
-        // Read and verify font count.
-        fread(&fonts.cnt, sizeof(fonts.cnt), 1, fs);
-        assert(fonts.cnt >= 0 && fonts.cnt <= g_font_limit);
+        const auto font_cnt = ReadFromFS<int>(fs);
 
-        if (fonts.cnt > 0) {
-            // Reserve scratch space memory for pixel data, to be reused for all font textures.
+        if (font_cnt > 0) {
+            const auto arrangement_infos = PushArray<s_font_arrangement_info>(font_cnt, mem_arena);
+            const auto tex_gl_ids = PushArray<GLuint>(font_cnt, mem_arena);
+            const auto tex_sizes = PushArray<s_vec_2d_i>(font_cnt, mem_arena);
+
+            if (IsStructZero(arrangement_infos) || IsStructZero(tex_gl_ids) || IsStructZero(tex_sizes)) {
+                return false;
+            }
+
             const auto px_data = PushArray<unsigned char>(g_texture_px_data_size_limit, scratch_space);
 
             if (IsStructZero(px_data)) {
                 return false;
             }
 
-            // Load fonts.
-            ZF4_GL_CALL(glGenTextures(fonts.cnt, fonts.tex_gl_ids.elems_raw));
+            ZF4_GL_CALL(glGenTextures(font_cnt, tex_gl_ids.elems_raw));
 
-            for (int i = 0; i < fonts.cnt; ++i) {
-                fread(&fonts.arrangement_infos[i], sizeof(fonts.arrangement_infos[i]), 1, fs);
-                fread(&fonts.tex_sizes[i], sizeof(fonts.tex_sizes[i]), 1, fs);
+            for (int i = 0; i < font_cnt; ++i) {
+                fread(&arrangement_infos[i], sizeof(arrangement_infos[i]), 1, fs);
+                fread(&tex_sizes[i], sizeof(tex_sizes[i]), 1, fs);
                 fread(px_data.elems_raw, g_texture_px_data_size_limit, 1, fs);
-                SetUpGLTexture(fonts.tex_gl_ids[i], fonts.tex_sizes[i], px_data);
+                SetUpGeneratedGLTexture(tex_gl_ids[i], tex_sizes[i], px_data);
             }
+
+            fonts.arrangement_infos = arrangement_infos;
+            fonts.tex_gl_ids = tex_gl_ids;
+            fonts.tex_sizes = tex_sizes;
+            fonts.cnt = font_cnt;
         }
 
-        // Clear out the memory in the scratch space that we used in this function.
         RewindMemArena(scratch_space, scratch_space_begin_offs);
 
         return true;
     }
 
-    static bool LoadShaderProgsFromFS(s_shader_progs& progs, FILE* const fs, s_mem_arena& scratch_space) {
+    static bool LoadUserShaderProgsFromFS(s_shader_progs& progs, FILE* const fs, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
         assert(IsStructZero(progs));
 
-        // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
         const int scratch_space_begin_offs = scratch_space.offs;
 
-        // Read and verify the shader program count.
-        fread(&progs.cnt, sizeof(progs.cnt), 1, fs);
-        assert(progs.cnt >= 0 && progs.cnt <= g_shader_prog_limit);
+        progs.cnt = ReadFromFS<int>(fs);
 
         if (progs.cnt > 0) {
-            // Reserve memory to store shader source code.
-            const auto vert_shader_src_buf = PushArray<char>(g_shader_src_len_limit + 1, scratch_space);
+            const auto gl_ids = PushArray<GLuint>(progs.cnt, mem_arena);
 
-            if (IsStructZero(vert_shader_src_buf)) {
+            if (IsStructZero(gl_ids)) {
                 return false;
             }
 
+            const auto vert_shader_src_buf = PushArray<char>(g_shader_src_len_limit + 1, scratch_space);
             const auto frag_shader_src_buf = PushArray<char>(g_shader_src_len_limit + 1, scratch_space);
 
-            if (IsStructZero(frag_shader_src_buf)) {
+            if (IsStructZero(vert_shader_src_buf) || IsStructZero(frag_shader_src_buf)) {
                 return false;
             }
 
             for (int i = 0; i < progs.cnt; ++i) {
-                // Get vertex shader source.
-                int vert_shader_src_len;
-                fread(&vert_shader_src_len, sizeof(vert_shader_src_len), 1, fs);
+                const auto vert_shader_src_len = ReadFromFS<int>(fs);
                 fread(vert_shader_src_buf.elems_raw, vert_shader_src_len, 1, fs);
                 vert_shader_src_buf[vert_shader_src_len] = '\0';
 
-                // Get fragment shader source.
-                int frag_shader_src_len;
-                fread(&frag_shader_src_len, sizeof(frag_shader_src_len), 1, fs);
+                const auto frag_shader_src_len = ReadFromFS<int>(fs);
                 fread(frag_shader_src_buf.elems_raw, frag_shader_src_len, 1, fs);
                 frag_shader_src_buf[frag_shader_src_len] = '\0';
 
-                // Create the program.
-                progs.gl_ids[i] = CreateShaderProgFromSrcs(vert_shader_src_buf.elems_raw, frag_shader_src_buf.elems_raw);
+                gl_ids[i] = CreateShaderProgFromSrcs(vert_shader_src_buf.elems_raw, frag_shader_src_buf.elems_raw);
 
-                if (!progs.gl_ids[i]) {
+                if (!gl_ids[i]) {
+                    for (int j = 0; j < i; ++j) {
+                        glDeleteProgram(gl_ids[j]);
+                    }
+
                     return false;
                 }
             }
+
+            progs.gl_ids = gl_ids;
         }
 
         return true;
     }
 
-    static bool LoadSoundsFromFS(s_sounds& snds, FILE* const fs, s_mem_arena& scratch_space) {
-        assert(IsStructZero(snds));
+    static bool LoadUserSoundsFromFS(s_sounds& sounds, FILE* const fs, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
+        assert(IsStructZero(sounds));
 
-        // Save the offset in the scratch space arena where we started at, so we can revert back at the end of the function.
         const int scratch_space_begin_offs = scratch_space.offs;
 
-        // Read and verify sound count.
-        fread(&snds.cnt, sizeof(snds.cnt), 1, fs);
-        assert(snds.cnt >= 0 && snds.cnt <= g_sound_limit);
+        sounds.cnt = ReadFromFS<int>(fs);
 
-        if (snds.cnt > 0) {
-            alGenBuffers(snds.cnt, snds.buf_al_ids.elems_raw);
+        if (sounds.cnt > 0) {
+            const auto buf_al_ids = PushArray<ALuint>(sounds.cnt, mem_arena);
+
+            if (IsStructZero(buf_al_ids)) {
+                return false;
+            }
 
             const auto samples = PushArray<ta_audio_sample>(g_sound_sample_limit, scratch_space);
 
-            for (int i = 0; i < snds.cnt; ++i) {
-                s_audio_info audio_info;
-                fread(&audio_info, sizeof(audio_info), 1, fs);
+            if (IsStructZero(samples)) {
+                return false;
+            }
+
+            alGenBuffers(sounds.cnt, buf_al_ids.elems_raw);
+
+            for (int i = 0; i < sounds.cnt; ++i) {
+                const auto audio_info = ReadFromFS<s_audio_info>(fs);
 
                 const long long sample_cnt = audio_info.sample_cnt_per_channel * audio_info.channel_cnt;
                 fread(samples.elems_raw, sizeof(ta_audio_sample), sample_cnt, fs);
 
                 const ALenum format = audio_info.channel_cnt == 1 ? AL_FORMAT_MONO_FLOAT32 : AL_FORMAT_STEREO_FLOAT32;
-                alBufferData(snds.buf_al_ids[i], format, samples.elems_raw, sizeof(ta_audio_sample) * sample_cnt, audio_info.sample_rate);
+                alBufferData(buf_al_ids[i], format, samples.elems_raw, sizeof(ta_audio_sample) * sample_cnt, audio_info.sample_rate);
             }
+
+            sounds.buf_al_ids = buf_al_ids;
+        }
+
+        RewindMemArena(scratch_space, scratch_space_begin_offs);
+
+        return true;
+    }
+
+    static bool LoadUserMusicFromFS(s_music& music, FILE* const fs, s_mem_arena& mem_arena) {
+        const auto music_cnt = ReadFromFS<int>(fs);
+
+        if (music_cnt > 0) {
+            const auto infos = PushArray<s_audio_info>(music_cnt, mem_arena);
+            const auto sample_data_file_positions = PushArray<int>(music_cnt, mem_arena);
+
+            if (IsStructZero(infos) || IsStructZero(sample_data_file_positions)) {
+                return false;
+            }
+
+            for (int i = 0; i < music_cnt; ++i) {
+                infos[i] = ReadFromFS<s_audio_info>(fs);
+                sample_data_file_positions[i] = ftell(fs);
+            }
+
+            music.infos = infos;
+            music.sample_data_file_positions = sample_data_file_positions;
+
+            music.cnt = music_cnt;
         }
 
         return true;
     }
 
-    static bool LoadMusicFromFS(s_music& music, FILE* const fs) {
-        assert(IsStructZero(music));
-
-        fread(&music.cnt, sizeof(music.cnt), 1, fs);
-        assert(music.cnt >= 0 && music.cnt <= g_music_limit);
-
-        for (int i = 0; i < music.cnt; ++i) {
-            fread(&music.infos[i], sizeof(s_audio_info), 1, fs);
-            music.sample_data_file_positions[i] = ftell(fs);
-        }
-
-        return true;
-    }
-
-    s_assets* LoadAssets(s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
-        // Push the asset data to the memory arena.
-        const auto assets = PushType<s_assets>(mem_arena);
-
-        if (!assets) {
-            LogError("Failed to reserve memory for assets!");
-            return nullptr;
-        }
+    bool LoadUserAssets(s_user_assets& assets, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
+        assert(IsStructZero(assets));
 
         // Open the assets file.
-        FILE* const fs = fopen(g_assets_file_name, "rb");
+        FILE* const fs = fopen(g_user_assets_file_name, "rb");
 
         if (!fs) {
-            LogError("Failed to open \"%s\"!", g_assets_file_name);
-            return nullptr;
+            LogError("Failed to open \"%s\"!", g_user_assets_file_name);
+            return false;
         }
 
         // Load the assets of each type using the file.
         bool success = false;
 
         do {
-            if (!LoadTexturesFromFS(assets->textures, fs, scratch_space)) {
+            if (!LoadUserTexturesFromFS(assets.textures, fs, mem_arena, scratch_space)) {
                 LogError("Failed to load textures!");
                 break;
             }
 
-            if (!LoadFontsFromFS(assets->fonts, fs, scratch_space)) {
+            if (!LoadUserFontsFromFS(assets.fonts, fs, mem_arena, scratch_space)) {
                 LogError("Failed to load fonts!");
                 break;
             }
 
-            if (!LoadShaderProgsFromFS(assets->shader_progs, fs, scratch_space)) {
+            if (!LoadUserShaderProgsFromFS(assets.shader_progs, fs, mem_arena, scratch_space)) {
                 LogError("Failed to load shader programs!");
                 break;
             }
 
-            if (!LoadSoundsFromFS(assets->sounds, fs, scratch_space)) {
+            if (!LoadUserSoundsFromFS(assets.sounds, fs, mem_arena, scratch_space)) {
                 LogError("Failed to load sounds!");
                 break;
             }
 
-            if (!LoadMusicFromFS(assets->music, fs)) {
+            if (!LoadUserMusicFromFS(assets.music, fs, mem_arena)) {
                 LogError("Failed to load music!");
                 break;
             }
@@ -236,10 +261,10 @@ namespace zf4 {
 
         fclose(fs);
 
-        return success ? assets : nullptr;
+        return success;
     }
 
-    void UnloadAssets(s_assets& assets) {
+    void UnloadUserAssets(s_user_assets& assets) {
         if (assets.sounds.cnt > 0) {
             alDeleteBuffers(assets.sounds.cnt, assets.sounds.buf_al_ids.elems_raw);
         }
@@ -255,6 +280,70 @@ namespace zf4 {
         if (assets.textures.cnt > 0) {
             ZF4_GL_CALL(glDeleteTextures(assets.textures.cnt, assets.textures.gl_ids.elems_raw));
         }
+
+        ZeroOutStruct(assets);
+    }
+
+    s_builtin_assets LoadBuiltinAssets() {
+        s_builtin_assets assets = {};
+
+        // Generate pixel texture.
+        glGenTextures(1, &assets.pixel_tex_gl_id);
+
+        s_static_array<unsigned char, 4> pixel_tex_px_data = {};
+        pixel_tex_px_data[0] = 255;
+        pixel_tex_px_data[1] = 255;
+        pixel_tex_px_data[2] = 255;
+        pixel_tex_px_data[3] = 255;
+
+        SetUpGeneratedGLTexture(assets.pixel_tex_gl_id, {1, 1}, pixel_tex_px_data);
+
+        // Generate blend shader program.
+        {
+            const char* const blend_vert_shader = R"(#version 430 core
+
+layout (location = 0) in vec2 a_vert;
+layout (location = 1) in vec2 a_tex_coord;
+
+out vec2 v_tex_coord;
+
+void main() {
+    gl_Position = vec4(a_vert, 0.0f, 1.0f);
+    v_tex_coord = a_tex_coord;
+}
+)";
+
+            const char* const blend_frag_shader = R"(#version 430 core
+
+in vec2 v_tex_coord;
+out vec4 o_frag_color;
+
+uniform sampler2D u_tex;
+
+uniform vec3 u_color;
+uniform float u_intensity;
+
+void main() {
+    vec4 color = texture(u_tex, v_tex_coord);
+
+    o_frag_color = vec4(
+        mix(color.r, u_color.r, u_intensity),
+        mix(color.g, u_color.g, u_intensity),
+        mix(color.b, u_color.b, u_intensity),
+        color.a
+    );
+}
+)";
+
+            assets.blend_shader_prog_gl_id = CreateShaderProgFromSrcs(blend_vert_shader, blend_frag_shader);
+        }
+
+        return assets;
+    }
+
+    void UnloadBuiltinAssets(s_builtin_assets& assets) {
+        glDeleteTextures(1, &assets.pixel_tex_gl_id);
+        glDeleteProgram(assets.blend_shader_prog_gl_id);
 
         ZeroOutStruct(assets);
     }

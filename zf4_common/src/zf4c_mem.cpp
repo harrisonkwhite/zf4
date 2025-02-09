@@ -146,7 +146,7 @@ namespace zf4 {
 
     void CleanMemArena(s_mem_arena& arena) {
         if (arena.buf) {
-            std::free(arena.buf);
+            free(arena.buf);
         }
 
         ZeroOutStruct(arena);
@@ -154,7 +154,7 @@ namespace zf4 {
 
     void EmptyMemArena(s_mem_arena& arena) {
         if (arena.offs > 0) {
-            std::memset(arena.buf, 0, arena.offs);
+            memset(arena.buf, 0, arena.offs);
         }
 
         arena.offs = 0;
@@ -164,7 +164,7 @@ namespace zf4 {
         assert(offs >= 0 && offs < arena.size);
 
         const int clear_size = arena.size - offs;
-        std::memset((char*)arena.buf + offs, 0, clear_size);
+        memset((char*)arena.buf + offs, 0, clear_size);
     }
 
     void* Push(const int size, const int alignment, s_mem_arena& mem_arena) {

@@ -3,7 +3,7 @@
 #include <zf4c_math.h>
 
 namespace zf4 {
-    const char* const g_assets_file_name = "assets.dat";
+    const char* const g_user_assets_file_name = "assets.dat";
 
     constexpr s_vec_2d_i g_texture_size_limit = {2048, 2048};
     constexpr int g_texture_channel_cnt = 4;

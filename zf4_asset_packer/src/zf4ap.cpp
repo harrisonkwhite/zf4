@@ -24,7 +24,7 @@ namespace zf4 {
     static FILE* OpenOutputFS(const char* const output_dir) {
         // Determine the output file path.
         char file_path[256];
-        const int file_path_len = snprintf(file_path, sizeof(file_path), "%s/%s", output_dir, g_assets_file_name);
+        const int file_path_len = snprintf(file_path, sizeof(file_path), "%s/%s", output_dir, g_user_assets_file_name);
 
         if (file_path_len >= sizeof(file_path)) {
             LogError("Output file path \"%s\" is too long! Limit is %d characters.", file_path, sizeof(file_path) - 1);
@@ -121,7 +121,7 @@ namespace zf4 {
             fclose(packer.output_fs);
 
             if (!packing_success) {
-                remove(g_assets_file_name);
+                remove(g_user_assets_file_name);
             }
         }
 

@@ -158,7 +158,7 @@ namespace zf4 {
     template<c_trivial_type tp_type>
     inline void ZeroOutStruct(tp_type& st) {
         static_assert(std::is_class_v<tp_type>);
-        std::memset(&st, 0, sizeof(st));
+        memset(&st, 0, sizeof(st));
     }
 
     template<c_trivial_type tp_type>

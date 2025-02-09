@@ -366,7 +366,7 @@ namespace zf4 {
     }
 
     inline float Magnitude(const s_vec_2d vec) {
-        return std::sqrt((vec.x * vec.x) + (vec.y * vec.y));
+        return sqrt((vec.x * vec.x) + (vec.y * vec.y));
     }
 
     inline s_vec_2d Normal(const s_vec_2d vec) {
@@ -388,19 +388,19 @@ namespace zf4 {
     }
 
     inline float Dir(const s_vec_2d vec) {
-        return std::atan2(-vec.y, vec.x);
+        return atan2(-vec.y, vec.x);
     }
 
     inline float Dir(const s_vec_2d a, const s_vec_2d b) {
-        return std::atan2(-(b.y - a.y), b.x - a.x);
+        return atan2(-(b.y - a.y), b.x - a.x);
     }
 
     inline s_vec_2d DirVec(const float dir) {
-        return {std::cos(dir), -std::sin(dir)};
+        return {cos(dir), -sin(dir)};
     }
 
     inline s_vec_2d LenDir(const float len, const float dir) {
-        return {len * std::cos(dir), -len * std::sin(dir)};
+        return {len * cos(dir), -len * sin(dir)};
     }
 
     constexpr s_vec_2d RectPos(const s_rect rect) {

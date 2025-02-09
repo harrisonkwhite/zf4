@@ -83,11 +83,12 @@ void main() {
         return success;
     }
 
+#if 0
     static void SubmitToRenderBatch(const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const GLuint tex_gl_id, const s_vec_2d_i tex_size, const s_rect_i src_rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
         if (draw_phase_state.tex_batch_slots_used_cnt == 0) {
             draw_phase_state.tex_batch_tex_gl_id = tex_gl_id;
         } else if (draw_phase_state.tex_batch_slots_used_cnt == g_texture_batch_slot_limit || tex_gl_id != draw_phase_state.tex_batch_tex_gl_id) {
-            FlushTextureBatch(draw_phase_state, pers_render_data);
+            FlushRenderBatch(draw_phase_state, pers_render_data);
             SubmitToRenderBatch(pos, origin, scale, rot, tex_gl_id, tex_size, src_rect, blend, draw_phase_state, pers_render_data);
             return;
         }
@@ -161,6 +162,7 @@ void main() {
 
         ++draw_phase_state.tex_batch_slots_used_cnt;
     }
+#endif
 
     s_pers_render_data* LoadPersRenderData(s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
         // Reserve memory for the pers_render_data.
@@ -328,14 +330,12 @@ void main() {
         return true;
     }
 
-    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size, const s_assets& assets) {
+    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size) {
         const auto phase_state = PushType<s_draw_phase_state>(mem_arena);
 
         if (phase_state) {
             phase_state->proj_mat = GenOrthoMatrix4x4(0.0f, static_cast<float>(window_size.x), static_cast<float>(window_size.y), 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
             phase_state->view_mat = GenIdentityMatrix4x4();
-
-            phase_state->assets = &assets; // NOTE: Remove?
         }
 
         ZF4_GL_CALL(glEnable(GL_BLEND));
@@ -349,51 +349,7 @@ void main() {
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    void SubmitTextureToRenderBatch(const int tex_index, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
-        assert(tex_index >= 0 && tex_index < draw_phase_state.assets->textures.cnt);
-        const GLuint tex_gl_id = draw_phase_state.assets->textures.gl_ids[tex_index];
-        const s_vec_2d_i tex_size = draw_phase_state.assets->textures.sizes[tex_index];
-        SubmitToRenderBatch(pos, origin, scale, rot, tex_gl_id, tex_size, src_rect, blend, draw_phase_state, pers_render_data);
-    }
-
-    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(str);
-        assert(font_index >= 0 && font_index < draw_phase_state.assets->fonts.cnt);
-
-        const s_str_draw_info str_draw_info = LoadStrDrawInfo(str, font_index, draw_phase_state.assets->fonts);
-
-        const s_font_arrangement_info& font_arrangement_info = draw_phase_state.assets->fonts.arrangement_infos[font_index];
-        const GLuint font_tex_gl_id = draw_phase_state.assets->fonts.tex_gl_ids[font_index];
-        const s_vec_2d_i font_tex_size = draw_phase_state.assets->fonts.tex_sizes[font_index];
-
-        int line_index = 0;
-
-        for (int i = 0; str[i]; ++i) {
-            if (str[i] == '\n') {
-                ++line_index;
-                continue;
-            }
-
-            if (str[i] == ' ') {
-                continue;
-            }
-
-            const int char_index = str[i] - g_font_char_range_begin;
-
-            // Note that the character position is offset based on alignment.
-            // Middle alignment (1) corresponds to 50% multiplier on current line width and text height, right alignment (2) is 100%.
-            const s_vec_2d char_pos = {
-                pos.x + str_draw_info.char_draw_positions[i].x - (str_draw_info.line_widths[line_index] * hor_align * 0.5f),
-                pos.y + str_draw_info.char_draw_positions[i].y - (str_draw_info.height * ver_align * 0.5f)
-            };
-
-            const s_rect_i char_src_rect = font_arrangement_info.chars.src_rects[char_index];
-
-            SubmitToRenderBatch(char_pos, {}, {1.0f, 1.0f}, 0.0f, font_tex_gl_id, font_tex_size, char_src_rect, blend, draw_phase_state, pers_render_data);
-        }
-    }
-
-    void FlushTextureBatch(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+    void FlushRenderBatch(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
         if (draw_phase_state.tex_batch_slots_used_cnt == 0) {
             return;
         }
@@ -419,15 +375,228 @@ void main() {
         ZF4_GL_CALL(glDrawElements(GL_TRIANGLES, g_texture_batch_slot_indices_cnt * draw_phase_state.tex_batch_slots_used_cnt, GL_UNSIGNED_SHORT, nullptr));
 
         // Clear batch state.
-        std::memset(draw_phase_state.tex_batch_slot_verts.elems_raw, 0, sizeof(draw_phase_state.tex_batch_slot_verts.elems_raw));
+        memset(draw_phase_state.tex_batch_slot_verts.elems_raw, 0, sizeof(draw_phase_state.tex_batch_slot_verts.elems_raw));
         draw_phase_state.tex_batch_slots_used_cnt = 0;
         draw_phase_state.tex_batch_tex_gl_id = 0;
+    }
+
+    void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
+
+#if _DEBUG
+        for (int i = 0; i < draw_phase_state.surf_index_stack.len; ++i) {
+            if (draw_phase_state.surf_index_stack[i] == surf_index) {
+                assert(false && "Attempting to set a render surface that has already been set!");
+            }
+        }
+#endif
+
+        // Add the surface index to the stack.
+        ListAppend(draw_phase_state.surf_index_stack, surf_index);
+
+        // Bind the surface framebuffer.
+        ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[surf_index]));
+    }
+
+    void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before unsetting the surface.
+
+        ListPop(draw_phase_state.surf_index_stack);
+
+        if (IsListEmpty(draw_phase_state.surf_index_stack)) {
+            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        } else {
+            const int new_surf_index = ListEnd(draw_phase_state.surf_index_stack);
+            const GLuint fb_gl_id = pers_render_data.surfs.framebuffer_gl_ids[new_surf_index];
+            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[new_surf_index]));
+        }
+    }
+
+    void SetRenderSurfaceShaderProg(const int prog_index, const s_shader_progs& progs, s_draw_phase_state& draw_phase_state) {
+        assert(prog_index >= 0 && prog_index < progs.cnt);
+        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before setting a new surface.
+        draw_phase_state.surf_shader_prog_gl_id = progs.gl_ids[prog_index];
+    }
+
+    void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state) {
+        assert(draw_phase_state.surf_shader_prog_gl_id);
+
+        glUseProgram(draw_phase_state.surf_shader_prog_gl_id);
+
+        const int uni_loc = glGetUniformLocation(draw_phase_state.surf_shader_prog_gl_id, uni_name);
+        assert(uni_loc != -1);
+
+        switch (val_type) {
+            case ek_shader_uniform_val_type_int:
+                ZF4_GL_CALL(glUniform1i(uni_loc, val.i));
+                break;
+
+            case ek_shader_uniform_val_type_float:
+                ZF4_GL_CALL(glUniform1f(uni_loc, val.f));
+                break;
+
+            case ek_shader_uniform_val_type_v2:
+                ZF4_GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v2)));
+                break;
+
+            case ek_shader_uniform_val_type_v3:
+                ZF4_GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v3)));
+                break;
+
+            case ek_shader_uniform_val_type_v4:
+                ZF4_GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v4)));
+                break;
+
+            case ek_shader_uniform_val_type_mat4x4:
+                ZF4_GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&val.mat4x4)));
+                break;
+
+            default:
+                assert(false && "Invalid shader uniform value type provided!");
+                break;
+        }
+    }
+
+    void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
+        assert(draw_phase_state.surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
+
+        ZF4_GL_CALL(glUseProgram(draw_phase_state.surf_shader_prog_gl_id));
+
+        ZF4_GL_CALL(glActiveTexture(GL_TEXTURE0));
+        ZF4_GL_CALL(glBindTexture(GL_TEXTURE_2D, pers_render_data.surfs.framebuffer_tex_gl_ids[surf_index]));
+
+        ZF4_GL_CALL(glBindVertexArray(pers_render_data.surf_vert_array_gl_id));
+        ZF4_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_elem_buf_gl_id));
+        ZF4_GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
+
+        // Reset the surface shader program. NOTE: Not sure if this should be kept?
+        draw_phase_state.surf_shader_prog_gl_id = 0;
+    }
+
+    void SubmitToRenderBatch(const GLuint tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin, const float rot, const s_vec_4d blend) {
+        if (draw_phase_state.tex_batch_slots_used_cnt == 0) {
+            draw_phase_state.tex_batch_tex_gl_id = tex_gl_id;
+        } else if (draw_phase_state.tex_batch_slots_used_cnt == g_texture_batch_slot_limit || tex_gl_id != draw_phase_state.tex_batch_tex_gl_id) {
+            FlushRenderBatch(draw_phase_state, pers_render_data);
+            SubmitToRenderBatch(tex_gl_id, tex_coords, pos, size, draw_phase_state, pers_render_data, origin, rot, blend);
+            return;
+        }
+
+        // Submit the vertex data to the batch.
+        const int slot_index = draw_phase_state.tex_batch_slots_used_cnt;
+        auto& slot_verts = draw_phase_state.tex_batch_slot_verts[slot_index];
+
+        slot_verts[0] = 0.0f - origin.x;
+        slot_verts[1] = 0.0f - origin.y;
+        slot_verts[2] = pos.x;
+        slot_verts[3] = pos.y;
+        slot_verts[4] = size.x;
+        slot_verts[5] = size.y;
+        slot_verts[6] = rot;
+        slot_verts[7] = tex_coords.left;
+        slot_verts[8] = tex_coords.top;
+        slot_verts[9] = blend.x;
+        slot_verts[10] = blend.y;
+        slot_verts[11] = blend.z;
+        slot_verts[12] = blend.w;
+
+        slot_verts[13] = 1.0f - origin.x;
+        slot_verts[14] = 0.0f - origin.y;
+        slot_verts[15] = pos.x;
+        slot_verts[16] = pos.y;
+        slot_verts[17] = size.x;
+        slot_verts[18] = size.y;
+        slot_verts[19] = rot;
+        slot_verts[20] = tex_coords.right;
+        slot_verts[21] = tex_coords.top;
+        slot_verts[22] = blend.x;
+        slot_verts[23] = blend.y;
+        slot_verts[24] = blend.z;
+        slot_verts[25] = blend.w;
+
+        slot_verts[26] = 1.0f - origin.x;
+        slot_verts[27] = 1.0f - origin.y;
+        slot_verts[28] = pos.x;
+        slot_verts[29] = pos.y;
+        slot_verts[30] = size.x;
+        slot_verts[31] = size.y;
+        slot_verts[32] = rot;
+        slot_verts[33] = tex_coords.right;
+        slot_verts[34] = tex_coords.bottom;
+        slot_verts[35] = blend.x;
+        slot_verts[36] = blend.y;
+        slot_verts[37] = blend.z;
+        slot_verts[38] = blend.w;
+
+        slot_verts[39] = 0.0f - origin.x;
+        slot_verts[40] = 1.0f - origin.y;
+        slot_verts[41] = pos.x;
+        slot_verts[42] = pos.y;
+        slot_verts[43] = size.x;
+        slot_verts[44] = size.y;
+        slot_verts[45] = rot;
+        slot_verts[46] = tex_coords.left;
+        slot_verts[47] = tex_coords.bottom;
+        slot_verts[48] = blend.x;
+        slot_verts[49] = blend.y;
+        slot_verts[50] = blend.z;
+        slot_verts[51] = blend.w;
+
+        ++draw_phase_state.tex_batch_slots_used_cnt;
+    }
+
+    void SubmitTextureToRenderBatch(const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
+        assert(tex_index >= 0 && tex_index < textures.cnt);
+
+        const s_vec_2d_i tex_size = textures.sizes[tex_index];
+        const s_rect_edges tex_coords = CalcTexCoords(src_rect, tex_size);
+        SubmitToRenderBatch(textures.gl_ids[tex_index], tex_coords, pos, {tex_size.x * scale.x, tex_size.y * scale.y}, draw_phase_state, pers_render_data, origin, rot, blend);
+    }
+
+    void SubmitStrToRenderBatch(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+        assert(str);
+        assert(font_index >= 0 && font_index < fonts.cnt);
+
+        const s_str_draw_info str_draw_info = LoadStrDrawInfo(str, font_index, fonts);
+
+        const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
+        const GLuint font_tex_gl_id = fonts.tex_gl_ids[font_index];
+        const s_vec_2d_i font_tex_size = fonts.tex_sizes[font_index];
+
+        int line_index = 0;
+
+        for (int i = 0; str[i]; ++i) {
+            if (str[i] == '\n') {
+                ++line_index;
+                continue;
+            }
+
+            if (str[i] == ' ') {
+                continue;
+            }
+
+            const int char_index = str[i] - g_font_char_range_begin;
+
+            // Note that the character position is offset based on alignment.
+            // Middle alignment (1) corresponds to 50% multiplier on current line width and text height, right alignment (2) is 100%.
+            const s_vec_2d char_pos = {
+                pos.x + str_draw_info.char_draw_positions[i].x - (str_draw_info.line_widths[line_index] * hor_align * 0.5f),
+                pos.y + str_draw_info.char_draw_positions[i].y - (str_draw_info.height * ver_align * 0.5f)
+            };
+
+            const s_rect_i char_src_rect = font_arrangement_info.chars.src_rects[char_index];
+
+            SubmitToRenderBatch(font_tex_gl_id, {}, char_pos, {1.0f, 1.0f}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, blend);
+
+            //SubmitToRenderBatch(char_pos, {}, {1.0f, 1.0f}, 0.0f, font_tex_gl_id, font_tex_size, char_src_rect, blend, draw_phase_state, pers_render_data);
+        }
     }
 
     s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts) {
         s_str_draw_info draw_info = {};
 
-        const int str_len = std::strlen(str);
+        const int str_len = strlen(str);
         assert(str_len > 0 && str_len <= g_str_draw_len_limit);
 
         const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
@@ -522,97 +691,37 @@ void main() {
         return draw_info;
     }
 
-    void SetRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
-
-#if _DEBUG
-        for (int i = 0; i < draw_phase_state.surf_index_stack.len; ++i) {
-            if (draw_phase_state.surf_index_stack[i] == surf_index) {
-                assert(false && "Attempting to set a render surface that has already been set!");
-            }
-        }
-#endif
-
-        // Add the surface index to the stack.
-        ListAppend(draw_phase_state.surf_index_stack, surf_index);
-
-        // Bind the surface framebuffer.
-        ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[surf_index]));
+    s_rect_edges CalcTexCoords(const s_rect_i src_rect, const s_vec_2d_i tex_size) {
+        return {
+            static_cast<float>(src_rect.x) / tex_size.x,
+            static_cast<float>(src_rect.y) / tex_size.y,
+            static_cast<float>(RectRight(src_rect)) / tex_size.x,
+            static_cast<float>(RectBottom(src_rect)) / tex_size.y
+        };
     }
 
-    void UnsetRenderSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before unsetting the surface.
+    void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
+        assert(width > 0.0f);
 
-        ListPop(draw_phase_state.surf_index_stack);
-
-        if (IsListEmpty(draw_phase_state.surf_index_stack)) {
-            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        } else {
-            const int new_surf_index = ListEnd(draw_phase_state.surf_index_stack);
-            const GLuint fb_gl_id = pers_render_data.surfs.framebuffer_gl_ids[new_surf_index];
-            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[new_surf_index]));
-        }
+        const float len = Dist(start, end);
+        const float rot = Dir(start, end);
+        SubmitToRenderBatch(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, start, {len, width}, draw_phase_state, pers_render_data, {0.0f, 0.5f}, rot, blend);
     }
 
-    void SetRenderSurfaceShaderProg(const int shader_prog_index, s_draw_phase_state& draw_phase_state) {
-        assert(shader_prog_index >= 0 && shader_prog_index < draw_phase_state.assets->shader_progs.cnt);
-        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before setting a new surface.
-        draw_phase_state.surf_shader_prog_gl_id = draw_phase_state.assets->shader_progs.gl_ids[shader_prog_index];
-    }
+    enum e_bar_dir {
+        ek_bar_dir_right,
+        ek_bar_dir_left,
+        ek_bar_dir_down,
+        ek_bar_dir_up
+    };
 
-    void SetRenderSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state) {
-        assert(draw_phase_state.surf_shader_prog_gl_id);
+    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+        assert(perc >= 0.0f && perc <= 1.0f);
+        assert(alpha >= 0.0f, && alpha <= 1.0f);
 
-        glUseProgram(draw_phase_state.surf_shader_prog_gl_id);
+        // TODO: Support different bar directions.
 
-        const int uni_loc = glGetUniformLocation(draw_phase_state.surf_shader_prog_gl_id, uni_name);
-        assert(uni_loc != -1);
-
-        switch (val_type) {
-            case ek_shader_uniform_val_type_int:
-                ZF4_GL_CALL(glUniform1i(uni_loc, val.i));
-                break;
-
-            case ek_shader_uniform_val_type_float:
-                ZF4_GL_CALL(glUniform1f(uni_loc, val.f));
-                break;
-
-            case ek_shader_uniform_val_type_v2:
-                ZF4_GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v2)));
-                break;
-
-            case ek_shader_uniform_val_type_v3:
-                ZF4_GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v3)));
-                break;
-
-            case ek_shader_uniform_val_type_v4:
-                ZF4_GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v4)));
-                break;
-
-            case ek_shader_uniform_val_type_mat4x4:
-                ZF4_GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&val.mat4x4)));
-                break;
-
-            default:
-                assert(false && "Invalid shader uniform value type provided!");
-                break;
-        }
-    }
-
-    void DrawRenderSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
-        assert(draw_phase_state.surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
-
-        ZF4_GL_CALL(glUseProgram(draw_phase_state.surf_shader_prog_gl_id));
-
-        ZF4_GL_CALL(glActiveTexture(GL_TEXTURE0));
-        ZF4_GL_CALL(glBindTexture(GL_TEXTURE_2D, pers_render_data.surfs.framebuffer_tex_gl_ids[surf_index]));
-
-        ZF4_GL_CALL(glBindVertexArray(pers_render_data.surf_vert_array_gl_id));
-        ZF4_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_elem_buf_gl_id));
-        ZF4_GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
-
-        // Reset the surface shader program. NOTE: Not sure if this should be kept?
-        draw_phase_state.surf_shader_prog_gl_id = 0;
+        SubmitToRenderBatch(0, {0.0f, 0.0f, 1.0f, 1.0f}, pos - (size / 2.0f), {size.x * perc, size.y}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, {col_front.x, col_front.y, col_front.z, alpha});
+        SubmitToRenderBatch(0, {0.0f, 0.0f, 1.0f, 1.0f}, pos - (size / 2.0f) + zf4::s_vec_2d(size.x * perc, 0.0f), {size.x * (1.0f - perc), size.y}, draw_phase_state, pers_render_data, {0.5f, 0.5f}, 0.0f, {col_back.x, col_back.y, col_back.z, alpha});
     }
 }
