@@ -270,6 +270,30 @@ namespace zf4 {
         }
     };
 
+    struct s_poly_view {
+        s_array<const s_vec_2d> pts;
+    };
+
+    struct s_poly {
+        s_array<s_vec_2d> pts;
+
+        operator s_poly_view() const {
+            return {
+                .pts = pts
+            };
+        }
+    };
+
+    struct s_range {
+        int min;
+        int max;
+    };
+
+    struct s_range_f {
+        float min;
+        float max;
+    };
+
     struct s_rect {
         float x;
         float y;
@@ -301,6 +325,10 @@ namespace zf4 {
     struct s_matrix_4x4 {
         s_static_array<s_static_array<float, 4>, 4> elems;
     };
+
+    bool DoPolysIntersect(const s_poly_view& poly_a, const s_poly_view& poly_b);
+    s_poly PushQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, s_mem_arena& mem_arena);
+    s_poly PushRotatedQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, s_mem_arena& mem_arena);
 
     s_matrix_4x4 GenIdentityMatrix4x4();
     s_matrix_4x4 GenOrthoMatrix4x4(const float left, const float right, const float bottom, const float top, const float near, const float far);
@@ -345,6 +373,14 @@ namespace zf4 {
         const float mag = Magnitude(vec);
         assert(mag != 0.0f);
         return vec * (1.0f / mag);
+    }
+
+    inline float Dot(const s_vec_2d a, const s_vec_2d b) {
+        return (a.x * b.x) + (a.y * b.y);
+    }
+
+    inline s_vec_2d Midpoint(const s_vec_2d a, const s_vec_2d b) {
+        return (a + b) / 2.0f;
     }
 
     inline float Dist(const s_vec_2d a, const s_vec_2d b) {
