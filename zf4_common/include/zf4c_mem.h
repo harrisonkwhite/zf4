@@ -65,6 +65,25 @@ namespace zf4 {
         }
     };
 
+    template<c_trivial_type tp_type>
+    struct s_list {
+        tp_type* elems_raw;
+        int cap;
+        int len;
+
+        tp_type& operator[](const int index) {
+            assert(elems_raw);
+            assert(index >= 0 && index < len);
+            return elems_raw[index];
+        }
+
+        const tp_type& operator[](const int index) const {
+            assert(elems_raw);
+            assert(index >= 0 && index < len);
+            return elems_raw[index];
+        }
+    };
+
     template<c_trivial_type tp_type, int tp_cap>
     struct s_static_list {
         tp_type elems_raw[tp_cap];
@@ -78,6 +97,22 @@ namespace zf4 {
         const tp_type& operator[](const int index) const {
             assert(index >= 0 && index < len);
             return elems_raw[index];
+        }
+
+        operator s_list<tp_type>() {
+            return {
+                .elems_raw = elems_raw,
+                .cap = tp_cap,
+                .len = len
+            };
+        }
+
+        operator s_list<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .cap = tp_cap,
+                .len = len
+            };
         }
     };
 
@@ -181,10 +216,22 @@ namespace zf4 {
         return array.len * sizeof(tp_type);
     }
 
+    template<c_trivial_type tp_type>
+    inline void ListAppend(s_list<tp_type>& list, const tp_type& elem) {
+        assert(list.len < list.cap);
+        list[list.len++] = elem;
+    }
+
     template<c_trivial_type tp_type, int tp_cap>
     inline void ListAppend(s_static_list<tp_type, tp_cap>& list, const tp_type& elem) {
         assert(list.len < tp_cap);
         list[list.len++] = elem;
+    }
+
+    template<c_trivial_type tp_type>
+    inline void ListPop(s_list<tp_type>& list) {
+        assert(list.len > 0);
+        --list.len;
     }
 
     template<c_trivial_type tp_type, int tp_cap>
@@ -193,19 +240,35 @@ namespace zf4 {
         --list.len;
     }
 
-    template<c_trivial_type tp_type, int tp_cap>
-    inline tp_type& ListEnd(s_static_list<tp_type, tp_cap>& list) {
+    template<c_trivial_type tp_type>
+    inline tp_type& ListEnd(const s_list<tp_type> list) {
         assert(list.len > 0);
         return list[list.len - 1];
     }
 
     template<c_trivial_type tp_type, int tp_cap>
-    inline bool IsListEmpty(const s_static_list<tp_type, tp_cap>& list) {
+    inline tp_type& ListEnd(s_static_list<tp_type, tp_cap> list) {
+        assert(list.len > 0);
+        return list[list.len - 1];
+    }
+
+    template<c_trivial_type tp_type>
+    inline bool IsListEmpty(const s_list<tp_type> list) {
         return list.len == 0;
     }
 
     template<c_trivial_type tp_type, int tp_cap>
-    inline bool IsListFull(const s_static_list<tp_type, tp_cap>& list) {
+    inline bool IsListEmpty(const s_static_list<tp_type, tp_cap> list) {
+        return list.len == 0;
+    }
+
+    template<c_trivial_type tp_type>
+    inline bool IsListFull(const s_list<tp_type> list) {
+        return list.len == list.cap;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline bool IsListFull(const s_static_list<tp_type, tp_cap> list) {
         return list.len == tp_cap;
     }
 
