@@ -424,7 +424,15 @@ namespace zf4 {
         return {rect.x, rect.y};
     }
 
+    constexpr s_vec_2d_i RectPos(const s_rect_i rect) {
+        return {rect.x, rect.y};
+    }
+
     constexpr s_vec_2d RectSize(const s_rect rect) {
+        return {rect.width, rect.height};
+    }
+
+    constexpr s_vec_2d_i RectSize(const s_rect_i rect) {
         return {rect.width, rect.height};
     }
 
@@ -432,6 +440,13 @@ namespace zf4 {
         return {
             rect.x + (rect.width / 2.0f),
             rect.y + (rect.height / 2.0f)
+        };
+    }
+
+    constexpr s_vec_2d_i RectCenter(const s_rect_i rect) {
+        return {
+            rect.x + (rect.width / 2),
+            rect.y + (rect.height / 2)
         };
     }
 
