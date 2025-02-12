@@ -49,10 +49,11 @@ namespace zf4 {
         };
 
         if (!IsStructZero(poly.pts)) {
-            poly.pts[0] = pos;
-            poly.pts[1] = pos + zf4::s_vec_2d(size.x, 0.0f);
-            poly.pts[2] = pos + zf4::s_vec_2d(size.x, size.y);
-            poly.pts[3] = pos + zf4::s_vec_2d(0.0f, size.y);
+            const zf4::s_vec_2d pos_base = pos - zf4::s_vec_2d(size.x * origin.x, size.y * origin.y);
+            poly.pts[0] = pos_base;
+            poly.pts[1] = pos_base + zf4::s_vec_2d(size.x, 0.0f);
+            poly.pts[2] = pos_base + zf4::s_vec_2d(size.x, size.y);
+            poly.pts[3] = pos_base + zf4::s_vec_2d(0.0f, size.y);
         }
 
         return poly;
@@ -76,6 +77,87 @@ namespace zf4 {
         }
 
         return poly;
+    }
+
+    bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect) {
+        const s_static_array<s_vec_2d, 4> rect_poly_pts = {
+            .elems_raw = {
+                {rect.x, rect.y},
+                {rect.x + rect.width, rect.y},
+                {rect.x + rect.width, rect.y + rect.height},
+                {rect.x, rect.y + rect.height}
+            }
+        };
+
+        const s_poly_view rect_poly = {
+            .pts = rect_poly_pts
+        };
+
+        return DoPolysIntersect(poly, rect_poly);
+    }
+
+    float PolyLeft(const s_poly_view poly) {
+        assert(poly.pts.len > 0);
+
+        float leftmost_x = poly.pts[0].x;
+
+        for (int i = 1; i < poly.pts.len; ++i) {
+            const float pt_x = poly.pts[i].x;
+
+            if (pt_x < leftmost_x) {
+                leftmost_x = pt_x;
+            }
+        }
+
+        return leftmost_x;
+    }
+
+    float PolyRight(const s_poly_view poly) {
+        assert(poly.pts.len > 0);
+
+        float rightmost_x = poly.pts[0].x;
+
+        for (int i = 1; i < poly.pts.len; ++i) {
+            const float pt_x = poly.pts[i].x;
+
+            if (pt_x > rightmost_x) {
+                rightmost_x = pt_x;
+            }
+        }
+
+        return rightmost_x;
+    }
+
+    float PolyTop(const s_poly_view poly) {
+        assert(poly.pts.len > 0);
+
+        float topmost_y = poly.pts[0].y;
+
+        for (int i = 1; i < poly.pts.len; ++i) {
+            const float pt_y = poly.pts[i].y;
+
+            if (pt_y < topmost_y) {
+                topmost_y = pt_y;
+            }
+        }
+
+        return topmost_y;
+    }
+
+    float PolyBottom(const s_poly_view poly) {
+        assert(poly.pts.len > 0);
+
+        float bottommost_y = poly.pts[0].y;
+
+        for (int i = 1; i < poly.pts.len; ++i) {
+            const float pt_y = poly.pts[i].y;
+
+            if (pt_y > bottommost_y) {
+                bottommost_y = pt_y;
+            }
+        }
+
+        return bottommost_y;
     }
 
     s_matrix_4x4 GenIdentityMatrix4x4() {
