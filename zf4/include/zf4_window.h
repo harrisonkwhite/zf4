@@ -13,11 +13,11 @@ namespace zf4 {
         eks_window_flags_cnt
     };
 
-    typedef uint64_t ta_keys_down_bits;
-    typedef uint8_t ta_mouse_buttons_down_bits;
+    using a_keys_down_bits = uint64_t;
+    using a_mouse_buttons_down_bits = uint8_t;
 
     enum e_key_code {
-        ek_key_code_null,
+        eks_key_code_null,
 
         ek_key_code_space,
 
@@ -62,18 +62,6 @@ namespace zf4 {
         ek_key_code_escape,
         ek_key_code_enter,
         ek_key_code_tab,
-        ek_key_code_backspace,
-        ek_key_code_insert,
-        ek_key_code_delete,
-        ek_key_code_home,
-        ek_key_code_end,
-        ek_key_code_page_up,
-        ek_key_code_page_down,
-        ek_key_code_caps_lock,
-        ek_key_code_scroll_lock,
-        ek_key_code_num_lock,
-        ek_key_code_print_screen,
-        ek_key_code_pause,
 
         ek_key_code_right,
         ek_key_code_left,
@@ -96,13 +84,9 @@ namespace zf4 {
         ek_key_code_left_shift,
         ek_key_code_left_control,
         ek_key_code_left_alt,
-        ek_key_code_left_super,
         ek_key_code_right_shift,
         ek_key_code_right_control,
         ek_key_code_right_alt,
-        ek_key_code_right_super,
-
-        ek_key_code_menu,
 
         eks_key_code_cnt
     };
@@ -118,8 +102,8 @@ namespace zf4 {
     };
 
     struct s_input_state {
-        ta_keys_down_bits keys_down;
-        ta_mouse_buttons_down_bits mouse_buttons_down;
+        a_keys_down_bits keys_down;
+        a_mouse_buttons_down_bits mouse_buttons_down;
         s_vec_2d mouse_pos;
     };
 
@@ -136,7 +120,7 @@ namespace zf4 {
     void CleanWindow(s_window& window);
 
     inline bool KeyDown(const e_key_code key_code, const s_input_state& input_state) {
-        const ta_keys_down_bits key_bit = (ta_keys_down_bits)1 << key_code;
+        const a_keys_down_bits key_bit = static_cast<a_keys_down_bits>(1) << key_code;
         return input_state.keys_down & key_bit;
     }
 
@@ -149,7 +133,7 @@ namespace zf4 {
     }
 
     inline bool MouseButtonDown(const e_mouse_button_code button_code, const s_input_state& input_state) {
-        const ta_mouse_buttons_down_bits button_bit = (ta_mouse_buttons_down_bits)1 << button_code;
+        const a_mouse_buttons_down_bits button_bit = static_cast<a_mouse_buttons_down_bits>(1) << button_code;
         return input_state.mouse_buttons_down & button_bit;
     }
 

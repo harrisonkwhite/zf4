@@ -48,18 +48,6 @@ namespace zf4 {
             case GLFW_KEY_ESCAPE: return ek_key_code_escape;
             case GLFW_KEY_ENTER: return ek_key_code_enter;
             case GLFW_KEY_TAB: return ek_key_code_tab;
-            case GLFW_KEY_BACKSPACE: return ek_key_code_backspace;
-            case GLFW_KEY_INSERT: return ek_key_code_insert;
-            case GLFW_KEY_DELETE: return ek_key_code_delete;
-            case GLFW_KEY_HOME: return ek_key_code_home;
-            case GLFW_KEY_END: return ek_key_code_end;
-            case GLFW_KEY_PAGE_UP: return ek_key_code_page_up;
-            case GLFW_KEY_PAGE_DOWN: return ek_key_code_page_down;
-            case GLFW_KEY_CAPS_LOCK: return ek_key_code_caps_lock;
-            case GLFW_KEY_SCROLL_LOCK: return ek_key_code_scroll_lock;
-            case GLFW_KEY_NUM_LOCK: return ek_key_code_num_lock;
-            case GLFW_KEY_PRINT_SCREEN: return ek_key_code_print_screen;
-            case GLFW_KEY_PAUSE: return ek_key_code_pause;
 
             case GLFW_KEY_RIGHT: return ek_key_code_right;
             case GLFW_KEY_LEFT: return ek_key_code_left;
@@ -82,15 +70,11 @@ namespace zf4 {
             case GLFW_KEY_LEFT_SHIFT: return ek_key_code_left_shift;
             case GLFW_KEY_LEFT_CONTROL: return ek_key_code_left_control;
             case GLFW_KEY_LEFT_ALT: return ek_key_code_left_alt;
-            case GLFW_KEY_LEFT_SUPER: return ek_key_code_left_super;
             case GLFW_KEY_RIGHT_SHIFT: return ek_key_code_right_shift;
             case GLFW_KEY_RIGHT_CONTROL: return ek_key_code_right_control;
             case GLFW_KEY_RIGHT_ALT: return ek_key_code_right_alt;
-            case GLFW_KEY_RIGHT_SUPER: return ek_key_code_right_super;
 
-            case GLFW_KEY_MENU: return ek_key_code_menu;
-
-            default: return ek_key_code_null;
+            default: return eks_key_code_null;
         }
     }
 
@@ -105,18 +89,18 @@ namespace zf4 {
     }
 
     static void GLFWWindowSizeCallback(GLFWwindow* const glfwWindow, const int width, const int height) {
-        const auto window = (s_window*)glfwGetWindowUserPointer(glfwWindow);
+        const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
         window->size_cache.x = width;
         window->size_cache.y = height;
     }
 
     static void GLFWKeyCallback(GLFWwindow* const glfwWindow, const int key, const int scancode, const int action, const int mods) {
-        const auto window = (s_window*)glfwGetWindowUserPointer(glfwWindow);
+        const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
 
         const e_key_code key_code = ConvertGLFWKeyCode(key);
 
         if (key_code) {
-            const ta_keys_down_bits key_bit = (ta_keys_down_bits)1 << key_code;
+            const a_keys_down_bits key_bit = static_cast<a_keys_down_bits>(1) << key_code;
 
             if (action == GLFW_PRESS) {
                 window->input_state.keys_down |= key_bit;
@@ -127,12 +111,12 @@ namespace zf4 {
     }
 
     static void GLFWMouseButtonCallback(GLFWwindow* const glfwWindow, const int button, const int action, const int mods) {
-        const auto window = (s_window*)glfwGetWindowUserPointer(glfwWindow);
+        const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
 
         const e_mouse_button_code button_code = ConvertGLFWMouseButtonCode(button);
 
         if (button_code) {
-            const ta_mouse_buttons_down_bits button_bit = (ta_mouse_buttons_down_bits)1 << button_code;
+            const a_mouse_buttons_down_bits button_bit = static_cast<a_mouse_buttons_down_bits>(1) << button_code;
 
             if (action == GLFW_PRESS) {
                 window->input_state.mouse_buttons_down |= button_bit;
@@ -143,9 +127,9 @@ namespace zf4 {
     }
 
     static void GLFWCursorPosCallback(GLFWwindow* const glfwWindow, const double x, const double y) {
-        const auto window = (s_window*)glfwGetWindowUserPointer(glfwWindow);
-        window->input_state.mouse_pos.x = (float)x;
-        window->input_state.mouse_pos.y = (float)y;
+        const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
+        window->input_state.mouse_pos.x = static_cast<float>(x);
+        window->input_state.mouse_pos.y = static_cast<float>(y);
     }
 
     bool InitWindow(s_window& window, const s_vec_2d_i size, const char* const title, const e_window_flags flags) {
