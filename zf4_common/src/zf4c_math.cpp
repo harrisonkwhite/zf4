@@ -21,7 +21,7 @@ namespace zf4 {
         return range;
     }
 
-    static bool CheckPolySeparation(const s_poly_view& poly, const s_poly_view& other) {
+    static bool CheckPolySeparation(const s_poly_view poly, const s_poly_view other) {
         for (int i = 0; i < poly.pts.len; ++i) {
             const s_vec_2d a = poly.pts[i];
             const s_vec_2d b = poly.pts[(i + 1) % poly.pts.len];
@@ -39,7 +39,7 @@ namespace zf4 {
         return true;
     }
 
-    bool DoPolysIntersect(const s_poly_view& poly_a, const s_poly_view& poly_b) {
+    bool DoPolysIntersect(const s_poly_view poly_a, const s_poly_view poly_b) {
         return CheckPolySeparation(poly_a, poly_b) && CheckPolySeparation(poly_b, poly_a);
     }
 
@@ -83,10 +83,10 @@ namespace zf4 {
         const s_static_array<s_vec_2d, 4> rect_poly_pts = {
             .elems_raw = {
                 {rect.x, rect.y},
-                {rect.x + rect.width, rect.y},
-                {rect.x + rect.width, rect.y + rect.height},
-                {rect.x, rect.y + rect.height}
-            }
+            {rect.x + rect.width, rect.y},
+            {rect.x + rect.width, rect.y + rect.height},
+            {rect.x, rect.y + rect.height}
+        }
         };
 
         const s_poly_view rect_poly = {
@@ -158,6 +158,43 @@ namespace zf4 {
         }
 
         return bottommost_y;
+    }
+
+    bool IsPolyQuad(const s_poly_view poly) {
+        if (poly.pts.len != 4) {
+            return false;
+        }
+
+        // Verify that all the angles are 90 degrees.
+        for (int i = 0; i < poly.pts.len; ++i) {
+            const zf4::s_vec_2d pt = poly.pts[i];
+            const zf4::s_vec_2d pt_prev = poly.pts[WrappedIndex(i - 1, poly.pts.len)];
+            const zf4::s_vec_2d pt_next = poly.pts[WrappedIndex(i + 1, poly.pts.len)];
+
+            if (Dot(pt_prev - pt, pt_next - pt) != 0.0f) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool IsPolyQuadNonRot(const s_poly_view poly) {
+        if (poly.pts.len != 4) {
+            return false;
+        }
+
+        if (poly.pts[0].x == poly.pts[3].x && poly.pts[1].x == poly.pts[2].x
+            && poly.pts[0].y == poly.pts[1].y && poly.pts[2].y == poly.pts[3].y) {
+            return true;
+        }
+
+        if (poly.pts[0].x == poly.pts[1].x && poly.pts[2].x == poly.pts[3].x
+            && poly.pts[0].y == poly.pts[3].y && poly.pts[1].y == poly.pts[2].y) {
+            return true;
+        }
+
+        return false;
     }
 
     s_matrix_4x4 GenIdentityMatrix4x4() {

@@ -284,6 +284,22 @@ namespace zf4 {
         }
     };
 
+    struct s_poly_quad {
+        s_vec_2d pts[4];
+
+        operator s_poly() {
+            return {
+                .pts = {.elems_raw = pts, .len = 4}
+            };
+        }
+
+        operator s_poly_view() const {
+            return {
+                .pts = {.elems_raw = pts, .len = 4}
+            };
+        }
+    };
+
     struct s_range {
         int min;
         int max;
@@ -330,7 +346,7 @@ namespace zf4 {
         s_static_array<s_static_array<float, 4>, 4> elems;
     };
 
-    bool DoPolysIntersect(const s_poly_view& poly_a, const s_poly_view& poly_b);
+    bool DoPolysIntersect(const s_poly_view poly_a, const s_poly_view poly_b);
     s_poly PushQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, s_mem_arena& mem_arena);
     s_poly PushRotatedQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, s_mem_arena& mem_arena);
     bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect);
@@ -338,6 +354,8 @@ namespace zf4 {
     float PolyRight(const s_poly_view poly);
     float PolyTop(const s_poly_view poly);
     float PolyBottom(const s_poly_view poly);
+    bool IsPolyQuad(const s_poly_view poly);
+    bool IsPolyQuadNonRot(const s_poly_view poly);
 
     s_matrix_4x4 GenIdentityMatrix4x4();
     s_matrix_4x4 GenOrthoMatrix4x4(const float left, const float right, const float bottom, const float top, const float near, const float far);

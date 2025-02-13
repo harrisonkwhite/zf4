@@ -180,6 +180,13 @@ namespace zf4 {
         return gb * 1024 * 1024 * 1024;
     }
 
+    inline int WrappedIndex(const int i, const int len) {
+        assert(len > 0);
+
+        const int mod = i % len;
+        return mod >= 0 ? mod : len + mod;
+    }
+
     constexpr bool IsPowerOfTwo(const int n) {
         return !(n & (n - 1));
     }

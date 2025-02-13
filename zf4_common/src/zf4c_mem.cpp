@@ -164,7 +164,7 @@ namespace zf4 {
         assert(offs >= 0 && offs < arena.size);
 
         const int clear_size = arena.size - offs;
-        memset((char*)arena.buf + offs, 0, clear_size);
+        memset(static_cast<char*>(arena.buf) + offs, 0, clear_size);
     }
 
     void* Push(const int size, const int alignment, s_mem_arena& mem_arena) {
