@@ -699,7 +699,14 @@ void main() {
     }
 
     void DrawRect(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
-        SubmitToRenderBatch(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, RectPos(rect), RectSize(rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
+        SubmitToRenderBatch(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, RectTopLeft(rect), RectSize(rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
+    }
+
+    void DrawRectOutline(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
+        DrawLine(RectTopLeft(rect), RectTopRight(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
+        DrawLine(RectTopRight(rect), RectBottomRight(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
+        DrawLine(RectBottomRight(rect), RectBottomLeft(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
+        DrawLine(RectBottomLeft(rect), RectTopLeft(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
     }
 
     void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
