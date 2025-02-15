@@ -180,6 +180,11 @@ namespace zf4 {
         return gb * 1024 * 1024 * 1024;
     }
 
+    inline int ToIndex(const int x, const int y, const int width) {
+        assert(x >= 0 && y >= 0 && width > 0);
+        return (y * width) + x;
+    }
+
     inline int WrappedIndex(const int i, const int len) {
         assert(len > 0);
 
