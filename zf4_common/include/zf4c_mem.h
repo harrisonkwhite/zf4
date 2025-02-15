@@ -335,4 +335,9 @@ namespace zf4 {
 
         return array;
     }
+
+    template<c_trivial_type tp_type>
+    tp_type* PushArrayRaw(const int len, s_mem_arena& arena) {
+        return static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena));
+    }
 }
