@@ -31,7 +31,7 @@ namespace zf4 {
             const s_range_f poly_a_range = ProjectPts(poly.pts, normal);
             const s_range_f poly_b_range = ProjectPts(other.pts, normal);
 
-            if (poly_a_range.max < poly_b_range.min || poly_b_range.max < poly_a_range.min) {
+            if (poly_a_range.max <= poly_b_range.min || poly_b_range.max <= poly_a_range.min) {
                 return false;
             }
         }
@@ -81,12 +81,10 @@ namespace zf4 {
 
     bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect) {
         const s_static_array<s_vec_2d, 4> rect_poly_pts = {
-            .elems_raw = {
-                {rect.x, rect.y},
-            {rect.x + rect.width, rect.y},
-            {rect.x + rect.width, rect.y + rect.height},
-            {rect.x, rect.y + rect.height}
-        }
+            zf4::s_vec_2d(rect.x, rect.y),
+            zf4::s_vec_2d(rect.x + rect.width, rect.y),
+            zf4::s_vec_2d(rect.x + rect.width, rect.y + rect.height),
+            zf4::s_vec_2d(rect.x, rect.y + rect.height)
         };
 
         const s_poly_view rect_poly = {
