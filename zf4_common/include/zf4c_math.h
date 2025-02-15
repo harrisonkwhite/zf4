@@ -446,20 +446,6 @@ namespace zf4 {
         return {rect.width, rect.height};
     }
 
-    constexpr s_vec_2d RectCenter(const s_rect rect) {
-        return {
-            rect.x + (rect.width / 2.0f),
-            rect.y + (rect.height / 2.0f)
-        };
-    }
-
-    constexpr s_vec_2d_i RectCenter(const s_rect_i rect) {
-        return {
-            rect.x + (rect.width / 2),
-            rect.y + (rect.height / 2)
-        };
-    }
-
     constexpr float RectRight(const s_rect rect) {
         return rect.x + rect.width;
     }
@@ -484,6 +470,14 @@ namespace zf4 {
         return {rect.x, rect.y};
     }
 
+    constexpr s_vec_2d RectTopCenter(const s_rect rect) {
+        return {rect.x + (rect.width / 2.0f), rect.y};
+    }
+
+    constexpr s_vec_2d_i RectTopCenter(const s_rect_i rect) {
+        return {rect.x + (rect.width / 2), rect.y};
+    }
+
     constexpr s_vec_2d RectTopRight(const s_rect rect) {
         return {RectRight(rect), rect.y};
     }
@@ -492,12 +486,28 @@ namespace zf4 {
         return {RectRight(rect), rect.y};
     }
 
-    constexpr s_vec_2d RectBottomRight(const s_rect rect) {
-        return {RectRight(rect), RectBottom(rect)};
+    constexpr s_vec_2d RectCenterLeft(const s_rect rect) {
+        return {rect.x, rect.y + (rect.height / 2.0f)};
     }
 
-    constexpr s_vec_2d_i RectBottomRight(const s_rect_i rect) {
-        return {RectRight(rect), RectBottom(rect)};
+    constexpr s_vec_2d_i RectCenterLeft(const s_rect_i rect) {
+        return {rect.x, rect.y + (rect.height / 2)};
+    }
+
+    constexpr s_vec_2d RectCenter(const s_rect rect) {
+        return {rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)};
+    }
+
+    constexpr s_vec_2d_i RectCenter(const s_rect_i rect) {
+        return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)};
+    }
+
+    constexpr s_vec_2d RectCenterRight(const s_rect rect) {
+        return {RectRight(rect), rect.y + (rect.height / 2.0f)};
+    }
+
+    constexpr s_vec_2d_i RectCenterRight(const s_rect_i rect) {
+        return {RectRight(rect), rect.y + (rect.height / 2)};
     }
 
     constexpr s_vec_2d RectBottomLeft(const s_rect rect) {
@@ -506,6 +516,22 @@ namespace zf4 {
 
     constexpr s_vec_2d_i RectBottomLeft(const s_rect_i rect) {
         return {rect.x, RectBottom(rect)};
+    }
+
+    constexpr s_vec_2d RectBottomCenter(const s_rect rect) {
+        return {rect.x + (rect.width / 2.0f), RectBottom(rect)};
+    }
+
+    constexpr s_vec_2d_i RectBottomCenter(const s_rect_i rect) {
+        return {rect.x + (rect.width / 2), RectBottom(rect)};
+    }
+
+    constexpr s_vec_2d RectBottomRight(const s_rect rect) {
+        return {RectRight(rect), RectBottom(rect)};
+    }
+
+    constexpr s_vec_2d_i RectBottomRight(const s_rect_i rect) {
+        return {RectRight(rect), RectBottom(rect)};
     }
 
     constexpr s_rect RectTranslated(const s_rect rect, const s_vec_2d trans) {
