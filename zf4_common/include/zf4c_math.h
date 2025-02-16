@@ -284,6 +284,7 @@ namespace zf4 {
         }
     };
 
+#if 0
     struct s_poly_quad {
         s_vec_2d pts[4];
 
@@ -299,6 +300,7 @@ namespace zf4 {
             };
         }
     };
+#endif
 
     struct s_range {
         int min;
