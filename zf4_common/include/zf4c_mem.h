@@ -342,6 +342,19 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type>
+    s_list<tp_type> PushList(const int cap, s_mem_arena& arena) {
+        s_list list = {
+            .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * cap, alignof(tp_type), arena))
+        };
+
+        if (list.elems_raw) {
+            list.cap = cap;
+        }
+
+        return list;
+    }
+
+    template<c_trivial_type tp_type>
     tp_type* PushArrayRaw(const int len, s_mem_arena& arena) {
         return static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena));
     }
