@@ -66,6 +66,44 @@ namespace zf4 {
     };
 
     template<c_trivial_type tp_type>
+    struct s_array_2d {
+        tp_type* elems_raw;
+        int width;
+        int height;
+
+        const s_array<tp_type> operator[](const int index) const {
+            assert(index >= 0 && index < height);
+
+            return {
+                .elems_raw = elems_raw + (width * index),
+                .len = width
+            };
+        }
+
+        operator s_array<tp_type>() {
+            return {
+                .elems_raw = elems_raw,
+                .len = width * height
+            };
+        }
+
+        operator s_array<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .len = width * height
+            };
+        }
+
+        operator s_array_2d<const tp_type>() const {
+            return {
+                .elems_raw = elems_raw,
+                .width = width,
+                .height = height
+            };
+        }
+    };
+
+    template<c_trivial_type tp_type>
     struct s_list {
         tp_type* elems_raw;
         int cap;
@@ -181,7 +219,7 @@ namespace zf4 {
     }
 
     inline int ToIndex(const int x, const int y, const int width) {
-        assert(x >= 0 && y >= 0 && width > 0);
+        assert(x >= 0 && x < width && y >= 0 && width > 0);
         return (y * width) + x;
     }
 
@@ -209,6 +247,16 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type>
+    inline void ZeroOutArrayElems(const s_array<tp_type> array) {
+        memset(array.elems_raw, 0, sizeof(tp_type) * array.len);
+    }
+
+    template<c_trivial_type tp_type>
+    inline void ZeroOutArrayElems2D(const s_array_2d<tp_type> array) {
+        memset(array.elems_raw, 0, sizeof(tp_type) * array.width * array.height);
+    }
+
+    template<c_trivial_type tp_type>
     bool IsStructZero(const tp_type& st) {
         static_assert(std::is_class_v<tp_type>);
 
@@ -224,8 +272,40 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type>
-    inline int ArraySizeInBytes(const s_array<tp_type> array) {
+    bool AreArrayElemsZero(const s_array<const tp_type> array) {
+        for (int i = 0; i < array.len; ++i) {
+            if (!IsStructZero(array[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    template<c_trivial_type tp_type>
+    bool Are2DArrayElemsZero(const s_array_2d<const tp_type> array) {
+        for (int y = 0; y < array.height; ++y) {
+            for (int x = 0; x < array.width; ++x) {
+                if (!IsStructZero(array[y][x])) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    template<c_trivial_type tp_type>
+    inline int ArraySizeInBytes(const s_array<const tp_type> array) {
         return array.len * sizeof(tp_type);
+    }
+
+    template<c_trivial_type tp_type>
+    inline zf4::s_array<tp_type> ToArray(const zf4::s_list<const tp_type> list) {
+        return {
+            .elems_raw = list.elems_raw,
+            .len = list.cap
+        };
     }
 
     template<c_trivial_type tp_type>
@@ -330,6 +410,8 @@ namespace zf4 {
 
     template<c_trivial_type tp_type>
     s_array<tp_type> PushArray(const int len, s_mem_arena& arena) {
+        assert(len > 0);
+
         s_array array = {
             .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena))
         };
@@ -342,7 +424,25 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type>
+    s_array_2d<tp_type> PushArray2D(const int width, const int height, s_mem_arena& arena) {
+        assert(width > 0 && height > 0);
+
+        s_array_2d array = {
+            .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * width * height, alignof(tp_type), arena))
+        };
+
+        if (array.elems_raw) {
+            array.width = width;
+            array.height = height;
+        }
+
+        return array;
+    }
+
+    template<c_trivial_type tp_type>
     s_list<tp_type> PushList(const int cap, s_mem_arena& arena) {
+        assert(cap > 0);
+
         s_list list = {
             .elems_raw = static_cast<tp_type*>(Push(sizeof(tp_type) * cap, alignof(tp_type), arena))
         };
@@ -356,6 +456,7 @@ namespace zf4 {
 
     template<c_trivial_type tp_type>
     tp_type* PushArrayRaw(const int len, s_mem_arena& arena) {
+        assert(len > 0);
         return static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type), arena));
     }
 }

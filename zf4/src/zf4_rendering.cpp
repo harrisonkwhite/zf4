@@ -246,7 +246,7 @@ void main() {
                 indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
             }
 
-            ZF4_GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(indices), indices.elems_raw, GL_STATIC_DRAW));
+            ZF4_GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(static_cast<s_array<const unsigned short>>(indices)), indices.elems_raw, GL_STATIC_DRAW));
         }
 
         // Set vertex attribute pointers.

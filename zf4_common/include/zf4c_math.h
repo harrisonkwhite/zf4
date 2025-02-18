@@ -284,24 +284,6 @@ namespace zf4 {
         }
     };
 
-#if 0
-    struct s_poly_quad {
-        s_vec_2d pts[4];
-
-        operator s_poly() {
-            return {
-                .pts = {.elems_raw = pts, .len = 4}
-            };
-        }
-
-        operator s_poly_view() const {
-            return {
-                .pts = {.elems_raw = pts, .len = 4}
-            };
-        }
-    };
-#endif
-
     struct s_range {
         int min;
         int max;
@@ -362,6 +344,23 @@ namespace zf4 {
     s_matrix_4x4 GenIdentityMatrix4x4();
     s_matrix_4x4 GenOrthoMatrix4x4(const float left, const float right, const float bottom, const float top, const float near, const float far);
 
+    constexpr bool InBounds(const s_vec_2d pos, const s_vec_2d size) {
+        return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < size.x && pos.y < size.y;
+    }
+
+    constexpr bool InBounds(const s_vec_2d_i pos, const s_vec_2d_i size) {
+        return pos.x >= 0 && pos.y >= 0 && pos.x < size.x && pos.y < size.y;
+    }
+
+    inline zf4::s_vec_2d_i Snapped(const zf4::s_vec_2d pos, const int cell_size) {
+        assert(cell_size > 0);
+
+        return {
+            static_cast<int>(floor(pos.x / cell_size)),
+            static_cast<int>(floor(pos.y / cell_size))
+        };
+    }
+
     constexpr int Min(const int a, const int b) {
         return a < b ? a : b;
     }
@@ -414,6 +413,12 @@ namespace zf4 {
 
     inline float Dist(const s_vec_2d a, const s_vec_2d b) {
         return Magnitude(b - a);
+    }
+
+    constexpr float DistSquared(const s_vec_2d a, const s_vec_2d b) {
+        const float x_diff = b.x - a.x;
+        const float y_diff = b.y - a.y;
+        return (x_diff * x_diff) + (y_diff * y_diff);
     }
 
     inline float Dir(const s_vec_2d vec) {

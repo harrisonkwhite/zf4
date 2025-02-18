@@ -122,6 +122,8 @@ namespace zf4 {
                 const double fps = 1.0 / frame_dur;
 
                 do {
+                    // TODO: The game (should) exit if highly laggy and the temporary memory arena is overfilled due to excessive repeated ticks. Consider a way of mitigating this issue.
+
                     // Execute a tick.
                     const e_game_tick_func_result tick_result = game_info.tick_func(game_ptrs, fps);
 
