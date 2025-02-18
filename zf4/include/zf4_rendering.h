@@ -23,6 +23,32 @@ namespace zf4 {
         constexpr s_vec_4d g_yellow = {1.0f, 1.0f, 0.0f, 1.0f};
         constexpr s_vec_4d g_cyan = {0.0f, 1.0f, 1.0f, 1.0f};
         constexpr s_vec_4d g_magenta = {1.0f, 0.0f, 1.0f, 1.0f};
+        constexpr s_vec_4d g_orange = {1.0f, 0.5f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_purple = {0.5f, 0.0f, 0.5f, 1.0f};
+        constexpr s_vec_4d g_brown = {0.6f, 0.3f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_pink = {1.0f, 0.75f, 0.8f, 1.0f};
+        constexpr s_vec_4d g_lime = {0.75f, 1.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_olive = {0.5f, 0.5f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_maroon = {0.5f, 0.0f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_navy = {0.0f, 0.0f, 0.5f, 1.0f};
+        constexpr s_vec_4d g_teal = {0.0f, 0.5f, 0.5f, 1.0f};
+        constexpr s_vec_4d g_aqua = {0.0f, 1.0f, 1.0f, 1.0f};
+        constexpr s_vec_4d g_silver = {0.75f, 0.75f, 0.75f, 1.0f};
+        constexpr s_vec_4d g_gold = {1.0f, 0.84f, 0.0f, 1.0f};
+        constexpr s_vec_4d g_beige = {0.96f, 0.96f, 0.86f, 1.0f};
+        constexpr s_vec_4d g_ivory = {1.0f, 1.0f, 0.94f, 1.0f};
+        constexpr s_vec_4d g_turquoise = {0.25f, 0.88f, 0.82f, 1.0f};
+        constexpr s_vec_4d g_violet = {0.93f, 0.51f, 0.93f, 1.0f};
+        constexpr s_vec_4d g_indigo = {0.29f, 0.0f, 0.51f, 1.0f};
+        constexpr s_vec_4d g_chocolate = {0.82f, 0.41f, 0.12f, 1.0f};
+        constexpr s_vec_4d g_coral = {1.0f, 0.5f, 0.31f, 1.0f};
+        constexpr s_vec_4d g_salmon = {0.98f, 0.5f, 0.45f, 1.0f};
+        constexpr s_vec_4d g_khaki = {0.94f, 0.9f, 0.55f, 1.0f};
+        constexpr s_vec_4d g_plum = {0.87f, 0.63f, 0.87f, 1.0f};
+        constexpr s_vec_4d g_sienna = {0.63f, 0.32f, 0.18f, 1.0f};
+        constexpr s_vec_4d g_tan = {0.82f, 0.71f, 0.55f, 1.0f};
+        constexpr s_vec_4d g_thistle = {0.85f, 0.75f, 0.85f, 1.0f};
+        constexpr s_vec_4d g_wheat = {0.96f, 0.87f, 0.7f, 1.0f};
     }
 
     enum e_str_hor_align {
