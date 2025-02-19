@@ -333,6 +333,7 @@ namespace zf4 {
     bool DoPolysIntersect(const s_poly_view poly_a, const s_poly_view poly_b);
     s_poly PushQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, s_mem_arena& mem_arena);
     s_poly PushRotatedQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, s_mem_arena& mem_arena);
+    s_poly PushPolyOfRectTranslation(const s_vec_2d rect_size, const s_vec_2d rect_pos_a, const s_vec_2d rect_pos_b, s_mem_arena& mem_arena);
     bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect);
     float PolyLeft(const s_poly_view poly);
     float PolyRight(const s_poly_view poly);

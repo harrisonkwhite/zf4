@@ -79,6 +79,69 @@ namespace zf4 {
         return poly;
     }
 
+    s_poly PushPolyOfRectTranslation(const s_vec_2d rect_size, const s_vec_2d rect_pos_a, const s_vec_2d rect_pos_b, s_mem_arena& mem_arena) {
+        if (rect_pos_a == rect_pos_b) {
+            return PushQuadPoly(rect_pos_a, rect_size, {}, mem_arena);
+        }
+
+        if (rect_pos_a.x == rect_pos_b.x) {
+            const s_poly poly = {
+                .pts = PushArray<s_vec_2d>(4, mem_arena)
+            };
+
+            const s_vec_2d lower_rect_pos = rect_pos_a.y < rect_pos_b.y ? rect_pos_a : rect_pos_b;
+            const s_vec_2d higher_rect_pos = rect_pos_a.y > rect_pos_b.y ? rect_pos_a : rect_pos_b;
+
+            poly.pts[0] = lower_rect_pos;
+            poly.pts[1] = {lower_rect_pos.x + rect_size.x, lower_rect_pos.y};
+            poly.pts[2] = {lower_rect_pos.x + rect_size.x, higher_rect_pos.y + rect_size.y};
+            poly.pts[3] = {lower_rect_pos.x, higher_rect_pos.y + rect_size.y};
+
+            return poly;
+        }
+
+        if (rect_pos_a.y == rect_pos_b.y) {
+            const s_poly poly = {
+                .pts = PushArray<s_vec_2d>(4, mem_arena)
+            };
+
+            const s_vec_2d leftmost_rect_pos = rect_pos_a.y < rect_pos_b.y ? rect_pos_a : rect_pos_b;
+            const s_vec_2d rightmost_rect_pos = rect_pos_a.y > rect_pos_b.y ? rect_pos_a : rect_pos_b;
+
+            poly.pts[0] = leftmost_rect_pos;
+            poly.pts[1] = {rightmost_rect_pos.x + rect_size.x, leftmost_rect_pos.y};
+            poly.pts[2] = {rightmost_rect_pos.x + rect_size.x, leftmost_rect_pos.y + rect_size.y};
+            poly.pts[3] = {leftmost_rect_pos.x, leftmost_rect_pos.y + rect_size.y};
+
+            return poly;
+        }
+
+        const s_poly poly = {
+            .pts = PushArray<s_vec_2d>(6, mem_arena)
+        };
+
+        const s_vec_2d leftmost_rect_pos = rect_pos_a.y < rect_pos_b.y ? rect_pos_a : rect_pos_b;
+        const s_vec_2d rightmost_rect_pos = rect_pos_a.y > rect_pos_b.y ? rect_pos_a : rect_pos_b;
+
+        if (leftmost_rect_pos.y < rightmost_rect_pos.y) {
+            poly.pts[0] = leftmost_rect_pos;
+            poly.pts[1] = {leftmost_rect_pos.x + rect_size.x, leftmost_rect_pos.y};
+            poly.pts[2] = {rightmost_rect_pos.x + rect_size.x, rightmost_rect_pos.y};
+            poly.pts[3] = {rightmost_rect_pos.x + rect_size.x, rightmost_rect_pos.y + rect_size.y};
+            poly.pts[4] = {rightmost_rect_pos.x, rightmost_rect_pos.y + rect_size.y};
+            poly.pts[5] = {leftmost_rect_pos.x, leftmost_rect_pos.y + rect_size.y};
+        } else {
+            poly.pts[0] = leftmost_rect_pos;
+            poly.pts[1] = rightmost_rect_pos;
+            poly.pts[2] = {rightmost_rect_pos.x + rect_size.x, rightmost_rect_pos.y};
+            poly.pts[3] = {rightmost_rect_pos.x + rect_size.x, rightmost_rect_pos.y + rect_size.y};
+            poly.pts[4] = {leftmost_rect_pos.x + rect_size.x, leftmost_rect_pos.y + rect_size.y};
+            poly.pts[5] = {leftmost_rect_pos.x, leftmost_rect_pos.y + rect_size.y};
+        }
+
+        return poly;
+    }
+
     bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect) {
         const s_static_array<s_vec_2d, 4> rect_poly_pts = {
             zf4::s_vec_2d(rect.x, rect.y),
