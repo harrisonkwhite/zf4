@@ -14,6 +14,7 @@ add_library(zf4 STATIC
     src/zf4_window.cpp
     src/zf4_assets.cpp
     src/zf4_rendering.cpp
+    src/zf4_pathfinding.cpp
     src/zf4_rand.cpp
     ${PARENT_DIR}/vendor/glad/src/glad.c
 
@@ -22,6 +23,7 @@ add_library(zf4 STATIC
     include/zf4_window.h
     include/zf4_assets.h
     include/zf4_rendering.h
+    include/zf4_pathfinding.h
     include/zf4_rand.h
     include/zf4_utils.h
     ${PARENT_DIR}/vendor/glad/include/glad/glad.h

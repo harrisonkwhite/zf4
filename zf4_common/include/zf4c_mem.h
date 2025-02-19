@@ -115,7 +115,7 @@ namespace zf4 {
             return elems_raw[index];
         }
 
-        const tp_type& operator[](const int index) const {
+        tp_type& operator[](const int index) const {
             assert(elems_raw);
             assert(index >= 0 && index < len);
             return elems_raw[index];
@@ -342,6 +342,12 @@ namespace zf4 {
     inline tp_type& ListEnd(s_static_list<tp_type, tp_cap> list) {
         assert(list.len > 0);
         return list[list.len - 1];
+    }
+
+    template<c_trivial_type tp_type>
+    inline void EmptyList(s_list<tp_type>& list) {
+        list.len = 0;
+        memset(list.elems_raw, 0, sizeof(tp_type) * list.cap);
     }
 
     template<c_trivial_type tp_type>
