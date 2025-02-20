@@ -165,6 +165,10 @@ namespace zf4 {
                 if (!ResizeRenderSurfaces(game.pers_render_data->surfs, game.window.size_cache)) {
                     return false;
                 }
+
+                if (game_info.on_window_resize_func) {
+                    game_info.on_window_resize_func(game_ptrs);
+                }
             }
         }
 

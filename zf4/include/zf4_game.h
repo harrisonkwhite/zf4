@@ -29,12 +29,14 @@ namespace zf4 {
     typedef e_game_tick_func_result (*ta_game_tick_func)(const s_game_ptrs& const game_ptrs, const double fps);
     typedef bool (*ta_game_draw_func)(s_draw_phase_state& const draw_phase_state, const s_game_ptrs& const game_ptrs, const double fps);
     typedef void (*ta_game_cleanup_func)(void* const custom_data);
+    typedef void (*ta_game_on_window_resize_func)(const s_game_ptrs& const game_ptrs);
 
     struct s_game_info {
         ta_game_init_func init_func;
         ta_game_tick_func tick_func;
         ta_game_draw_func draw_func;
         ta_game_cleanup_func cleanup_func;
+        ta_game_on_window_resize_func on_window_resize_func;
 
         int perm_mem_arena_size;
         int temp_mem_arena_size;
