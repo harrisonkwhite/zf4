@@ -91,6 +91,79 @@ namespace zf4 {
         eks_key_code_cnt
     };
 
+    constexpr zf4::s_static_array<const char*, eks_key_code_cnt> g_key_code_names = {
+        "",
+
+        "Space",
+
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z",
+
+        "Escape",
+        "Enter",
+        "Tab",
+
+        "Right",
+        "Left",
+        "Down",
+        "Up",
+
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12",
+
+        "Left Shift",
+        "Left Control",
+        "Left Alt",
+        "Right Shift",
+        "Right Control",
+        "Right Alt"
+    };
+
     enum e_mouse_button_code {
         ek_mouse_button_code_null,
 
@@ -99,6 +172,14 @@ namespace zf4 {
         ek_mouse_button_code_middle,
 
         eks_mouse_button_code_cnt
+    };
+
+    constexpr zf4::s_static_array<const char*, eks_mouse_button_code_cnt> g_mouse_button_code_names = {
+        "",
+
+        "Left Mouse Button",
+        "Right Mouse Button",
+        "Middle Mouse Button"
     };
 
     struct s_input_state {
