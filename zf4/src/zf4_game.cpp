@@ -43,6 +43,8 @@ namespace zf4 {
         }
 
         {
+            // TODO: Allow for having the game begin in fullscreen.
+            // TODO: Allow for fullscreen switching to the monitor the window is currently in.
             const GLFWvidmode* const glfw_video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
             const s_vec_2d_i display_size = {glfw_video_mode->width, glfw_video_mode->height};
 

@@ -194,6 +194,9 @@ namespace zf4 {
 
         s_vec_2d_i size_min;
 
+        s_vec_2d_i pos_before_going_fullscreen;
+        s_vec_2d_i size_before_going_fullscreen;
+
         s_input_state input_state;
         s_input_state input_state_saved;
     };
@@ -201,12 +204,17 @@ namespace zf4 {
     bool InitWindow(s_window& window, const s_vec_2d_i size, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags);
     void CleanWindow(s_window& window);
     bool ResizeWindow(const s_window& window, const s_vec_2d_i size, s_pers_render_data& pers_render_data);
+    bool SetFullscreen(s_window& window, const bool fullscreen, s_pers_render_data& pers_render_data);
     bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data);
 
     inline s_vec_2d_i WindowSize(const s_window& window) {
         s_vec_2d_i size;
         glfwGetWindowSize(window.glfw_window, &size.x, &size.y);
         return size;
+    }
+
+    inline bool InFullscreen(const s_window& window) {
+        return glfwGetWindowMonitor(window.glfw_window);
     }
 
     inline bool KeyDown(const e_key_code key_code, const s_input_state& input_state) {

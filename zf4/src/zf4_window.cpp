@@ -195,6 +195,23 @@ namespace zf4 {
         return ProcWindowResize(window, pers_render_data);
     }
 
+    bool SetFullscreen(s_window& window, const bool fullscreen, s_pers_render_data& pers_render_data) {
+        assert(fullscreen != InFullscreen(window)); // Make sure we are actually changing state.
+
+        if (fullscreen) {
+            glfwGetWindowPos(window.glfw_window, &window.pos_before_going_fullscreen.x, &window.pos_before_going_fullscreen.y);
+            glfwGetWindowSize(window.glfw_window, &window.size_before_going_fullscreen.x, &window.size_before_going_fullscreen.y);
+
+            GLFWmonitor* const monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* const vid_mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(window.glfw_window, monitor, 0, 0, vid_mode->width, vid_mode->height, vid_mode->refreshRate);
+        } else {
+            glfwSetWindowMonitor(window.glfw_window, nullptr, window.pos_before_going_fullscreen.x, window.pos_before_going_fullscreen.y, window.size_before_going_fullscreen.x, window.size_before_going_fullscreen.y, GLFW_DONT_CARE);
+        }
+
+        return zf4::ProcWindowResize(window, pers_render_data);
+    }
+
     bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data) {
         const zf4::s_vec_2d_i size = WindowSize(window);
         glViewport(0, 0, size.x, size.y);

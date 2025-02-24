@@ -12,7 +12,7 @@ namespace zf4 {
     struct s_game_ptrs {
         s_mem_arena& perm_mem_arena;
         s_mem_arena& temp_mem_arena;
-        const s_window& window;
+        s_window& window; // TODO: Maybe split this up from input state data.
         const s_user_assets& user_assets;
         const s_builtin_assets& builtin_assets;
         s_pers_render_data& pers_render_data;
