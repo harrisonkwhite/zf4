@@ -88,11 +88,13 @@ namespace zf4 {
         }
     }
 
+#if 0
     static void GLFWWindowSizeCallback(GLFWwindow* const glfwWindow, const int width, const int height) {
         const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
         window->size_cache.x = width;
         window->size_cache.y = height;
     }
+#endif
 
     static void GLFWKeyCallback(GLFWwindow* const glfwWindow, const int key, const int scancode, const int action, const int mods) {
         const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
@@ -155,15 +157,11 @@ namespace zf4 {
         glfwSwapInterval(1); // Enables VSync.
 
         glfwSetWindowUserPointer(window.glfw_window, &window);
-        glfwSetWindowSizeCallback(window.glfw_window, GLFWWindowSizeCallback);
         glfwSetKeyCallback(window.glfw_window, GLFWKeyCallback);
         glfwSetMouseButtonCallback(window.glfw_window, GLFWMouseButtonCallback);
         glfwSetCursorPosCallback(window.glfw_window, GLFWCursorPosCallback);
 
         glfwSetInputMode(window.glfw_window, GLFW_CURSOR, (flags & ek_window_flags_hide_cursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
-
-        // Get the initial window size (as it otherwise won't be set until the callback).
-        glfwGetWindowSize(window.glfw_window, &window.size_cache.x, &window.size_cache.y);
 
         return true;
     }
@@ -174,5 +172,17 @@ namespace zf4 {
         }
 
         ZeroOutStruct(window);
+    }
+
+    bool ResizeWindow(const s_window& window, const zf4::s_vec_2d_i size, zf4::s_pers_render_data& pers_render_data) {
+        assert(size.x > 0 && size.y > 0); // TODO: Handle minimum window size case.
+        glfwSetWindowSize(window.glfw_window, size.x, size.y);
+        return ProcWindowResize(window, pers_render_data);
+    }
+
+    bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data) {
+        const zf4::s_vec_2d_i size = WindowSize(window);
+        glViewport(0, 0, size.x, size.y);
+        return ResizeRenderSurfaces(pers_render_data.surfs, size);
     }
 }

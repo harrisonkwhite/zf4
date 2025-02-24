@@ -3,6 +3,7 @@
 #include <cassert>
 #include <GLFW/glfw3.h>
 #include <zf4c.h>
+#include <zf4_rendering.h>
 
 namespace zf4 {
     enum e_window_flags {
@@ -91,7 +92,7 @@ namespace zf4 {
         eks_key_code_cnt
     };
 
-    constexpr zf4::s_static_array<const char*, eks_key_code_cnt> g_key_code_names = {
+    constexpr s_static_array<const char*, eks_key_code_cnt> g_key_code_names = {
         "",
 
         "Space",
@@ -174,7 +175,7 @@ namespace zf4 {
         eks_mouse_button_code_cnt
     };
 
-    constexpr zf4::s_static_array<const char*, eks_mouse_button_code_cnt> g_mouse_button_code_names = {
+    constexpr s_static_array<const char*, eks_mouse_button_code_cnt> g_mouse_button_code_names = {
         "",
 
         "Left Mouse Button",
@@ -191,14 +192,20 @@ namespace zf4 {
     struct s_window {
         GLFWwindow* glfw_window;
 
-        s_vec_2d_i size_cache; // glfwGetWindowSize() is a bit expensive for some reason, so we cache this on resize.
-
         s_input_state input_state;
         s_input_state input_state_saved;
     };
 
     bool InitWindow(s_window& window, const s_vec_2d_i size, const char* const title, const e_window_flags flags);
     void CleanWindow(s_window& window);
+    bool ResizeWindow(const s_window& window, const s_vec_2d_i size, s_pers_render_data& pers_render_data);
+    bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data);
+
+    inline s_vec_2d_i WindowSize(const s_window& window) {
+        s_vec_2d_i size;
+        glfwGetWindowSize(window.glfw_window, &size.x, &size.y);
+        return size;
+    }
 
     inline bool KeyDown(const e_key_code key_code, const s_input_state& input_state) {
         const a_keys_down_bits key_bit = static_cast<a_keys_down_bits>(1) << key_code;

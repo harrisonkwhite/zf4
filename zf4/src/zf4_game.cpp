@@ -110,8 +110,6 @@ namespace zf4 {
         Log("Entering the main loop...");
 
         while (!glfwWindowShouldClose(game.window.glfw_window)) {
-            EmptyMemArena(game.temp_mem_arena);
-
             const double frame_time_last = frame_time;
             frame_time = glfwGetTime();
 
@@ -122,7 +120,7 @@ namespace zf4 {
                 const double fps = 1.0 / frame_dur;
 
                 do {
-                    // TODO: The game (should) exit if highly laggy and the temporary memory arena is overfilled due to excessive repeated ticks. Consider a way of mitigating this issue.
+                    EmptyMemArena(game.temp_mem_arena);
 
                     // Execute a tick.
                     const e_game_tick_func_result tick_result = game_info.tick_func(game_ptrs, fps);
@@ -137,7 +135,9 @@ namespace zf4 {
                 game.window.input_state_saved = game.window.input_state;
 
                 // Execute draw.
-                s_draw_phase_state* const draw_phase_state = BeginDrawPhase(game.temp_mem_arena, game.window.size_cache);
+                EmptyMemArena(game.temp_mem_arena);
+
+                s_draw_phase_state* const draw_phase_state = BeginDrawPhase(game.temp_mem_arena, WindowSize(game.window));
 
                 if (!draw_phase_state) {
                     return false;
@@ -152,23 +152,12 @@ namespace zf4 {
                 glfwSwapBuffers(game.window.glfw_window);
             }
 
-            const s_vec_2d_i window_size_prepoll = game.window.size_cache;
+            const zf4::s_vec_2d_i window_size_before_poll_events = WindowSize(game.window);
 
             glfwPollEvents();
 
-            // Check for and process window resize.
-            if (game.window.size_cache.x != window_size_prepoll.x || game.window.size_cache.y != window_size_prepoll.y) {
-                Log("Processing window resize...");
-
-                glViewport(0, 0, game.window.size_cache.x, game.window.size_cache.y);
-
-                if (!ResizeRenderSurfaces(game.pers_render_data->surfs, game.window.size_cache)) {
-                    return false;
-                }
-
-                if (game_info.on_window_resize_func) {
-                    game_info.on_window_resize_func(game_ptrs);
-                }
+            if (WindowSize(game.window) != window_size_before_poll_events) {
+                ProcWindowResize(game.window, *game.pers_render_data);
             }
         }
 
