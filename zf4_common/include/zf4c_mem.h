@@ -314,10 +314,52 @@ namespace zf4 {
         list[list.len++] = elem;
     }
 
+    template<c_trivial_type tp_type>
+    inline tp_type& ListAppend(s_list<tp_type>& list) {
+        assert(list.len < list.cap);
+        return list[list.len++];
+    }
+
     template<c_trivial_type tp_type, int tp_cap>
     inline void ListAppend(s_static_list<tp_type, tp_cap>& list, const tp_type& elem) {
         assert(list.len < tp_cap);
         list[list.len++] = elem;
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline tp_type& ListAppend(s_static_list<tp_type, tp_cap>& list) {
+        assert(list.len < tp_cap);
+        return list[list.len++];
+    }
+
+    template<c_trivial_type tp_type>
+    inline s_array<tp_type> ListExtend(s_list<tp_type>& list, const int by) {
+        assert(by > 0);
+        assert(list.len + by <= list.cap);
+
+        tp_type* const ptr = list.elems_raw + list.len;
+
+        list.len += by;
+
+        return {
+            .elems_raw = ptr,
+            .len = by
+        };
+    }
+
+    template<c_trivial_type tp_type, int tp_cap>
+    inline s_array<tp_type> ListExtend(s_static_list<tp_type, tp_cap>& list, const int by) {
+        assert(by > 0);
+        assert(list.len + by <= tp_cap);
+
+        tp_type* const ptr = list.elems_raw + list.len;
+
+        list.len += by;
+
+        return {
+            .elems_raw = ptr,
+            .len = by
+        };
     }
 
     template<c_trivial_type tp_type>
