@@ -41,7 +41,8 @@ namespace zf4 {
         int perm_mem_arena_size;
         int temp_mem_arena_size;
 
-        const s_vec_2d_i window_init_size;
+        s_vec_2d_i (*window_init_size_loader)(const s_vec_2d_i display_size);
+        s_vec_2d_i (*window_min_size_loader)(const s_vec_2d_i display_size);
         const char* window_title;
         enum e_window_flags window_flags;
 

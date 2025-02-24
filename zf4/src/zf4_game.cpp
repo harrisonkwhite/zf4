@@ -42,12 +42,20 @@ namespace zf4 {
             return false;
         }
 
-        if (!InitWindow(game.window, game_info.window_init_size, game_info.window_title, game_info.window_flags)) {
-            return false;
+        {
+            const GLFWvidmode* const glfw_video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+            const s_vec_2d_i display_size = {glfw_video_mode->width, glfw_video_mode->height};
+
+            const s_vec_2d_i window_init_size = game_info.window_init_size_loader(display_size);
+            const s_vec_2d_i window_min_size = game_info.window_min_size_loader ? game_info.window_min_size_loader(display_size) : s_vec_2d_i();
+
+            if (!InitWindow(game.window, window_init_size, window_min_size, game_info.window_title, game_info.window_flags)) {
+                return false;
+            }
         }
 
         // Set up OpenGL.
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
             LogError("Failed to initialise OpenGL function pointers!");
             return false;
         }
@@ -172,7 +180,7 @@ namespace zf4 {
             .perm_mem_arena_size = MegabytesToBytes(80),
             .temp_mem_arena_size = MegabytesToBytes(40),
 
-            .window_init_size = {1280, 720},
+            .window_init_size_loader = [](const s_vec_2d_i display_size) -> s_vec_2d_i { return {1280, 720}; },
             .window_title = "ZF4 Game"
         };
 
@@ -186,7 +194,7 @@ namespace zf4 {
         assert(info.cleanup_func);
         assert(info.perm_mem_arena_size > 0);
         assert(info.temp_mem_arena_size > 0);
-        assert(info.window_init_size.x > 0 && info.window_init_size.y > 0);
+        assert(info.window_init_size_loader);
         assert(info.window_title);
         assert(info.custom_data_size >= 0);
         assert(info.custom_data_size > 0 ? info.custom_data_alignment >= 0 : info.custom_data_alignment == 0);

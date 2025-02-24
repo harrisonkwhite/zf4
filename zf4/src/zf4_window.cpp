@@ -134,9 +134,16 @@ namespace zf4 {
         window->input_state.mouse_pos.y = static_cast<float>(y);
     }
 
-    bool InitWindow(s_window& window, const s_vec_2d_i size, const char* const title, const e_window_flags flags) {
+    bool InitWindow(s_window& window, const s_vec_2d_i size, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags) {
         assert(IsStructZero(window));
+
         assert(size.x > 0 && size.y > 0);
+
+        if (size_min != s_vec_2d_i()) {
+            assert(size_min.x > 0 && size_min.y > 0);
+            assert(size.x >= size_min.x && size.y >= size_min.y);
+        }
+
         assert(title);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, g_gl_version_major);
@@ -161,6 +168,9 @@ namespace zf4 {
         glfwSetMouseButtonCallback(window.glfw_window, GLFWMouseButtonCallback);
         glfwSetCursorPosCallback(window.glfw_window, GLFWCursorPosCallback);
 
+        window.size_min = size_min;
+        glfwSetWindowSizeLimits(window.glfw_window, size_min.x, size_min.y, GLFW_DONT_CARE, GLFW_DONT_CARE);
+
         glfwSetInputMode(window.glfw_window, GLFW_CURSOR, (flags & ek_window_flags_hide_cursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
         return true;
@@ -175,7 +185,12 @@ namespace zf4 {
     }
 
     bool ResizeWindow(const s_window& window, const zf4::s_vec_2d_i size, zf4::s_pers_render_data& pers_render_data) {
-        assert(size.x > 0 && size.y > 0); // TODO: Handle minimum window size case.
+        if (window.size_min == s_vec_2d_i()) {
+            assert(size.x > 0 && size.y > 0);
+        } else {
+            assert(size.x >= window.size_min.x && size.y >= window.size_min.y);
+        }
+
         glfwSetWindowSize(window.glfw_window, size.x, size.y);
         return ProcWindowResize(window, pers_render_data);
     }
