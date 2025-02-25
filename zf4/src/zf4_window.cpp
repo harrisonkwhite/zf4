@@ -88,14 +88,6 @@ namespace zf4 {
         }
     }
 
-#if 0
-    static void GLFWWindowSizeCallback(GLFWwindow* const glfwWindow, const int width, const int height) {
-        const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
-        window->size_cache.x = width;
-        window->size_cache.y = height;
-    }
-#endif
-
     static void GLFWKeyCallback(GLFWwindow* const glfwWindow, const int key, const int scancode, const int action, const int mods) {
         const auto window = static_cast<s_window*>(glfwGetWindowUserPointer(glfwWindow));
 
@@ -134,30 +126,35 @@ namespace zf4 {
         window->input_state.mouse_pos.y = static_cast<float>(y);
     }
 
-    bool InitWindow(s_window& window, const s_vec_2d_i size, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags) {
+    bool InitWindow(s_window& window, const bool begin_fullscreen, const s_vec_2d_i size_default, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags) {
         assert(IsStructZero(window));
-
-        assert(size.x > 0 && size.y > 0);
-
-        if (size_min != s_vec_2d_i()) {
-            assert(size_min.x > 0 && size_min.y > 0);
-            assert(size.x >= size_min.x && size.y >= size_min.y);
-        }
-
+        assert(size_default.x > 0 && size_default.y > 0);
+        assert((size_min.x == 0 && size_min.y == 0) || (size_min.x > 0 && size_min.y > 0));
         assert(title);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, g_gl_version_major);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, g_gl_version_minor);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, flags & ek_window_flags_resizable);
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_VISIBLE, false);
 
-        window.glfw_window = glfwCreateWindow(size.x, size.y, title, nullptr, nullptr);
+        if (begin_fullscreen) {
+            GLFWmonitor* const monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* const vid_mode = glfwGetVideoMode(monitor);
+            window.glfw_window = glfwCreateWindow(vid_mode->width, vid_mode->height, title, monitor, nullptr);
+        } else {
+            window.glfw_window = glfwCreateWindow(size_default.x, size_default.y, title, nullptr, nullptr);
+        }
 
         if (!window.glfw_window) {
             LogError("Failed to create GLFW window!");
             return false;
         }
+
+        window.size_default = size_default;
+
+        window.size_min = size_min;
+        glfwSetWindowSizeLimits(window.glfw_window, size_min.x, size_min.y, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
         glfwMakeContextCurrent(window.glfw_window);
 
@@ -167,9 +164,6 @@ namespace zf4 {
         glfwSetKeyCallback(window.glfw_window, GLFWKeyCallback);
         glfwSetMouseButtonCallback(window.glfw_window, GLFWMouseButtonCallback);
         glfwSetCursorPosCallback(window.glfw_window, GLFWCursorPosCallback);
-
-        window.size_min = size_min;
-        glfwSetWindowSizeLimits(window.glfw_window, size_min.x, size_min.y, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
         glfwSetInputMode(window.glfw_window, GLFW_CURSOR, (flags & ek_window_flags_hide_cursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
@@ -184,7 +178,7 @@ namespace zf4 {
         ZeroOutStruct(window);
     }
 
-    bool ResizeWindow(const s_window& window, const zf4::s_vec_2d_i size, zf4::s_pers_render_data& pers_render_data) {
+    bool ResizeWindow(const s_window& window, const s_vec_2d_i size, rendering::s_pers_render_data& pers_render_data) {
         if (window.size_min == s_vec_2d_i()) {
             assert(size.x > 0 && size.y > 0);
         } else {
@@ -195,26 +189,30 @@ namespace zf4 {
         return ProcWindowResize(window, pers_render_data);
     }
 
-    bool SetFullscreen(s_window& window, const bool fullscreen, s_pers_render_data& pers_render_data) {
+    bool SetFullscreen(s_window& window, const bool fullscreen, rendering::s_pers_render_data& pers_render_data) {
         assert(fullscreen != InFullscreen(window)); // Make sure we are actually changing state.
 
-        if (fullscreen) {
-            glfwGetWindowPos(window.glfw_window, &window.pos_before_going_fullscreen.x, &window.pos_before_going_fullscreen.y);
-            glfwGetWindowSize(window.glfw_window, &window.size_before_going_fullscreen.x, &window.size_before_going_fullscreen.y);
+        GLFWmonitor* const monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* const vid_mode = glfwGetVideoMode(monitor);
 
-            GLFWmonitor* const monitor = glfwGetPrimaryMonitor();
-            const GLFWvidmode* const vid_mode = glfwGetVideoMode(monitor);
+        if (fullscreen) {
             glfwSetWindowMonitor(window.glfw_window, monitor, 0, 0, vid_mode->width, vid_mode->height, vid_mode->refreshRate);
         } else {
-            glfwSetWindowMonitor(window.glfw_window, nullptr, window.pos_before_going_fullscreen.x, window.pos_before_going_fullscreen.y, window.size_before_going_fullscreen.x, window.size_before_going_fullscreen.y, GLFW_DONT_CARE);
+            // Revert back to default window size, centered position.
+            const s_vec_2d_i central_pos = {
+                (vid_mode->width - window.size_default.x) / 2.0f,
+                (vid_mode->height - window.size_default.y) / 2.0f
+            };
+
+            glfwSetWindowMonitor(window.glfw_window, nullptr, central_pos.x, central_pos.y, window.size_default.x, window.size_default.y, GLFW_DONT_CARE);
         }
 
-        return zf4::ProcWindowResize(window, pers_render_data);
+        return ProcWindowResize(window, pers_render_data);
     }
 
-    bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data) {
-        const zf4::s_vec_2d_i size = WindowSize(window);
+    bool ProcWindowResize(const s_window& window, rendering::s_pers_render_data& pers_render_data) {
+        const s_vec_2d_i size = WindowSize(window);
         glViewport(0, 0, size.x, size.y);
-        return ResizeRenderSurfaces(pers_render_data.surfs, size);
+        return rendering::ResizeSurfaces(pers_render_data.surfs, size);
     }
 }

@@ -192,20 +192,18 @@ namespace zf4 {
     struct s_window {
         GLFWwindow* glfw_window;
 
+        s_vec_2d_i size_default;
         s_vec_2d_i size_min;
-
-        s_vec_2d_i pos_before_going_fullscreen;
-        s_vec_2d_i size_before_going_fullscreen;
 
         s_input_state input_state;
         s_input_state input_state_saved;
     };
 
-    bool InitWindow(s_window& window, const s_vec_2d_i size, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags);
+    bool InitWindow(s_window& window, const bool begin_fullscreen, const s_vec_2d_i size_default, const s_vec_2d_i size_min, const char* const title, const e_window_flags flags);
     void CleanWindow(s_window& window);
-    bool ResizeWindow(const s_window& window, const s_vec_2d_i size, s_pers_render_data& pers_render_data);
-    bool SetFullscreen(s_window& window, const bool fullscreen, s_pers_render_data& pers_render_data);
-    bool ProcWindowResize(const s_window& window, zf4::s_pers_render_data& pers_render_data);
+    bool ResizeWindow(const s_window& window, const s_vec_2d_i size, rendering::s_pers_render_data& pers_render_data);
+    bool SetFullscreen(s_window& window, const bool fullscreen, rendering::s_pers_render_data& pers_render_data);
+    bool ProcWindowResize(const s_window& window, rendering::s_pers_render_data& pers_render_data);
 
     inline s_vec_2d_i WindowSize(const s_window& window) {
         s_vec_2d_i size;

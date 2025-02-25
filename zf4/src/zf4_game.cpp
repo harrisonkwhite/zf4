@@ -13,7 +13,7 @@ namespace zf4 {
         s_window window;
         s_user_assets user_assets;
         s_builtin_assets builtin_assets;
-        s_pers_render_data* pers_render_data;
+        rendering::s_pers_render_data* pers_render_data;
         void* custom_data;
     };
 
@@ -43,15 +43,15 @@ namespace zf4 {
         }
 
         {
-            // TODO: Allow for having the game begin in fullscreen.
             // TODO: Allow for fullscreen switching to the monitor the window is currently in.
+
             const GLFWvidmode* const glfw_video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
             const s_vec_2d_i display_size = {glfw_video_mode->width, glfw_video_mode->height};
 
-            const s_vec_2d_i window_init_size = game_info.window_init_size_loader(display_size);
+            const s_vec_2d_i window_default_size = game_info.window_default_size_loader(display_size);
             const s_vec_2d_i window_min_size = game_info.window_min_size_loader ? game_info.window_min_size_loader(display_size) : s_vec_2d_i();
 
-            if (!InitWindow(game.window, window_init_size, window_min_size, game_info.window_title, game_info.window_flags)) {
+            if (!InitWindow(game.window, game_info.window_begin_fullscreen, window_default_size, window_min_size, game_info.window_title, game_info.window_flags)) {
                 return false;
             }
         }
@@ -72,7 +72,7 @@ namespace zf4 {
         game.builtin_assets = LoadBuiltinAssets();
 
         // Load persistent render data.
-        game.pers_render_data = LoadPersRenderData(game.perm_mem_arena, game.temp_mem_arena);
+        game.pers_render_data = rendering::LoadPersRenderData(game.perm_mem_arena, game.temp_mem_arena);
 
         if (!game.pers_render_data) {
             LogError("Failed to load persistent render data!");
@@ -147,7 +147,7 @@ namespace zf4 {
                 // Execute draw.
                 EmptyMemArena(game.temp_mem_arena);
 
-                s_draw_phase_state* const draw_phase_state = BeginDrawPhase(game.temp_mem_arena, WindowSize(game.window));
+                rendering::s_draw_phase_state* const draw_phase_state = rendering::BeginDrawPhase(game.temp_mem_arena, WindowSize(game.window));
 
                 if (!draw_phase_state) {
                     return false;
@@ -182,7 +182,6 @@ namespace zf4 {
             .perm_mem_arena_size = MegabytesToBytes(80),
             .temp_mem_arena_size = MegabytesToBytes(40),
 
-            .window_init_size_loader = [](const s_vec_2d_i display_size) -> s_vec_2d_i { return {1280, 720}; },
             .window_title = "ZF4 Game"
         };
 
@@ -196,7 +195,7 @@ namespace zf4 {
         assert(info.cleanup_func);
         assert(info.perm_mem_arena_size > 0);
         assert(info.temp_mem_arena_size > 0);
-        assert(info.window_init_size_loader);
+        assert(info.window_default_size_loader);
         assert(info.window_title);
         assert(info.custom_data_size >= 0);
         assert(info.custom_data_size > 0 ? info.custom_data_alignment >= 0 : info.custom_data_alignment == 0);
@@ -214,7 +213,7 @@ namespace zf4 {
         info.cleanup_func(game.custom_data);
 
         if (game.pers_render_data) {
-            CleanPersRenderData(*game.pers_render_data);
+            rendering::CleanPersRenderData(*game.pers_render_data);
         }
 
         UnloadBuiltinAssets(game.builtin_assets);

@@ -15,7 +15,7 @@ namespace zf4 {
         s_window& window; // TODO: Maybe split this up from input state data.
         const s_user_assets& user_assets;
         const s_builtin_assets& builtin_assets;
-        s_pers_render_data& pers_render_data;
+        rendering::s_pers_render_data& pers_render_data;
         void* custom_data;
     };
 
@@ -27,7 +27,7 @@ namespace zf4 {
 
     typedef bool (*ta_game_init_func)(const s_game_ptrs& const game_ptrs);
     typedef e_game_tick_func_result (*ta_game_tick_func)(const s_game_ptrs& const game_ptrs, const double fps);
-    typedef bool (*ta_game_draw_func)(s_draw_phase_state& const draw_phase_state, const s_game_ptrs& const game_ptrs, const double fps);
+    typedef bool (*ta_game_draw_func)(rendering::s_draw_phase_state& const draw_phase_state, const s_game_ptrs& const game_ptrs, const double fps);
     typedef void (*ta_game_cleanup_func)(void* const custom_data);
     typedef void (*ta_game_on_window_resize_func)(const s_game_ptrs& const game_ptrs);
 
@@ -41,7 +41,8 @@ namespace zf4 {
         int perm_mem_arena_size;
         int temp_mem_arena_size;
 
-        s_vec_2d_i (*window_init_size_loader)(const s_vec_2d_i display_size);
+        bool window_begin_fullscreen;
+        s_vec_2d_i (*window_default_size_loader)(const s_vec_2d_i display_size);
         s_vec_2d_i (*window_min_size_loader)(const s_vec_2d_i display_size);
         const char* window_title;
         enum e_window_flags window_flags;
