@@ -11,7 +11,6 @@ find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
     src/zf4_game.cpp
-    src/zf4_window.cpp
     src/zf4_assets.cpp
     src/zf4_rendering.cpp
     src/zf4_pathfinding.cpp
@@ -20,7 +19,6 @@ add_library(zf4 STATIC
 
     include/zf4.h
     include/zf4_game.h
-    include/zf4_window.h
     include/zf4_assets.h
     include/zf4_rendering.h
     include/zf4_pathfinding.h
