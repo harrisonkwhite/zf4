@@ -1,12 +1,21 @@
 #pragma once
 
-#include <zf4c.h>
-#include <zf4_assets.h>
+#include <glad/glad.h>
+#include <zf4_math.h>
 
-namespace zf4::rendering {
+namespace zf4::graphics {
+    using a_gl_id = GLuint;
+
+    constexpr int g_texture_channel_cnt = 4;
+
+    constexpr int g_font_char_range_begin = 32;
+    constexpr int g_font_char_range_len = 95;
+
     constexpr int g_surface_limit = 128;
 
-    constexpr int g_texture_batch_slot_vert_cnt = g_textured_quad_shader_prog_cnt * 4;
+    constexpr int g_textured_quad_shader_prog_vert_cnt = 13;
+
+    constexpr int g_texture_batch_slot_vert_cnt = g_textured_quad_shader_prog_vert_cnt * 4;
     constexpr int g_texture_batch_slot_verts_size = sizeof(float) * g_texture_batch_slot_vert_cnt;
     constexpr int g_texture_batch_slot_indices_cnt = 6;
     constexpr int g_texture_batch_slot_limit = 2048;
@@ -83,6 +92,36 @@ namespace zf4::rendering {
         s_matrix_4x4 mat4x4;
     };
 
+    struct s_textures {
+        s_array<const a_gl_id> gl_ids;
+        s_array<const s_vec_2d_i> sizes;
+        int cnt;
+    };
+
+    struct s_font_chars_arrangement_info {
+        s_static_array<int, g_font_char_range_len> hor_offsets;
+        s_static_array<int, g_font_char_range_len> ver_offsets;
+        s_static_array<int, g_font_char_range_len> hor_advances;
+
+        s_static_array<s_rect_i, g_font_char_range_len> src_rects;
+
+        //s_static_array<int, g_font_char_range_len* g_font_char_range_len> kernings;
+    };
+
+    struct s_font_arrangement_info {
+        int line_height;
+        s_font_chars_arrangement_info chars;
+    };
+
+    struct s_fonts {
+        s_array<const s_font_arrangement_info> arrangement_infos;
+
+        s_array<const a_gl_id> tex_gl_ids;
+        s_array<const s_vec_2d_i> tex_sizes;
+
+        int cnt;
+    };
+
     struct s_str_draw_info {
         int char_cnt;
         s_vec_2d_i char_draw_positions[g_str_draw_len_limit];
@@ -133,6 +172,12 @@ namespace zf4::rendering {
         s_matrix_4x4 view_mat;
     };
 
+    s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena);
+    void UnloadTextures(const s_textures& textures);
+
+    s_fonts PushFonts(const int cnt, const s_array<const char* const> filenames, const s_array<const int> pt_sizes, s_mem_arena& mem_arena, s_mem_arena& scratch_space);
+    void UnloadFonts(const s_fonts& fonts);
+
     s_pers_render_data* LoadPersRenderData(s_mem_arena& mem_arena, s_mem_arena& scratch_space);
     void CleanPersRenderData(s_pers_render_data& pers_render_data);
 
@@ -142,24 +187,25 @@ namespace zf4::rendering {
 
     s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size);
     void Clear(const s_vec_4d col = {});
-    void SetSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void UnsetSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void SetSurfaceShaderProg(const int prog_index, const s_shader_progs& progs, s_draw_phase_state& draw_phase_state);
-    void SetSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
-    void DrawSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void Draw(const GLuint tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const float rot = 0.0f, const s_vec_4d blend = colors::g_white);
+    //void SetSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    //void UnsetSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    //void SetSurfaceShaderProg(const int prog_index, const s_shader_progs& progs, s_draw_phase_state& draw_phase_state);
+    //void SetSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state);
+    //void DrawSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
+    //void Draw(const GLuint tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const float rot = 0.0f, const s_vec_4d blend = colors::g_white);
     void DrawTexture(const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
     void DrawStr(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
-    void DrawRect(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
-    void DrawRectOutline(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
-    void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
-    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
+    //void DrawRect(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
+    //void DrawRectOutline(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
+    //void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
+    //void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets);
     void Flush(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data);
 
     s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts);
 
     s_rect_edges CalcTexCoords(const s_rect_i src_rect, const s_vec_2d_i tex_size);
 
+    /*
     inline void SetSurfaceShaderProgUniformInt(const char* const uni_name, const int val, s_draw_phase_state& draw_phase_state) {
         const u_shader_uniform_val uni_val = {.i = val};
         SetSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_int, draw_phase_state);
@@ -189,4 +235,5 @@ namespace zf4::rendering {
         const u_shader_uniform_val uni_val = {.mat4x4 = val};
         SetSurfaceShaderProgUniform(uni_name, uni_val, ek_shader_uniform_val_type_mat4x4, draw_phase_state);
     }
+    */
 }

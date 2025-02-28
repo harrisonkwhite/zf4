@@ -1,4 +1,4 @@
-#include <zf4c_mem.h>
+#include <zf4_mem.h>
 
 namespace zf4 {
     const s_static_array<const int, 256> g_first_active_bit_indexes = {

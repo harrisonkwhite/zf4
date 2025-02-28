@@ -2,22 +2,23 @@
 
 #include <GLFW/glfw3.h>
 #include <zf4_rand.h>
+#include <zf4_io.h>
 
 namespace zf4 {
     static constexpr int g_targ_ticks_per_sec = 60;
     static constexpr double g_targ_tick_dur_secs = 1.0 / g_targ_ticks_per_sec;
 
     struct s_game_cleanup_info {
-        s_mem_arena* perm_mem_arena = nullptr;
-        s_mem_arena* temp_mem_arena = nullptr;
+        s_mem_arena* perm_mem_arena;
+        s_mem_arena* temp_mem_arena;
 
-        bool glfw_initialized = false;
-        GLFWwindow* glfw_window = nullptr;
+        bool glfw_initialized;
+        GLFWwindow* glfw_window;
 
-        s_user_assets* user_assets = nullptr;
-        s_builtin_assets* builtin_assets = nullptr;
+        const graphics::s_textures* textures;
+        const graphics::s_fonts* fonts;
 
-        rendering::s_pers_render_data* pers_render_data = nullptr;
+        graphics::s_pers_render_data* pers_render_data;
     };
 
     static int ToGLFWKeyCode(const e_key_code key_code) {
@@ -161,15 +162,15 @@ namespace zf4 {
 
     static void CleanGame(const s_game_cleanup_info& cleanup_info) {
         if (cleanup_info.pers_render_data) {
-            rendering::CleanPersRenderData(*cleanup_info.pers_render_data);
+            graphics::CleanPersRenderData(*cleanup_info.pers_render_data);
         }
 
-        if (cleanup_info.builtin_assets) {
-            UnloadBuiltinAssets(*cleanup_info.builtin_assets);
+        if (cleanup_info.fonts) {
+            graphics::UnloadFonts(*cleanup_info.fonts);
         }
 
-        if (cleanup_info.user_assets) {
-            UnloadUserAssets(*cleanup_info.user_assets);
+        if (cleanup_info.textures) {
+            graphics::UnloadTextures(*cleanup_info.textures);
         }
 
         if (cleanup_info.glfw_window) {
@@ -191,7 +192,7 @@ namespace zf4 {
     }
 
     bool RunGame(const s_game_info& game_info) {
-        s_game_cleanup_info cleanup_info;
+        s_game_cleanup_info cleanup_info = {};
 
         //
         // Initialisation
@@ -258,23 +259,28 @@ namespace zf4 {
             return false;
         }
 
-        // Load user assets.
-        s_user_assets user_assets = {};
+        // Load textures.
+        const graphics::s_textures textures = graphics::PushTextures(game_info.tex_cnt, game_info.tex_filenames, perm_mem_arena);
 
-        if (!LoadUserAssets(user_assets, perm_mem_arena, temp_mem_arena)) {
-            LogError("Failed to load user assets!");
-            CleanGame(cleanup_info);
+        if (IsStructZero(textures)) {
+            LogError("Failed to load textures!");
             return false;
         }
 
-        cleanup_info.user_assets = &user_assets;
+        cleanup_info.textures = &textures;
 
-        // Load built-in assets.
-        s_builtin_assets builtin_assets = LoadBuiltinAssets();
-        cleanup_info.builtin_assets = &builtin_assets;
+        // Load fonts.
+        const graphics::s_fonts fonts = graphics::PushFonts(game_info.font_cnt, game_info.font_filenames, game_info.font_pt_sizes, perm_mem_arena, temp_mem_arena);
+
+        if (IsStructZero(fonts)) {
+            LogError("Failed to load fonts!");
+            return false;
+        }
+
+        cleanup_info.fonts = &fonts;
 
         // Load persistent render data.
-        const auto pers_render_data = rendering::LoadPersRenderData(perm_mem_arena, temp_mem_arena);
+        const auto pers_render_data = graphics::LoadPersRenderData(perm_mem_arena, temp_mem_arena);
 
         if (!pers_render_data) {
             LogError("Failed to load persistent render data!");
@@ -304,8 +310,8 @@ namespace zf4 {
                 .perm_mem_arena = perm_mem_arena,
                 .temp_mem_arena = temp_mem_arena,
                 .window_state_cache = window_state_cache,
-                .user_assets = user_assets,
-                .builtin_assets = builtin_assets,
+                .textures = textures,
+                .fonts = fonts,
                 .pers_render_data = *pers_render_data,
                 .custom_data = custom_data
             };
@@ -361,8 +367,8 @@ namespace zf4 {
                         .window_state_ideal = window_state_ideal,
                         .input_state = input_state,
                         .input_state_last = input_state_last,
-                        .user_assets = user_assets,
-                        .builtin_assets = builtin_assets,
+                        .textures = textures,
+                        .fonts = fonts,
                         .pers_render_data = *pers_render_data,
                         .fps = fps,
                         .custom_data = custom_data
@@ -380,7 +386,7 @@ namespace zf4 {
                 // Execute draw.
                 EmptyMemArena(temp_mem_arena);
 
-                rendering::s_draw_phase_state* const draw_phase_state = rendering::BeginDrawPhase(temp_mem_arena, window_state_cache.size);
+                graphics::s_draw_phase_state* const draw_phase_state = graphics::BeginDrawPhase(temp_mem_arena, window_state_cache.size);
 
                 if (!draw_phase_state) {
                     CleanGame(cleanup_info);
@@ -391,8 +397,8 @@ namespace zf4 {
                     const s_game_draw_func_data func_data = {
                         .temp_mem_arena = temp_mem_arena,
                         .window_state_cache = window_state_cache,
-                        .user_assets = user_assets,
-                        .builtin_assets = builtin_assets,
+                        .textures = textures,
+                        .fonts = fonts,
                         .pers_render_data = *pers_render_data,
                         .draw_phase_state = *draw_phase_state,
                         .fps = fps,
@@ -452,7 +458,7 @@ namespace zf4 {
             if (!IsStructZero(window_size_after_poll_events) && window_size_after_poll_events != window_state_cache.size) {
                 glViewport(0, 0, window_size_after_poll_events.x, window_size_after_poll_events.y);
 
-                if (!rendering::ResizeSurfaces(pers_render_data->surfs, window_size_after_poll_events)) {
+                if (!graphics::ResizeSurfaces(pers_render_data->surfs, window_size_after_poll_events)) {
                     CleanGame(cleanup_info);
                     return false;
                 }

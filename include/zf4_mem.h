@@ -300,6 +300,14 @@ namespace zf4 {
         return array.len * sizeof(tp_type);
     }
 
+    template<c_trivial_type tp_type, int tp_len>
+    inline zf4::s_array<tp_type> ToArray(const zf4::s_static_array<tp_type, tp_len>& array) {
+        return {
+            .elems_raw = array.elems_raw,
+            .len = tp_len
+        };
+    }
+
     template<c_trivial_type tp_type>
     inline zf4::s_array<tp_type> ToArray(const zf4::s_list<const tp_type> list) {
         return {

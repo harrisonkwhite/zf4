@@ -2,7 +2,7 @@
 
 #include <cmath>
 #include <cassert>
-#include <zf4c_mem.h>
+#include <zf4_mem.h>
 
 namespace zf4 {
     constexpr float g_pi = 3.14159265359f;

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <zf4c_mem.h>
-#include <zf4_assets.h>
-#include <zf4_rendering.h>
+#include <zf4_mem.h>
+#include <zf4_graphics.h>
 
 namespace zf4 {
     constexpr int g_gl_version_major = 4;
@@ -200,9 +199,9 @@ namespace zf4 {
         s_mem_arena& perm_mem_arena;
         s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
-        const s_user_assets& user_assets;
-        const s_builtin_assets& builtin_assets;
-        rendering::s_pers_render_data& pers_render_data;
+        const graphics::s_textures& textures;
+        const graphics::s_fonts& fonts;
+        graphics::s_pers_render_data& pers_render_data;
         void* const custom_data;
     };
 
@@ -213,9 +212,9 @@ namespace zf4 {
         s_window_state& window_state_ideal; // NOTE: Possibly add to initialisation data too?
         const s_input_state& input_state;
         const s_input_state& input_state_last;
-        const s_user_assets& user_assets;
-        const s_builtin_assets& builtin_assets;
-        rendering::s_pers_render_data& pers_render_data;
+        const graphics::s_textures& textures;
+        const graphics::s_fonts& fonts;
+        graphics::s_pers_render_data& pers_render_data;
         const double fps;
         void* custom_data;
     };
@@ -223,10 +222,10 @@ namespace zf4 {
     struct s_game_draw_func_data {
         s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
-        const s_user_assets& user_assets;
-        const s_builtin_assets& builtin_assets;
-        const rendering::s_pers_render_data& pers_render_data;
-        rendering::s_draw_phase_state& draw_phase_state;
+        const graphics::s_textures& textures;
+        const graphics::s_fonts& fonts;
+        const graphics::s_pers_render_data& pers_render_data;
+        graphics::s_draw_phase_state& draw_phase_state;
         const double fps;
         const void* custom_data; // TEMP?
     };
@@ -255,6 +254,13 @@ namespace zf4 {
         s_vec_2d_i window_size_min;
         const char* window_title;
         enum e_window_flags window_flags;
+
+        int tex_cnt;
+        s_array<const char* const> tex_filenames;
+
+        int font_cnt;
+        s_array<const char* const> font_filenames;
+        s_array<const int> font_pt_sizes;
 
         int custom_data_size;
         int custom_data_alignment;
