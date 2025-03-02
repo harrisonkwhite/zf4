@@ -225,6 +225,7 @@ namespace zf4 {
     struct s_game_draw_func_data {
         s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
+        const s_vec_2d mouse_pos; // TEMP?
         const graphics::s_textures& textures;
         const graphics::s_fonts& fonts;
         const graphics::s_pers_render_data& pers_render_data;

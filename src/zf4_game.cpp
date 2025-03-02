@@ -400,6 +400,7 @@ namespace zf4 {
                     const s_game_draw_func_data func_data = {
                         .temp_mem_arena = temp_mem_arena,
                         .window_state_cache = window_state_cache,
+                        .mouse_pos = input_state.mouse_pos,
                         .textures = textures,
                         .fonts = fonts,
                         .pers_render_data = pers_render_data,
