@@ -191,12 +191,14 @@ namespace zf4 {
     bool AreAllBitsActive(const s_array<const a_byte> bytes, const int bit_cnt);
     bool AreAllBitsInactive(const s_array<const a_byte> bytes, const int bit_cnt);
 
-    bool InitMemArena(s_mem_arena& arena, const int size);
+    s_mem_arena GenMemArena(const int size, bool& err);
     void CleanMemArena(s_mem_arena& arena);
     void EmptyMemArena(s_mem_arena& arena);
     void RewindMemArena(s_mem_arena& arena, const int offs);
 
     void* Push(const int size, const int alignment, s_mem_arena& arena);
+
+    bool IsTerminated(const s_array<const char> str_chrs);
 
     constexpr int BitsToBytes(const int bits) {
         return (bits + 7) & ~7;
@@ -301,7 +303,7 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type, int tp_len>
-    inline zf4::s_array<tp_type> ToArray(const zf4::s_static_array<tp_type, tp_len>& array) {
+    inline s_array<tp_type> ToArray(const s_static_array<tp_type, tp_len>& array) {
         return {
             .elems_raw = array.elems_raw,
             .len = tp_len
@@ -309,10 +311,10 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type>
-    inline zf4::s_array<tp_type> ToArray(const zf4::s_list<const tp_type> list) {
+    inline s_array<tp_type> ToArray(const s_list<tp_type> list) {
         return {
             .elems_raw = list.elems_raw,
-            .len = list.cap
+            .len = list.len
         };
     }
 
@@ -320,6 +322,16 @@ namespace zf4 {
     inline void ListAppend(s_list<tp_type>& list, const tp_type& elem) {
         assert(list.len < list.cap);
         list[list.len++] = elem;
+    }
+
+    template<c_trivial_type tp_type>
+    inline bool ListAppendTry(s_list<tp_type>& list, const tp_type& elem) {
+        if (list.len < list.cap) {
+            list[list.len++] = elem;
+            return true;
+        }
+
+        return false;
     }
 
     template<c_trivial_type tp_type>

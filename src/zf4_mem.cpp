@@ -129,19 +129,21 @@ namespace zf4 {
         return true;
     }
 
-    bool InitMemArena(s_mem_arena& arena, const int size) {
-        assert(IsStructZero(arena));
+    s_mem_arena GenMemArena(const int size, bool& err) {
         assert(size > 0);
+        assert(!err);
 
-        arena.buf = calloc(1, size);
+        const auto buf = calloc(1, size);
 
-        if (!arena.buf) {
-            return false;
+        if (!buf) {
+            err = true;
+            return {};
         }
 
-        arena.size = size;
-
-        return true;
+        return {
+            .buf = buf,
+            .size = size
+        };
     }
 
     void CleanMemArena(s_mem_arena& arena) {
@@ -179,5 +181,15 @@ namespace zf4 {
         mem_arena.offs = offs_next;
 
         return (char*)mem_arena.buf + offs_aligned;
+    }
+
+    bool IsTerminated(const s_array<const char> str_chrs) {
+        for (int i = 0; i < str_chrs.len; ++i) {
+            if (!str_chrs[i]) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

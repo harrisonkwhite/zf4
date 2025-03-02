@@ -22,6 +22,8 @@ add_library(zf4 STATIC
     src/zf4_io.cpp
     src/zf4_math.cpp
     src/external/glad.c
+    src/external/stb_image.c
+	src/external/stb_truetype.c
 
     include/zf4.h
     include/zf4_game.h

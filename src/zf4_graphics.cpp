@@ -1,18 +1,40 @@
 #include <zf4_graphics.h>
 
-// NOTE: Would rather not have to recompile these!
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
-#define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
-
 #include <zf4_io.h>
-
-#define GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)
+#include <stb_image.h>
+#include <stb_truetype.h>
 
 namespace zf4::graphics {
     static constexpr s_vec_2d_i g_texture_size_limit = {2048, 2048};
+    static constexpr int g_texture_channel_cnt = 4;
+
+    static constexpr int g_textured_quad_shader_prog_vert_cnt = 13;
+
+    static constexpr int g_batch_slot_vert_cnt = g_textured_quad_shader_prog_vert_cnt * 4;
+    static constexpr int g_batch_slot_verts_size = sizeof(float) * g_batch_slot_vert_cnt;
+    static constexpr int g_batch_slot_indices_cnt = 6;
+    static constexpr int g_batch_slot_limit = 2048;
+
+    static bool AttachFramebufferTexture(const GLuint fb_gl_id, const GLuint tex_gl_id, const s_vec_2d_i tex_size) {
+        assert(tex_gl_id);
+        assert(fb_gl_id);
+        assert(tex_size.x > 0 && tex_size.y > 0);
+
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_id));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb_gl_id));
+
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_gl_id, 0));
+
+        const bool success = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+        return success;
+    }
 
     static GLuint CreateShaderFromSrc(const char* const src, const bool frag) {
         const GLuint gl_id = GL_CALL(glCreateShader(frag ? GL_FRAGMENT_SHADER : GL_VERTEX_SHADER));
@@ -56,9 +78,7 @@ namespace zf4::graphics {
         return prog_gl_id;
     }
 
-    static void LoadTexturedQuadShaderProg(s_textured_quad_shader_prog& prog) {
-        assert(IsStructZero(prog));
-
+    static s_textured_quad_shader_prog LoadTexturedQuadShaderProg() {
         const char* const vert_shader_src = R"(#version 430 core
 
 layout (location = 0) in vec2 a_vert;
@@ -107,61 +127,169 @@ void main() {
 }
 )";
 
-        prog.gl_id = CreateShaderProgFromSrcs(vert_shader_src, frag_shader_src);
+        s_textured_quad_shader_prog prog = {
+            .gl_id = CreateShaderProgFromSrcs(vert_shader_src, frag_shader_src)
+        };
+
         assert(prog.gl_id);
 
         prog.proj_uniform_loc = GL_CALL(glGetUniformLocation(prog.gl_id, "u_proj"));
         prog.view_uniform_loc = GL_CALL(glGetUniformLocation(prog.gl_id, "u_view"));
         prog.textures_uniform_loc = GL_CALL(glGetUniformLocation(prog.gl_id, "u_textures"));
+
+        return prog;
     }
 
-    static bool AttachFramebufferTexture(const GLuint fb_gl_id, const GLuint tex_gl_id, const s_vec_2d_i tex_size) {
-        assert(tex_gl_id);
-        assert(fb_gl_id);
-        assert(tex_size.x > 0 && tex_size.y > 0);
+    static void WriteVerts(const s_array<float> verts, const a_gl_id tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, const s_vec_4d blend) {
+        assert(verts.len == g_textured_quad_shader_prog_vert_cnt * 4);
 
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_id));
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        verts[0] = 0.0f - origin.x;
+        verts[1] = 0.0f - origin.y;
+        verts[2] = pos.x;
+        verts[3] = pos.y;
+        verts[4] = size.x;
+        verts[5] = size.y;
+        verts[6] = rot;
+        verts[7] = tex_coords.left;
+        verts[8] = tex_coords.top;
+        verts[9] = blend.x;
+        verts[10] = blend.y;
+        verts[11] = blend.z;
+        verts[12] = blend.w;
 
-        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb_gl_id));
+        verts[13] = 1.0f - origin.x;
+        verts[14] = 0.0f - origin.y;
+        verts[15] = pos.x;
+        verts[16] = pos.y;
+        verts[17] = size.x;
+        verts[18] = size.y;
+        verts[19] = rot;
+        verts[20] = tex_coords.right;
+        verts[21] = tex_coords.top;
+        verts[22] = blend.x;
+        verts[23] = blend.y;
+        verts[24] = blend.z;
+        verts[25] = blend.w;
 
-        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_gl_id, 0));
+        verts[26] = 1.0f - origin.x;
+        verts[27] = 1.0f - origin.y;
+        verts[28] = pos.x;
+        verts[29] = pos.y;
+        verts[30] = size.x;
+        verts[31] = size.y;
+        verts[32] = rot;
+        verts[33] = tex_coords.right;
+        verts[34] = tex_coords.bottom;
+        verts[35] = blend.x;
+        verts[36] = blend.y;
+        verts[37] = blend.z;
+        verts[38] = blend.w;
 
-        const bool success = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-
-        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-
-        return success;
+        verts[39] = 0.0f - origin.x;
+        verts[40] = 1.0f - origin.y;
+        verts[41] = pos.x;
+        verts[42] = pos.y;
+        verts[43] = size.x;
+        verts[44] = size.y;
+        verts[45] = rot;
+        verts[46] = tex_coords.left;
+        verts[47] = tex_coords.bottom;
+        verts[48] = blend.x;
+        verts[49] = blend.y;
+        verts[50] = blend.z;
+        verts[51] = blend.w;
     }
 
-    s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena) {
+    static s_rect_edges CalcTexCoords(const s_rect_i src_rect, const s_vec_2d_i tex_size) {
+        return {
+            static_cast<float>(src_rect.x) / tex_size.x,
+            static_cast<float>(src_rect.y) / tex_size.y,
+            static_cast<float>(RectRight(src_rect)) / tex_size.x,
+            static_cast<float>(RectBottom(src_rect)) / tex_size.y
+        };
+    }
+
+    s_batch GenBatch() {
+        s_batch batch = {};
+
+        // Generate vertex array.
+        GL_CALL(glGenVertexArrays(1, &batch.vert_array_gl_id));
+        GL_CALL(glBindVertexArray(batch.vert_array_gl_id));
+
+        // Generate vertex buffer.
+        GL_CALL(glGenBuffers(1, &batch.vert_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, batch.vert_buf_gl_id));
+        GL_CALL(glBufferData(GL_ARRAY_BUFFER, g_batch_slot_verts_size * g_batch_slot_limit, nullptr, GL_DYNAMIC_DRAW));
+
+        // Generate element buffer.
+        GL_CALL(glGenBuffers(1, &batch.elem_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.elem_buf_gl_id));
+
+        static unsigned short indices[6 * g_batch_slot_limit]; // TEMP!
+
+        for (int i = 0; i < g_batch_slot_limit; i++) {
+            indices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
+            indices[(i * 6) + 1] = static_cast<unsigned short>((i * 4) + 1);
+            indices[(i * 6) + 2] = static_cast<unsigned short>((i * 4) + 2);
+            indices[(i * 6) + 3] = static_cast<unsigned short>((i * 4) + 2);
+            indices[(i * 6) + 4] = static_cast<unsigned short>((i * 4) + 3);
+            indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
+        }
+
+        GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW));
+        //GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(static_cast<s_array<const unsigned short>>(indices)), indices.elems_raw, GL_STATIC_DRAW));
+
+        // Set vertex attribute pointers.
+        const int verts_stride = sizeof(float) * g_textured_quad_shader_prog_vert_cnt;
+
+        GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 0)));
+        GL_CALL(glEnableVertexAttribArray(0));
+
+        GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 2)));
+        GL_CALL(glEnableVertexAttribArray(1));
+
+        GL_CALL(glVertexAttribPointer(2, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 4)));
+        GL_CALL(glEnableVertexAttribArray(2));
+
+        GL_CALL(glVertexAttribPointer(3, 1, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 6)));
+        GL_CALL(glEnableVertexAttribArray(3));
+
+        GL_CALL(glVertexAttribPointer(4, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 7)));
+        GL_CALL(glEnableVertexAttribArray(4));
+
+        GL_CALL(glVertexAttribPointer(5, 4, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 9)));
+        GL_CALL(glEnableVertexAttribArray(5));
+
+        return batch;
+    }
+
+    s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena, bool& err) {
         assert(cnt > 0);
         assert(cnt == filenames.len);
+        assert(!err);
 
         const auto gl_ids = PushArray<a_gl_id>(cnt, mem_arena);
 
         if (IsStructZero(gl_ids)) {
+            err = true;
             return {};
         }
 
         const auto sizes = PushArray<s_vec_2d_i>(cnt, mem_arena);
 
         if (IsStructZero(sizes)) {
+            err = true;
             return {};
         }
 
         glGenTextures(cnt, gl_ids.elems_raw);
-
-        bool error = false;
 
         for (int i = 0; i < cnt; ++i) {
             stbi_uc* const px_data = stbi_load(filenames[i], &sizes[i].x, &sizes[i].y, nullptr, 4);
 
             if (!px_data) {
                 LogError("Failed to load texture with filename \"%s\"!", filenames[i]);
-                error = true;
+                err = true;
                 break;
             }
 
@@ -173,7 +301,7 @@ void main() {
             stbi_image_free(px_data);
         }
 
-        if (error) {
+        if (err) {
             glDeleteTextures(cnt, gl_ids.elems_raw);
             return {};
         }
@@ -189,49 +317,52 @@ void main() {
         glDeleteTextures(textures.gl_ids.len, textures.gl_ids.elems_raw);
     }
 
-    s_fonts PushFonts(const int cnt, const s_array<const char* const> filenames, const s_array<const int> pt_sizes, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
+    s_fonts PushFonts(const int cnt, const s_array<const char* const> filenames, const s_array<const int> heights, s_mem_arena& mem_arena, s_mem_arena& scratch_space, bool& err) {
         assert(cnt > 0);
         assert(cnt == filenames.len);
+        assert(!err);
 
         // Reserve memory for font data.
         const auto arrangement_infos = PushArray<s_font_arrangement_info>(cnt, mem_arena);
 
         if (IsStructZero(arrangement_infos)) {
+            err = true;
             return {};
         }
 
         const auto tex_gl_ids = PushArray<a_gl_id>(cnt, mem_arena);
 
         if (IsStructZero(tex_gl_ids)) {
+            err = true;
             return {};
         }
 
         const auto tex_sizes = PushArray<s_vec_2d_i>(cnt, mem_arena);
 
         if (IsStructZero(tex_sizes)) {
+            err = true;
             return {};
         }
 
-        //
-        glGenTextures(cnt, tex_gl_ids.elems_raw);
-
-        //
+        // Reserve scratch space for texture pixel data, to be reused for all font atlases.
         const auto px_data_scratch_space = PushArray<a_byte>(g_texture_size_limit.x * g_texture_size_limit.y, scratch_space);
 
         if (IsStructZero(px_data_scratch_space)) {
+            err = true;
             return {};
         }
 
-        // Do an iteration for each font...
-        bool error = false;
+        // Generate all font textures upfront.
+        glGenTextures(cnt, tex_gl_ids.elems_raw);
 
+        // Do an iteration for each font...
         for (int i = 0; i < cnt; ++i) {
             const int scratch_space_init_offs = scratch_space.offs;
 
             // Get the contents of the font file.
-            const auto file_contents = PushFileContents(filenames[i], scratch_space, error);
+            const auto file_contents = PushFileContents(filenames[i], scratch_space, err);
 
-            if (error) {
+            if (err) {
                 LogError("Failed to load file contents of font \"%s\".", filenames[i]);
                 break;
             }
@@ -239,15 +370,15 @@ void main() {
             // Initialise the font.
             stbtt_fontinfo font;
 
-            error = !stbtt_InitFont(&font, file_contents.elems_raw, stbtt_GetFontOffsetForIndex(file_contents.elems_raw, 0));
+            err = !stbtt_InitFont(&font, file_contents.elems_raw, stbtt_GetFontOffsetForIndex(file_contents.elems_raw, 0));
 
-            if (error) {
+            if (err) {
                 LogError("Failed to initialize font \"%s\".", filenames[i]);
                 break;
             }
 
             // Extract basic font metrics and calculate line height.
-            const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(pt_sizes[i]));
+            const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(heights[i]));
 
             int ascent, descent, line_gap;
             stbtt_GetFontVMetrics(&font, &ascent, &descent, &line_gap);
@@ -274,9 +405,9 @@ void main() {
                 s_vec_2d_i size, offs;
                 unsigned char* const bitmap_raw = stbtt_GetCodepointBitmap(&font, 0, scale, chr, &size.x, &size.y, &offs.x, &offs.y);
 
-                error = !bitmap_raw;
+                err = !bitmap_raw;
 
-                if (error) {
+                if (err) {
                     LogError("Failed to get a character glyph bitmap from \"%s\" for character '%c'!", filenames[i], chr);
                     break;
                 }
@@ -313,7 +444,7 @@ void main() {
                 char_draw_pos.x += size.x;
             }
 
-            if (error) {
+            if (err) {
                 break;
             }
 
@@ -329,7 +460,7 @@ void main() {
             tex_sizes[i] = g_texture_size_limit; // TEMP
         }
 
-        if (error) {
+        if (err) {
             glDeleteTextures(tex_gl_ids.len, tex_gl_ids.elems_raw);
             return {};
         }
@@ -346,26 +477,14 @@ void main() {
         glDeleteTextures(fonts.tex_gl_ids.len, fonts.tex_gl_ids.elems_raw);
     }
 
-    s_pers_render_data* LoadPersRenderData(s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
-        // Reserve memory for the pers_render_data.
-        const auto pers_render_data = PushType<s_pers_render_data>(mem_arena);
+    static s_surf_pers_data GenSurfPersData() {
+        s_surf_pers_data surf_pers_data = {};
 
-        if (!pers_render_data) {
-            LogError("Failed to reserve memory for persistent render data!");
-            return nullptr;
-        }
+        GL_CALL(glGenVertexArrays(1, &surf_pers_data.vert_array_gl_id));
+        GL_CALL(glBindVertexArray(surf_pers_data.vert_array_gl_id));
 
-        // Load the textured quad shader program, used for render batches.
-        LoadTexturedQuadShaderProg(pers_render_data->textured_quad_shader_prog);
-
-        //
-        // Surfaces
-        //
-        GL_CALL(glGenVertexArrays(1, &pers_render_data->surf_vert_array_gl_id));
-        GL_CALL(glBindVertexArray(pers_render_data->surf_vert_array_gl_id));
-
-        GL_CALL(glGenBuffers(1, &pers_render_data->surf_vert_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data->surf_vert_buf_gl_id));
+        GL_CALL(glGenBuffers(1, &surf_pers_data.vert_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, surf_pers_data.vert_buf_gl_id));
 
         {
             const float verts[] = {
@@ -378,8 +497,8 @@ void main() {
             GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW));
         }
 
-        GL_CALL(glGenBuffers(1, &pers_render_data->surf_elem_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data->surf_elem_buf_gl_id));
+        GL_CALL(glGenBuffers(1, &surf_pers_data.elem_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, surf_pers_data.elem_buf_gl_id));
 
         {
             const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
@@ -394,79 +513,25 @@ void main() {
 
         GL_CALL(glBindVertexArray(0));
 
-        //
-        // Texture Batch Generation
-        //
-
-        // Generate vertex array.
-        GL_CALL(glGenVertexArrays(1, &pers_render_data->tex_batch_vert_array_gl_id));
-        GL_CALL(glBindVertexArray(pers_render_data->tex_batch_vert_array_gl_id));
-
-        // Generate vertex buffer.
-        GL_CALL(glGenBuffers(1, &pers_render_data->tex_batch_vert_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data->tex_batch_vert_buf_gl_id));
-        GL_CALL(glBufferData(GL_ARRAY_BUFFER, g_texture_batch_slot_verts_size * g_texture_batch_slot_limit, nullptr, GL_DYNAMIC_DRAW));
-
-        // Generate element buffer.
-        GL_CALL(glGenBuffers(1, &pers_render_data->tex_batch_elem_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data->tex_batch_elem_buf_gl_id));
-
-        {
-            const auto indices = PushArray<unsigned short>(g_texture_batch_slot_indices_cnt * g_texture_batch_slot_limit, scratch_space);
-
-            if (IsStructZero(indices)) {
-                LogError("Failed to reserve memory for texture batch indices!");
-                return nullptr;
-            }
-
-            for (int i = 0; i < g_texture_batch_slot_limit; i++) {
-                indices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
-                indices[(i * 6) + 1] = static_cast<unsigned short>((i * 4) + 1);
-                indices[(i * 6) + 2] = static_cast<unsigned short>((i * 4) + 2);
-                indices[(i * 6) + 3] = static_cast<unsigned short>((i * 4) + 2);
-                indices[(i * 6) + 4] = static_cast<unsigned short>((i * 4) + 3);
-                indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
-            }
-
-            GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(static_cast<s_array<const unsigned short>>(indices)), indices.elems_raw, GL_STATIC_DRAW));
-        }
-
-        // Set vertex attribute pointers.
-        const int verts_stride = sizeof(float) * g_textured_quad_shader_prog_vert_cnt;
-
-        GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 0)));
-        GL_CALL(glEnableVertexAttribArray(0));
-
-        GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 2)));
-        GL_CALL(glEnableVertexAttribArray(1));
-
-        GL_CALL(glVertexAttribPointer(2, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 4)));
-        GL_CALL(glEnableVertexAttribArray(2));
-
-        GL_CALL(glVertexAttribPointer(3, 1, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 6)));
-        GL_CALL(glEnableVertexAttribArray(3));
-
-        GL_CALL(glVertexAttribPointer(4, 2, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 7)));
-        GL_CALL(glEnableVertexAttribArray(4));
-
-        GL_CALL(glVertexAttribPointer(5, 4, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 9)));
-        GL_CALL(glEnableVertexAttribArray(5));
-
-        return pers_render_data;
+        return surf_pers_data;
     }
 
-    void CleanPersRenderData(s_pers_render_data& pers_render_data) {
-        CleanSurfaces(pers_render_data.surfs);
+    s_pers_render_data GenPersRenderData() {
+        return {
+            .textured_quad_shader_prog = LoadTexturedQuadShaderProg(),
+            .batch = GenBatch(),
+            .surf_pers_data = GenSurfPersData()
+        };
+    }
 
-        GL_CALL(glDeleteBuffers(1, &pers_render_data.tex_batch_elem_buf_gl_id));
-        GL_CALL(glDeleteBuffers(1, &pers_render_data.tex_batch_vert_buf_gl_id));
-        GL_CALL(glDeleteVertexArrays(1, &pers_render_data.tex_batch_vert_array_gl_id));
+    void CleanPersRenderData(const s_pers_render_data& render_data) {
+        GL_CALL(glDeleteBuffers(1, &render_data.batch.elem_buf_gl_id));
+        GL_CALL(glDeleteBuffers(1, &render_data.batch.vert_buf_gl_id));
+        GL_CALL(glDeleteVertexArrays(1, &render_data.batch.vert_array_gl_id));
 
-        GL_CALL(glDeleteBuffers(1, &pers_render_data.surf_elem_buf_gl_id));
-        GL_CALL(glDeleteBuffers(1, &pers_render_data.surf_vert_buf_gl_id));
-        GL_CALL(glDeleteVertexArrays(1, &pers_render_data.surf_vert_array_gl_id));
-
-        ZeroOutStruct(pers_render_data);
+        GL_CALL(glDeleteBuffers(1, &render_data.surf_pers_data.elem_buf_gl_id));
+        GL_CALL(glDeleteBuffers(1, &render_data.surf_pers_data.vert_buf_gl_id));
+        GL_CALL(glDeleteVertexArrays(1, &render_data.surf_pers_data.vert_array_gl_id));
     }
 
     bool InitSurfaces(const int cnt, s_surfaces& surfs, const s_vec_2d_i window_size) {
@@ -488,7 +553,7 @@ void main() {
         return true;
     }
 
-    void CleanSurfaces(s_surfaces& surfs) {
+    void CleanAndZeroOutSurfaces(s_surfaces& surfs) {
         GL_CALL(glDeleteTextures(surfs.cnt, surfs.framebuffer_tex_gl_ids.elems_raw));
         GL_CALL(glDeleteFramebuffers(surfs.cnt, surfs.framebuffer_gl_ids.elems_raw));
 
@@ -512,202 +577,212 @@ void main() {
         return true;
     }
 
-    s_draw_phase_state* BeginDrawPhase(s_mem_arena& mem_arena, const s_vec_2d_i window_size) {
-        const auto phase_state = PushType<s_draw_phase_state>(mem_arena);
+    bool ExecDrawInstrs(const s_array<const s_draw_instr> instrs, const s_vec_2d_i window_size, const s_pers_render_data& pers_render_data, const s_surfaces& surfs, const s_textures& textures, s_mem_arena& scratch_space) {
+        const auto batch_verts = PushArray<float>(g_batch_slot_vert_cnt * g_batch_slot_limit, scratch_space);
 
-        if (phase_state) {
-            phase_state->proj_mat = GenOrthoMatrix4x4(0.0f, static_cast<float>(window_size.x), static_cast<float>(window_size.y), 0.0f, -1.0f, 1.0f); // NOTE: We can potentially cache this and only change on window resize.
-            phase_state->view_mat = GenIdentityMatrix4x4();
+        if (IsStructZero(batch_verts)) {
+            return false;
         }
 
+        int batch_slots_used_cnt = 0;
+        a_gl_id batch_tex_gl_id = 0; // NOTE: In the future we will support multiple texture units. This is just for simplicity right now.
+
+        a_gl_id surf_shader_prog_gl_id = 0; // When we draw a surface, it will use this shader program.
+        s_static_list<int, g_surface_limit> surf_index_stack = {};
+
+        const s_matrix_4x4 proj_mat = GenOrthoMatrix4x4(0.0f, window_size.x, window_size.y, 0.0f, -1.0f, 1.0f);
+        s_matrix_4x4 view_mat = {};
+
+        // NOTE: The blend setup could be moved into game initialisation.
         GL_CALL(glEnable(GL_BLEND));
         GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-        return phase_state;
-    }
+        for (int i = 0; i < instrs.len; ++i) {
+            //
+            // Instruction Processing
+            //
+            const s_draw_instr& instr = instrs[i];
 
-    void Clear(const s_vec_4d col) {
-        glClearColor(col.x, col.y, col.z, col.w);
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
+            switch (instr.type) {
+                case ek_instr_type_clear:
+                    glClearColor(instr.clear.color.x, instr.clear.color.y, instr.clear.color.z, instr.clear.color.w);
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    break;
 
-#if 0
-    void SetSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
+                case ek_instr_type_set_view_matrix:
+                    view_mat = instr.set_view_mat.mat;
+                    break;
 
-#if _DEBUG
-        for (int i = 0; i < draw_phase_state.surf_index_stack.len; ++i) {
-            if (draw_phase_state.surf_index_stack[i] == surf_index) {
-                assert(false && "Attempting to set a render surface that has already been set!");
+                case ek_instr_type_draw_texture:
+                    {
+                        static_assert(g_batch_slot_limit > 0);
+
+                        if (batch_slots_used_cnt == 0) {
+                            batch_tex_gl_id = instr.draw_tex.tex_gl_id;
+                        }
+
+                        const s_array<float> slot_verts = {
+                            .elems_raw = batch_verts.elems_raw + (g_batch_slot_vert_cnt * batch_slots_used_cnt),
+                            .len = g_batch_slot_vert_cnt
+                        };
+
+                        WriteVerts(slot_verts, instr.draw_tex.tex_gl_id, instr.draw_tex.tex_coords, instr.draw_tex.pos, instr.draw_tex.size, instr.draw_tex.origin, instr.draw_tex.rot, instr.draw_tex.blend);
+
+                        ++batch_slots_used_cnt;
+                    }
+
+                    break;
+
+                case ek_instr_type_set_surf:
+                    assert(instr.set_surf.surf_index >= 0 && instr.set_surf.surf_index < surfs.cnt);
+
+                    // Add the surface index to the stack.
+                    ListAppend(surf_index_stack, instr.set_surf.surf_index);
+
+                    // Bind the surface framebuffer.
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfs.framebuffer_gl_ids[instr.set_surf.surf_index]));
+
+                    break;
+
+                case ek_instr_type_unset_surf:
+                    ListPop(surf_index_stack);
+
+                    if (IsListEmpty(surf_index_stack)) {
+                        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+                    } else {
+                        const int new_surf_index = ListEnd(surf_index_stack);
+                        const GLuint fb_gl_id = surfs.framebuffer_gl_ids[new_surf_index];
+                        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfs.framebuffer_gl_ids[new_surf_index]));
+                    }
+
+                    break;
+
+                case ek_instr_type_draw_surf:
+                    assert(instr.draw_surf.surf_index >= 0 && instr.draw_surf.surf_index < surfs.cnt);
+                    assert(surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
+
+                    GL_CALL(glUseProgram(surf_shader_prog_gl_id));
+
+                    GL_CALL(glActiveTexture(GL_TEXTURE0));
+                    GL_CALL(glBindTexture(GL_TEXTURE_2D, surfs.framebuffer_tex_gl_ids[instr.draw_surf.surf_index]));
+
+                    GL_CALL(glBindVertexArray(pers_render_data.surf_pers_data.vert_array_gl_id));
+                    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_pers_data.elem_buf_gl_id));
+                    GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
+
+                    break;
+
+                case ek_instr_type_set_surf_shader_prog_uniform:
+                    assert(surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
+
+                    glUseProgram(surf_shader_prog_gl_id);
+
+                    const int uni_loc = glGetUniformLocation(surf_shader_prog_gl_id, instr.set_surf_shader_prog_uni.name);
+                    assert(uni_loc != -1);
+
+                    switch (instr.set_surf_shader_prog_uni.val_type) {
+                        case ek_shader_uniform_val_type_int:
+                            GL_CALL(glUniform1i(uni_loc, instr.set_surf_shader_prog_uni.val_as_int));
+                            break;
+
+                        case ek_shader_uniform_val_type_float:
+                            GL_CALL(glUniform1f(uni_loc, instr.set_surf_shader_prog_uni.val_as_float));
+                            break;
+
+                        case ek_shader_uniform_val_type_v2:
+                            GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v2)));
+                            break;
+
+                        case ek_shader_uniform_val_type_v3:
+                            GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v3)));
+                            break;
+
+                        case ek_shader_uniform_val_type_v4:
+                            GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v4)));
+                            break;
+
+                        case ek_shader_uniform_val_type_mat_4x4:
+                            GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_mat_4x4)));
+                            break;
+                    }
+
+                    break;
+            }
+
+            //
+            // Batch Flushing
+            //
+            if (batch_slots_used_cnt == 0) {
+                // There is no case where we need to flush and no slots in the current batch have been used.
+                continue;
+            }
+
+            bool flush = false;
+
+            if (i == instrs.len - 1) {
+                flush = true;
+            } else {
+                const s_draw_instr& instr_next = instrs[i + 1];
+
+                if (batch_slots_used_cnt == g_batch_slot_limit
+                    || instr_next.type == ek_instr_type_set_surf
+                    || instr_next.type == ek_instr_type_unset_surf
+                    || (instr_next.type == ek_instr_type_draw_texture && instr_next.draw_tex.tex_gl_id != batch_tex_gl_id)) {
+                    flush = true;
+                }
+            }
+
+            if (flush) {
+                // Write the batch vertex data to the GPU.
+                GL_CALL(glBindVertexArray(pers_render_data.batch.vert_array_gl_id));
+                GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data.batch.vert_buf_gl_id));
+
+                const int write_size = g_batch_slot_verts_size * batch_slots_used_cnt;
+                GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, write_size, batch_verts.elems_raw));
+
+                // Draw the batch.
+                const s_textured_quad_shader_prog& prog = pers_render_data.textured_quad_shader_prog;
+
+                GL_CALL(glUseProgram(prog.gl_id));
+
+                GL_CALL(glUniformMatrix4fv(prog.proj_uniform_loc, 1, false, reinterpret_cast<const float*>(&proj_mat)));
+                GL_CALL(glUniformMatrix4fv(prog.view_uniform_loc, 1, false, reinterpret_cast<const float*>(&view_mat)));
+
+                GL_CALL(glBindTexture(GL_TEXTURE_2D, batch_tex_gl_id));
+
+                GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.batch.elem_buf_gl_id));
+                GL_CALL(glDrawElements(GL_TRIANGLES, g_batch_slot_indices_cnt * batch_slots_used_cnt, GL_UNSIGNED_SHORT, nullptr));
+
+                // Clear batch state.
+                ZeroOutArrayElems(batch_verts);
+                batch_slots_used_cnt = 0;
+                batch_tex_gl_id = 0;
             }
         }
-#endif
 
-        // Add the surface index to the stack.
-        ListAppend(draw_phase_state.surf_index_stack, surf_index);
-
-        // Bind the surface framebuffer.
-        ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[surf_index]));
+        return true;
     }
 
-    void UnsetSurface(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before unsetting the surface.
-
-        ListPop(draw_phase_state.surf_index_stack);
-
-        if (IsListEmpty(draw_phase_state.surf_index_stack)) {
-            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        } else {
-            const int new_surf_index = ListEnd(draw_phase_state.surf_index_stack);
-            const GLuint fb_gl_id = pers_render_data.surfs.framebuffer_gl_ids[new_surf_index];
-            ZF4_GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, pers_render_data.surfs.framebuffer_gl_ids[new_surf_index]));
-        }
-    }
-
-    void SetSurfaceShaderProg(const int prog_index, const s_shader_progs& progs, s_draw_phase_state& draw_phase_state) {
-        assert(prog_index >= 0 && prog_index < progs.cnt);
-        assert(draw_phase_state.tex_batch_slots_used_cnt == 0); // Make sure that the texture batch has been flushed before setting a new surface.
-        draw_phase_state.surf_shader_prog_gl_id = progs.gl_ids[prog_index];
-    }
-
-    void SetSurfaceShaderProgUniform(const char* const uni_name, const u_shader_uniform_val val, const e_shader_uniform_val_type val_type, s_draw_phase_state& draw_phase_state) {
-        assert(draw_phase_state.surf_shader_prog_gl_id);
-
-        glUseProgram(draw_phase_state.surf_shader_prog_gl_id);
-
-        const int uni_loc = glGetUniformLocation(draw_phase_state.surf_shader_prog_gl_id, uni_name);
-        assert(uni_loc != -1);
-
-        switch (val_type) {
-            case ek_shader_uniform_val_type_int:
-                ZF4_GL_CALL(glUniform1i(uni_loc, val.i));
-                break;
-
-            case ek_shader_uniform_val_type_float:
-                ZF4_GL_CALL(glUniform1f(uni_loc, val.f));
-                break;
-
-            case ek_shader_uniform_val_type_v2:
-                ZF4_GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v2)));
-                break;
-
-            case ek_shader_uniform_val_type_v3:
-                ZF4_GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v3)));
-                break;
-
-            case ek_shader_uniform_val_type_v4:
-                ZF4_GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&val.v4)));
-                break;
-
-            case ek_shader_uniform_val_type_mat4x4:
-                ZF4_GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&val.mat4x4)));
-                break;
-
-            default:
-                assert(false && "Invalid shader uniform value type provided!");
-                break;
-        }
-    }
-
-    void DrawSurface(const int surf_index, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        assert(surf_index >= 0 && surf_index < pers_render_data.surfs.cnt);
-        assert(draw_phase_state.surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
-
-        ZF4_GL_CALL(glUseProgram(draw_phase_state.surf_shader_prog_gl_id));
-
-        ZF4_GL_CALL(glActiveTexture(GL_TEXTURE0));
-        ZF4_GL_CALL(glBindTexture(GL_TEXTURE_2D, pers_render_data.surfs.framebuffer_tex_gl_ids[surf_index]));
-
-        ZF4_GL_CALL(glBindVertexArray(pers_render_data.surf_vert_array_gl_id));
-        ZF4_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_elem_buf_gl_id));
-        ZF4_GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
-
-        // Reset the surface shader program. NOTE: Not sure if this should be kept?
-        draw_phase_state.surf_shader_prog_gl_id = 0;
-    }
-#endif
-
-    void Draw(const GLuint tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin, const float rot, const s_vec_4d blend) {
-        if (draw_phase_state.tex_batch_slots_used_cnt == 0) {
-            draw_phase_state.tex_batch_tex_gl_id = tex_gl_id;
-        } else if (draw_phase_state.tex_batch_slots_used_cnt == g_texture_batch_slot_limit || tex_gl_id != draw_phase_state.tex_batch_tex_gl_id) {
-            Flush(draw_phase_state, pers_render_data);
-            Draw(tex_gl_id, tex_coords, pos, size, draw_phase_state, pers_render_data, origin, rot, blend);
-            return;
-        }
-
-        // Submit the vertex data to the batch.
-        const int slot_index = draw_phase_state.tex_batch_slots_used_cnt;
-        auto& slot_verts = draw_phase_state.tex_batch_slot_verts[slot_index];
-
-        slot_verts[0] = 0.0f - origin.x;
-        slot_verts[1] = 0.0f - origin.y;
-        slot_verts[2] = pos.x;
-        slot_verts[3] = pos.y;
-        slot_verts[4] = size.x;
-        slot_verts[5] = size.y;
-        slot_verts[6] = rot;
-        slot_verts[7] = tex_coords.left;
-        slot_verts[8] = tex_coords.top;
-        slot_verts[9] = blend.x;
-        slot_verts[10] = blend.y;
-        slot_verts[11] = blend.z;
-        slot_verts[12] = blend.w;
-
-        slot_verts[13] = 1.0f - origin.x;
-        slot_verts[14] = 0.0f - origin.y;
-        slot_verts[15] = pos.x;
-        slot_verts[16] = pos.y;
-        slot_verts[17] = size.x;
-        slot_verts[18] = size.y;
-        slot_verts[19] = rot;
-        slot_verts[20] = tex_coords.right;
-        slot_verts[21] = tex_coords.top;
-        slot_verts[22] = blend.x;
-        slot_verts[23] = blend.y;
-        slot_verts[24] = blend.z;
-        slot_verts[25] = blend.w;
-
-        slot_verts[26] = 1.0f - origin.x;
-        slot_verts[27] = 1.0f - origin.y;
-        slot_verts[28] = pos.x;
-        slot_verts[29] = pos.y;
-        slot_verts[30] = size.x;
-        slot_verts[31] = size.y;
-        slot_verts[32] = rot;
-        slot_verts[33] = tex_coords.right;
-        slot_verts[34] = tex_coords.bottom;
-        slot_verts[35] = blend.x;
-        slot_verts[36] = blend.y;
-        slot_verts[37] = blend.z;
-        slot_verts[38] = blend.w;
-
-        slot_verts[39] = 0.0f - origin.x;
-        slot_verts[40] = 1.0f - origin.y;
-        slot_verts[41] = pos.x;
-        slot_verts[42] = pos.y;
-        slot_verts[43] = size.x;
-        slot_verts[44] = size.y;
-        slot_verts[45] = rot;
-        slot_verts[46] = tex_coords.left;
-        slot_verts[47] = tex_coords.bottom;
-        slot_verts[48] = blend.x;
-        slot_verts[49] = blend.y;
-        slot_verts[50] = blend.z;
-        slot_verts[51] = blend.w;
-
-        ++draw_phase_state.tex_batch_slots_used_cnt;
-    }
-
-    void DrawTexture(const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
-        assert(tex_index >= 0 && tex_index < textures.cnt);
-
+    bool AppendDrawTextureInstr(s_list<s_draw_instr>& instrs, const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
         const s_vec_2d_i tex_size = textures.sizes[tex_index];
-        const s_rect_edges tex_coords = CalcTexCoords(src_rect, tex_size);
-        Draw(textures.gl_ids[tex_index], tex_coords, pos, {src_rect.width * scale.x, src_rect.height * scale.y}, draw_phase_state, pers_render_data, origin, rot, blend);
+
+        const s_draw_texture_instr draw_tex = {
+            .tex_gl_id = textures.gl_ids[tex_index],
+            .tex_coords = CalcTexCoords(src_rect, tex_size),
+            .pos = pos,
+            .size = {src_rect.width * scale.x, src_rect.height * scale.y},
+            .origin = origin,
+            .rot = rot,
+            .blend = blend
+        };
+
+        return zf4::ListAppendTry(instrs, {
+            .type = ek_instr_type_draw_texture,
+            .draw_tex = draw_tex
+        });
     }
 
-    void DrawStr(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
+    bool AppendDrawTextureInstrsForStr(s_list<s_draw_instr>& instrs, const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align) {
         assert(str);
         assert(font_index >= 0 && font_index < fonts.cnt);
 
@@ -740,71 +815,25 @@ void main() {
 
             const s_rect_i char_src_rect = font_arrangement_info.chars.src_rects[char_index];
 
-            Draw(font_tex_gl_id, CalcTexCoords(char_src_rect, font_tex_size), char_pos, RectSize(char_src_rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
-        }
-    }
+            const s_draw_texture_instr draw_tex = {
+                .tex_gl_id = font_tex_gl_id,
+                .tex_coords = CalcTexCoords(char_src_rect, font_tex_size),
+                .pos = char_pos,
+                .size = RectSize(char_src_rect),
+                .blend = blend
+            };
 
-#if 0
-    void DrawRect(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
-        Draw(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, RectTopLeft(rect), RectSize(rect), draw_phase_state, pers_render_data, {}, 0.0f, blend);
-    }
+            const s_draw_instr instr = {
+                .type = ek_instr_type_draw_texture,
+                .draw_tex = draw_tex
+            };
 
-    void DrawRectOutline(const s_rect rect, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
-        DrawLine(RectTopLeft(rect), RectTopRight(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
-        DrawLine(RectTopRight(rect), RectBottomRight(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
-        DrawLine(RectBottomRight(rect), RectBottomLeft(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
-        DrawLine(RectBottomLeft(rect), RectTopLeft(rect), 1, blend, draw_phase_state, pers_render_data, builtin_assets);
-    }
-
-    void DrawLine(const s_vec_2d start, const s_vec_2d end, const float width, const s_vec_4d blend, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
-        assert(width > 0.0f);
-
-        const float len = Dist(start, end);
-        const float rot = Dir(start, end);
-        Draw(builtin_assets.pixel_tex_gl_id, {0.0f, 0.0f, 1.0f, 1.0f}, start, {len, width}, draw_phase_state, pers_render_data, {0.0f, 0.5f}, rot, blend);
-    }
-
-    void DrawBar(const s_vec_2d pos, const s_vec_2d size, const float perc, const s_vec_3d col_front, const s_vec_3d col_back, const float alpha, s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data, const s_builtin_assets& builtin_assets) {
-        assert(perc >= 0.0f && perc <= 1.0f);
-        assert(alpha >= 0.0f, && alpha <= 1.0f);
-
-        // TODO: Support different bar directions.
-
-        const s_vec_2d topleft = pos - (size / 2.0f);
-        DrawRect({topleft.x, topleft.y, size.x * perc, size.y}, {col_front.x, col_front.y, col_front.z, alpha}, draw_phase_state, pers_render_data, builtin_assets);
-        DrawRect({topleft.x + (size.x * perc), topleft.y, size.x * (1.0f - perc), size.y}, {col_back.x, col_back.y, col_back.z, alpha}, draw_phase_state, pers_render_data, builtin_assets);
-    }
-#endif
-
-    void Flush(s_draw_phase_state& draw_phase_state, const s_pers_render_data& pers_render_data) {
-        if (draw_phase_state.tex_batch_slots_used_cnt == 0) {
-            return;
+            if (!zf4::ListAppendTry(instrs, instr)) {
+                return false;
+            }
         }
 
-        // Write the batch vertex data to the GPU.
-        GL_CALL(glBindVertexArray(pers_render_data.tex_batch_vert_array_gl_id));
-        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data.tex_batch_vert_buf_gl_id));
-
-        const int write_size = g_texture_batch_slot_verts_size * draw_phase_state.tex_batch_slots_used_cnt;
-        GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, write_size, draw_phase_state.tex_batch_slot_verts.elems_raw));
-
-        // Draw the batch.
-        const s_textured_quad_shader_prog& prog = pers_render_data.textured_quad_shader_prog;
-
-        GL_CALL(glUseProgram(prog.gl_id));
-
-        GL_CALL(glUniformMatrix4fv(prog.proj_uniform_loc, 1, false, reinterpret_cast<const float*>(&draw_phase_state.proj_mat)));
-        GL_CALL(glUniformMatrix4fv(prog.view_uniform_loc, 1, false, reinterpret_cast<const float*>(&draw_phase_state.view_mat)));
-
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, draw_phase_state.tex_batch_tex_gl_id));
-
-        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.tex_batch_elem_buf_gl_id));
-        GL_CALL(glDrawElements(GL_TRIANGLES, g_texture_batch_slot_indices_cnt * draw_phase_state.tex_batch_slots_used_cnt, GL_UNSIGNED_SHORT, nullptr));
-
-        // Clear batch state.
-        memset(draw_phase_state.tex_batch_slot_verts.elems_raw, 0, sizeof(draw_phase_state.tex_batch_slot_verts.elems_raw));
-        draw_phase_state.tex_batch_slots_used_cnt = 0;
-        draw_phase_state.tex_batch_tex_gl_id = 0;
+        return true;
     }
 
     s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts) {
@@ -856,116 +885,5 @@ void main() {
         draw_info.height = char_draw_pos_pen.y + font_arrangement_info.line_height;
 
         return draw_info;
-
-#if 0
-        s_str_draw_info draw_info = {};
-
-        const int str_len = strlen(str);
-        assert(str_len > 0 && str_len <= g_str_draw_len_limit);
-
-        const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
-
-        // Iterate through each character and set draw positions, meanwhile determining line widths, the overall text height, etc.
-        const int space_char_index = ' ' - g_font_char_range_begin; // We use this character for defaulting in some cases.
-
-        s_vec_2d_i char_draw_pos_pen = {};
-
-        int line_index = 0;
-
-        int first_line_min_ver_offs;
-        bool first_line_min_ver_offs_defined = false;
-
-        //const int last_line_max_height_default = font_arrangement_info.chars.ver_offsets[space_char_index] + font_arrangement_info.chars.src_rects[space_char_index].height;
-        const int last_line_max_height_default = font_arrangement_info.line_height;
-        int last_line_max_height = last_line_max_height_default;
-        bool last_line_max_height_updated = false; // We want to let the max height initially be overwritten regardless of the default.
-
-        for (int i = 0; i < str_len; i++) {
-            const int char_index = str[i] - g_font_char_range_begin;
-
-            if (str[i] == '\n') {
-                draw_info.line_widths[line_index] = char_draw_pos_pen.x; // The width of this line is where we've horizontally drawn up to.
-
-                // Reset the last line max height (this didn't turn out to be the last line).
-                last_line_max_height = last_line_max_height_default;
-                last_line_max_height_updated = false; // Let the max height be overwritten by the first character of the next line.
-
-                // Move the pen to the next line.
-                char_draw_pos_pen.x = 0;
-                char_draw_pos_pen.y += font_arrangement_info.line_height;
-
-                ++line_index;
-
-                continue;
-            }
-
-            // For all characters after the first, apply kerning.
-#if 0
-            if (i > 0) {
-                const int str_char_index_last = str[i - 1] - g_font_char_range_begin;
-                const int kerning_index = (char_index * g_font_char_range_len) + str_char_index_last;
-                char_draw_pos_pen.x += font_arrangement_info.chars.kernings[kerning_index];
-            }
-#endif
-
-            // Set the top-left position to draw this character.
-            const s_vec_2d_i char_draw_pos = {
-                char_draw_pos_pen.x + font_arrangement_info.chars.hor_offsets[char_index],
-                char_draw_pos_pen.y + font_arrangement_info.chars.ver_offsets[char_index]
-            };
-
-            draw_info.char_draw_positions[i] = char_draw_pos;
-
-            // Move to the next character.
-            char_draw_pos_pen.x += font_arrangement_info.chars.hor_advances[char_index];
-
-            // If this is the first line, update the minimum vertical offset.
-            if (line_index == 0) {
-                if (!first_line_min_ver_offs_defined) {
-                    first_line_min_ver_offs = font_arrangement_info.chars.ver_offsets[char_index];
-                    first_line_min_ver_offs_defined = true;
-                } else {
-                    first_line_min_ver_offs = Min(font_arrangement_info.chars.ver_offsets[char_index], first_line_min_ver_offs);
-                }
-            }
-
-            // Update the maximum height. Note that we aren't sure if this is the last line.
-            const int height = font_arrangement_info.chars.ver_offsets[char_index] + font_arrangement_info.chars.src_rects[char_index].height;
-
-            if (!last_line_max_height_updated) {
-                last_line_max_height = height;
-                last_line_max_height_updated = true;
-            } else {
-                last_line_max_height_updated = Max(height, last_line_max_height);
-            }
-        }
-
-        // Set the width of the final line.
-        draw_info.line_widths[line_index] = char_draw_pos_pen.x;
-
-        // If the minimum vertical offset of the first line wasn't set (because the first line was empty), just use the space character.
-        // Note that we don't want this vertical offset to affect the minimum calculation, hence why it was not assigned as default.
-        if (!first_line_min_ver_offs_defined) {
-            //first_line_min_ver_offs = font_arrangement_info.chars.ver_offsets[space_char_index];
-            first_line_min_ver_offs = 0;
-            first_line_min_ver_offs_defined = true;
-        }
-
-        draw_info.char_cnt = str_len;
-        draw_info.line_cnt = line_index + 1;
-
-        draw_info.height = first_line_min_ver_offs + char_draw_pos_pen.y + last_line_max_height;
-
-        return draw_info;
-#endif
-    }
-
-    s_rect_edges CalcTexCoords(const s_rect_i src_rect, const s_vec_2d_i tex_size) {
-        return {
-            static_cast<float>(src_rect.x) / tex_size.x,
-            static_cast<float>(src_rect.y) / tex_size.y,
-            static_cast<float>(RectRight(src_rect)) / tex_size.x,
-            static_cast<float>(RectBottom(src_rect)) / tex_size.y
-        };
     }
 }

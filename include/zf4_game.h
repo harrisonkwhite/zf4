@@ -199,9 +199,11 @@ namespace zf4 {
         s_mem_arena& perm_mem_arena;
         s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
+        const s_input_state& input_state;
         const graphics::s_textures& textures;
         const graphics::s_fonts& fonts;
-        graphics::s_pers_render_data& pers_render_data;
+        const graphics::s_pers_render_data& pers_render_data;
+        graphics::s_surfaces& surfs;
         void* const custom_data;
     };
 
@@ -214,7 +216,8 @@ namespace zf4 {
         const s_input_state& input_state_last;
         const graphics::s_textures& textures;
         const graphics::s_fonts& fonts;
-        graphics::s_pers_render_data& pers_render_data;
+        const graphics::s_pers_render_data& pers_render_data;
+        graphics::s_surfaces& surfs;
         const double fps;
         void* custom_data;
     };
@@ -225,7 +228,6 @@ namespace zf4 {
         const graphics::s_textures& textures;
         const graphics::s_fonts& fonts;
         const graphics::s_pers_render_data& pers_render_data;
-        graphics::s_draw_phase_state& draw_phase_state;
         const double fps;
         const void* custom_data; // TEMP?
     };
@@ -236,15 +238,15 @@ namespace zf4 {
         ek_game_tick_func_result_error_quit
     };
 
-    using a_game_init_func = bool (*)(const s_game_init_func_data& data);
-    using a_game_tick_func = e_game_tick_func_result(*)(const s_game_tick_func_data& data);
-    using a_game_draw_func = bool (*)(const s_game_draw_func_data& data);
+    using a_game_init_func = bool (*)(const s_game_init_func_data& zf4_data);
+    using a_game_tick_func = e_game_tick_func_result(*)(const s_game_tick_func_data& zf4_data);
+    using a_game_append_draw_instrs_func = bool (*)(zf4::s_list<zf4::graphics::s_draw_instr>& instrs, const zf4::s_game_draw_func_data& zf4_data);
     using a_game_cleanup_func = void (*)(void* const custom_data);
 
     struct s_game_info {
         a_game_init_func init_func;
         a_game_tick_func tick_func;
-        a_game_draw_func draw_func;
+        a_game_append_draw_instrs_func append_draw_instrs_func;
         a_game_cleanup_func cleanup_func;
 
         int perm_mem_arena_size;
@@ -261,6 +263,8 @@ namespace zf4 {
         int font_cnt;
         s_array<const char* const> font_filenames;
         s_array<const int> font_pt_sizes;
+
+        int draw_instr_limit;
 
         int custom_data_size;
         int custom_data_alignment;
