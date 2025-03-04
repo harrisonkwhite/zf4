@@ -401,7 +401,7 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type, int tp_cap>
-    inline tp_type& ListEnd(s_static_list<tp_type, tp_cap> list) {
+    inline tp_type& ListEnd(s_static_list<tp_type, tp_cap>& list) {
         assert(list.len > 0);
         return list[list.len - 1];
     }
@@ -418,7 +418,7 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type, int tp_cap>
-    inline bool IsListEmpty(const s_static_list<tp_type, tp_cap> list) {
+    inline bool IsListEmpty(const s_static_list<tp_type, tp_cap>& list) {
         return list.len == 0;
     }
 
@@ -428,7 +428,7 @@ namespace zf4 {
     }
 
     template<c_trivial_type tp_type, int tp_cap>
-    inline bool IsListFull(const s_static_list<tp_type, tp_cap> list) {
+    inline bool IsListFull(const s_static_list<tp_type, tp_cap>& list) {
         return list.len == tp_cap;
     }
 

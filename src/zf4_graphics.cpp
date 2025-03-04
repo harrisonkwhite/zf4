@@ -1,5 +1,6 @@
 #include <zf4_graphics.h>
 
+#include <limits>
 #include <zf4_io.h>
 #include <stb_image.h>
 #include <stb_truetype.h>
@@ -209,7 +210,7 @@ void main() {
         };
     }
 
-    s_batch GenBatch() {
+    static s_batch GenBatch() {
         s_batch batch = {};
 
         // Generate vertex array.
@@ -261,6 +262,107 @@ void main() {
         GL_CALL(glEnableVertexAttribArray(5));
 
         return batch;
+    }
+
+    s_str_draw_info GenStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const e_str_hor_align hor_align, const e_str_ver_align ver_align) {
+        assert(str && str[0]);
+
+        s_str_draw_info draw_info = {
+            .line_infos = {.len = 1}
+        };
+
+        //
+        // First Pass
+        //
+        const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
+
+        s_vec_2d chr_draw_pos_pen = {};
+
+        do {
+            ++draw_info.chr_draw_rects.len;
+
+            const char chr = str[draw_info.chr_draw_rects.len - 1];
+
+            if (chr != '\n') {
+                const int chr_index = chr - g_font_char_range_begin;
+
+                const s_vec_2d chr_draw_pos = {
+                    chr_draw_pos_pen.x + font_arrangement_info.chrs.hor_offsets[chr_index],
+                    chr_draw_pos_pen.y + font_arrangement_info.chrs.ver_offsets[chr_index]
+                };
+
+                ListEnd(draw_info.chr_draw_rects) = GenRect(chr_draw_pos, RectSize(font_arrangement_info.chrs.src_rects[chr_index]));
+
+                chr_draw_pos_pen.x += font_arrangement_info.chrs.hor_advances[chr_index];
+            } else {
+                ListEnd(draw_info.line_infos).width_including_offs = chr_draw_pos_pen.x;
+                ++draw_info.line_infos.len;
+                ListEnd(draw_info.line_infos).begin_chr_index = draw_info.chr_draw_rects.len;
+
+                chr_draw_pos_pen.x = 0;
+                chr_draw_pos_pen.y += font_arrangement_info.line_height;
+            }
+        } while (str[draw_info.chr_draw_rects.len]);
+
+        ListEnd(draw_info.line_infos).width_including_offs = chr_draw_pos_pen.x;
+        const float height_including_offs = chr_draw_pos_pen.y + font_arrangement_info.line_height;
+
+        //
+        // Second Pass: Applying Position and Alignment Offsets
+        //
+        const float ver_align_offs = -(height_including_offs * (ver_align / 2.0f));
+
+        for (int i = 0; i < draw_info.line_infos.len; i++) {
+            const int line_end_chr_index = i < draw_info.line_infos.len - 1 ? draw_info.line_infos[i + 1].begin_chr_index - 1 : draw_info.chr_draw_rects.len - 1;
+
+            const float hor_align_offs = -(draw_info.line_infos[i].width_including_offs * (hor_align / 2.0f));
+
+            const s_vec_2d offs = pos + s_vec_2d(hor_align_offs, ver_align_offs);
+
+            for (int j = draw_info.line_infos[i].begin_chr_index; j <= line_end_chr_index; ++j) {
+                draw_info.chr_draw_rects[j] = RectTranslated(draw_info.chr_draw_rects[j], offs);
+            }
+        }
+
+        return draw_info;
+    }
+
+    s_rect GenStrCollider(const s_str_draw_info& draw_info) {
+        const int str_len = draw_info.chr_draw_rects.len;
+        const int line_cnt = draw_info.line_infos.len;
+
+        // Get top and bottom.
+        float top = std::numeric_limits<float>().max();
+        float bottom = std::numeric_limits<float>().lowest();
+
+        if (line_cnt == 1) {
+            for (int i = 0; i < str_len; ++i) {
+                top = Min(top, draw_info.chr_draw_rects[i].y);
+                bottom = Max(bottom, RectBottom(draw_info.chr_draw_rects[i]));
+            }
+        } else {
+            for (int i = 0; i < draw_info.line_infos[1].begin_chr_index; ++i) {
+                top = Min(top, draw_info.chr_draw_rects[i].y);
+            }
+
+            for (int i = draw_info.line_infos[draw_info.line_infos.len - 1].begin_chr_index; i < str_len; ++i) {
+                bottom = Max(bottom, RectBottom(draw_info.chr_draw_rects[i]));
+            }
+        }
+
+        // Get left and right.
+        float left = std::numeric_limits<float>().max();
+        float right = std::numeric_limits<float>().lowest();
+
+        for (int i = 0; i < line_cnt; ++i) {
+            const int begin_chr_index = draw_info.line_infos[i].begin_chr_index;
+            left = Min(left, draw_info.chr_draw_rects[begin_chr_index].x);
+
+            const int end_chr_index = i < line_cnt - 1 ? draw_info.line_infos[i + 1].begin_chr_index : str_len - 1;
+            right = Max(right, RectRight(draw_info.chr_draw_rects[end_chr_index]));
+        }
+
+        return {left, top, right - left, bottom - top};
     }
 
     s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena, bool& err) {
@@ -397,7 +499,7 @@ void main() {
                     int advance, lsb;
                     stbtt_GetCodepointHMetrics(&font, ' ', &advance, &lsb);
 
-                    arrangement_infos[i].chars.hor_advances[j] = static_cast<int>(advance * scale);
+                    arrangement_infos[i].chrs.hor_advances[j] = static_cast<int>(advance * scale);
 
                     continue;
                 }
@@ -422,10 +524,10 @@ void main() {
                     char_draw_pos.y += arrangement_infos[i].line_height;
                 }
 
-                arrangement_infos[i].chars.hor_offsets[j] = offs.x;
-                arrangement_infos[i].chars.ver_offsets[j] = offs.y + arrangement_infos[i].line_height;
-                arrangement_infos[i].chars.hor_advances[j] = size.x;
-                arrangement_infos[i].chars.src_rects[j] = GenRect(char_draw_pos, size);
+                arrangement_infos[i].chrs.hor_offsets[j] = offs.x;
+                arrangement_infos[i].chrs.ver_offsets[j] = offs.y + arrangement_infos[i].line_height;
+                arrangement_infos[i].chrs.hor_advances[j] = size.x;
+                arrangement_infos[i].chrs.src_rects[j] = GenRect(char_draw_pos, size);
 
                 for (int y = 0; y < size.y; y++) {
                     for (int x = 0; x < size.x; x++) {
@@ -786,7 +888,7 @@ void main() {
         assert(str);
         assert(font_index >= 0 && font_index < fonts.cnt);
 
-        const s_str_draw_info str_draw_info = LoadStrDrawInfo(str, font_index, fonts);
+        const s_str_draw_info str_draw_info = GenStrDrawInfo(str, font_index, fonts, pos, hor_align, ver_align); // TODO: Cache this, but only if it's actually a bottleneck on performance.
 
         const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
         const GLuint font_tex_gl_id = fonts.tex_gl_ids[font_index];
@@ -805,21 +907,13 @@ void main() {
             }
 
             const int char_index = str[i] - g_font_char_range_begin;
-
-            // Note that the character position is offset based on alignment.
-            // Middle alignment (1) corresponds to 50% multiplier on current line width and text height, right alignment (2) is 100%.
-            const s_vec_2d char_pos = {
-                pos.x + str_draw_info.char_draw_positions[i].x - (str_draw_info.line_widths[line_index] * hor_align * 0.5f),
-                pos.y + str_draw_info.char_draw_positions[i].y - (str_draw_info.height * ver_align * 0.5f)
-            };
-
-            const s_rect_i char_src_rect = font_arrangement_info.chars.src_rects[char_index];
+            const s_rect_i char_src_rect = font_arrangement_info.chrs.src_rects[char_index];
 
             const s_draw_texture_instr draw_tex = {
                 .tex_gl_id = font_tex_gl_id,
                 .tex_coords = CalcTexCoords(char_src_rect, font_tex_size),
-                .pos = char_pos,
-                .size = RectSize(char_src_rect),
+                .pos = RectTopLeft(str_draw_info.chr_draw_rects[i]),
+                .size = RectSize(str_draw_info.chr_draw_rects[i]),
                 .blend = blend
             };
 
@@ -834,56 +928,5 @@ void main() {
         }
 
         return true;
-    }
-
-    s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts) {
-        s_str_draw_info draw_info = {};
-
-        const int str_len = strlen(str);
-        assert(str_len > 0 && str_len <= g_str_draw_len_limit);
-
-        const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
-
-        // Iterate through each character and set draw positions, meanwhile determining line widths, the overall text height, etc.
-        s_vec_2d_i char_draw_pos_pen = {};
-
-        int line_index = 0;
-
-        for (int i = 0; i < str_len; i++) {
-            const int char_index = str[i] - g_font_char_range_begin;
-
-            if (str[i] == '\n') {
-                draw_info.line_widths[line_index] = char_draw_pos_pen.x; // The width of this line is where we've horizontally drawn up to.
-
-                // Move the pen to the next line.
-                char_draw_pos_pen.x = 0;
-                char_draw_pos_pen.y += font_arrangement_info.line_height;
-
-                ++line_index;
-
-                continue;
-            }
-
-            // Set the top-left position to draw this character.
-            const s_vec_2d_i char_draw_pos = {
-                char_draw_pos_pen.x + font_arrangement_info.chars.hor_offsets[char_index],
-                char_draw_pos_pen.y + font_arrangement_info.chars.ver_offsets[char_index]
-            };
-
-            draw_info.char_draw_positions[i] = char_draw_pos;
-
-            // Move to the next character.
-            char_draw_pos_pen.x += font_arrangement_info.chars.hor_advances[char_index];
-        }
-
-        // Set the width of the final line.
-        draw_info.line_widths[line_index] = char_draw_pos_pen.x;
-
-        draw_info.char_cnt = str_len;
-        draw_info.line_cnt = line_index + 1;
-
-        draw_info.height = char_draw_pos_pen.y + font_arrangement_info.line_height;
-
-        return draw_info;
     }
 }

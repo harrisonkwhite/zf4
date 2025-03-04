@@ -46,7 +46,7 @@ namespace zf4::graphics {
     constexpr int g_font_char_range_begin = 32;
     constexpr int g_font_char_range_len = 95;
 
-    constexpr int g_str_draw_len_limit = 256;
+    constexpr int g_str_draw_info_str_buf_size = 256;
 
     constexpr int g_shader_uniform_name_len_limit = 32; // TEMP? Kind of arbitrary.
 
@@ -66,6 +66,16 @@ namespace zf4::graphics {
         ek_str_ver_align_bottom
     };
 
+    struct s_str_line_draw_info {
+        int begin_chr_index;
+        float width_including_offs;
+    };
+
+    struct s_str_draw_info {
+        s_static_list<s_rect, g_str_draw_info_str_buf_size> chr_draw_rects;
+        s_static_list<s_str_line_draw_info, g_str_draw_info_str_buf_size> line_infos; // Maximised for the case where all characters are newlines.
+    };
+
     struct s_textures {
         s_array<const a_gl_id> gl_ids;
         s_array<const s_vec_2d_i> sizes;
@@ -82,7 +92,7 @@ namespace zf4::graphics {
 
     struct s_font_arrangement_info {
         int line_height;
-        s_font_chars_arrangement_info chars;
+        s_font_chars_arrangement_info chrs;
     };
 
     struct s_fonts {
@@ -200,15 +210,8 @@ namespace zf4::graphics {
         int cnt;
     };
 
-    struct s_str_draw_info {
-        int char_cnt;
-        s_vec_2d_i char_draw_positions[g_str_draw_len_limit];
-
-        int line_cnt;
-        int line_widths[g_str_draw_len_limit + 1]; // Maximised for the case where all characters are newlines.
-
-        int height;
-    };
+    s_str_draw_info GenStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const e_str_hor_align hor_align, const e_str_ver_align ver_align);
+    s_rect GenStrCollider(const s_str_draw_info& draw_info);
 
     s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena, bool& err);
     void UnloadTextures(const s_textures& textures);
@@ -226,8 +229,6 @@ namespace zf4::graphics {
     bool ExecDrawInstrs(const s_array<const s_draw_instr> instrs, const s_vec_2d_i window_size, const s_pers_render_data& pers_render_data, const s_surfaces& surfs, const s_textures& textures, s_mem_arena& scratch_space);
     bool AppendDrawTextureInstr(s_list<s_draw_instr>& instrs, const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin = {0.5f, 0.5f}, const s_vec_2d scale = {1.0f, 1.0f}, const float rot = 0.0f, const s_vec_4d blend = {1.0f, 1.0f, 1.0f, 1.0f});
     bool AppendDrawTextureInstrsForStr(s_list<s_draw_instr>& instrs, const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align);
-
-    s_str_draw_info LoadStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts);
 
     inline bool AppendClearInstr(s_list<s_draw_instr>& instrs, const s_vec_4d color = {}) {
         return ListAppendTry(instrs, {
