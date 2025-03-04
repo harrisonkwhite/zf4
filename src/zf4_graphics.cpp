@@ -310,14 +310,12 @@ void main() {
         //
         // Second Pass: Applying Position and Alignment Offsets
         //
-        const float ver_align_offs = -(height_including_offs * (static_cast<float>(ver_align) / 2.0f));
-
         for (int i = 0; i < draw_info.line_infos.len; i++) {
             const int line_end_chr_index = i < draw_info.line_infos.len - 1 ? draw_info.line_infos[i + 1].begin_chr_index - 1 : draw_info.chr_draw_rects.len - 1;
 
-            const float hor_align_offs = -(draw_info.line_infos[i].width_including_offs * (static_cast<float>(hor_align) / 2.0f));
+            const float hor_align_offs = -(draw_info.line_infos[i].width_including_offs * static_cast<float>(hor_align) * 0.5f);
 
-            const s_vec_2d offs = pos + s_vec_2d(hor_align_offs, ver_align_offs);
+            const s_vec_2d offs = pos + s_vec_2d(hor_align_offs, -(height_including_offs * static_cast<float>(ver_align) * 0.5f));
 
             for (int j = draw_info.line_infos[i].begin_chr_index; j <= line_end_chr_index; ++j) {
                 draw_info.chr_draw_rects[j] = RectTranslated(draw_info.chr_draw_rects[j], offs);
@@ -526,7 +524,7 @@ void main() {
                 }
 
                 arrangement_infos[i].chrs.hor_offsets[j] = offs.x;
-                arrangement_infos[i].chrs.ver_offsets[j] = offs.y + arrangement_infos[i].line_height;
+                arrangement_infos[i].chrs.ver_offsets[j] = offs.y + (ascent * scale);
                 arrangement_infos[i].chrs.src_rects[j] = GenRect(char_draw_pos, size);
 
                 for (int y = 0; y < size.y; y++) {

@@ -466,12 +466,10 @@ namespace zf4 {
             if (!IsStructZero(window_size_after_poll_events) && window_size_after_poll_events != window_state_cache.size) {
                 glViewport(0, 0, window_size_after_poll_events.x, window_size_after_poll_events.y);
 
-#if 0
-                if (!graphics::ResizeSurfaces(pers_render_data->surfs, window_size_after_poll_events)) {
+                if (!graphics::ResizeSurfaces(surfs, window_size_after_poll_events)) {
                     CleanGame(cleanup_info);
                     return false;
                 }
-#endif
             }
         }
 
