@@ -825,6 +825,7 @@ void main() {
                 const s_draw_instr& instr_next = instrs[i + 1];
 
                 if (batch_slots_used_cnt == g_batch_slot_limit
+                    || instr_next.type == ek_instr_type_set_view_matrix
                     || instr_next.type == ek_instr_type_set_surf
                     || instr_next.type == ek_instr_type_unset_surf
                     || (instr_next.type == ek_instr_type_draw_texture && instr_next.draw_tex.tex_gl_id != batch_tex_gl_id)) {
