@@ -310,12 +310,12 @@ void main() {
         //
         // Second Pass: Applying Position and Alignment Offsets
         //
-        const float ver_align_offs = -(height_including_offs * (ver_align / 2.0f));
+        const float ver_align_offs = -(height_including_offs * (static_cast<float>(ver_align) / 2.0f));
 
         for (int i = 0; i < draw_info.line_infos.len; i++) {
             const int line_end_chr_index = i < draw_info.line_infos.len - 1 ? draw_info.line_infos[i + 1].begin_chr_index - 1 : draw_info.chr_draw_rects.len - 1;
 
-            const float hor_align_offs = -(draw_info.line_infos[i].width_including_offs * (hor_align / 2.0f));
+            const float hor_align_offs = -(draw_info.line_infos[i].width_including_offs * (static_cast<float>(hor_align) / 2.0f));
 
             const s_vec_2d offs = pos + s_vec_2d(hor_align_offs, ver_align_offs);
 
@@ -422,6 +422,7 @@ void main() {
     s_fonts PushFonts(const int cnt, const s_array<const char* const> filenames, const s_array<const int> heights, s_mem_arena& mem_arena, s_mem_arena& scratch_space, bool& err) {
         assert(cnt > 0);
         assert(cnt == filenames.len);
+        assert(cnt == heights.len);
         assert(!err);
 
         // Reserve memory for font data.
@@ -495,12 +496,12 @@ void main() {
             for (int j = 0; j < g_font_char_range_len; j++) {
                 const char chr = g_font_char_range_begin + j;
 
+                int advance;
+                stbtt_GetCodepointHMetrics(&font, chr, &advance, nullptr);
+
+                arrangement_infos[i].chrs.hor_advances[j] = static_cast<int>(advance * scale);
+
                 if (chr == ' ') {
-                    int advance, lsb;
-                    stbtt_GetCodepointHMetrics(&font, ' ', &advance, &lsb);
-
-                    arrangement_infos[i].chrs.hor_advances[j] = static_cast<int>(advance * scale);
-
                     continue;
                 }
 
@@ -526,7 +527,6 @@ void main() {
 
                 arrangement_infos[i].chrs.hor_offsets[j] = offs.x;
                 arrangement_infos[i].chrs.ver_offsets[j] = offs.y + arrangement_infos[i].line_height;
-                arrangement_infos[i].chrs.hor_advances[j] = size.x;
                 arrangement_infos[i].chrs.src_rects[j] = GenRect(char_draw_pos, size);
 
                 for (int y = 0; y < size.y; y++) {
