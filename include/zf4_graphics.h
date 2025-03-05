@@ -4,9 +4,8 @@
 #include <glad/glad.h>
 #include <zf4_math.h>
 
-#define GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)
-
 namespace zf4::graphics {
+#if 0
     constexpr s_vec_4d g_white = {1.0f, 1.0f, 1.0f, 1.0f};
     constexpr s_vec_4d g_black = {0.0f, 0.0f, 0.0f, 1.0f};
     constexpr s_vec_4d g_gray = {0.5f, 0.5f, 0.5f, 1.0f};
@@ -48,7 +47,7 @@ namespace zf4::graphics {
 
     constexpr int g_str_draw_info_str_buf_size = 256;
 
-    constexpr int g_shader_uniform_name_len_limit = 32; // TEMP? Kind of arbitrary.
+    constexpr int g_shader_uniform_name_buf_size = 32; // TEMP? Kind of arbitrary.
 
     constexpr int g_surface_limit = 128;
 
@@ -152,7 +151,7 @@ namespace zf4::graphics {
     };
 
     struct s_set_surf_shader_prog_uniform_instr {
-        char name[g_shader_uniform_name_len_limit];
+        char name[g_shader_uniform_name_buf_size];
         e_shader_uniform_val_type val_type;
 
         union {
@@ -231,82 +230,83 @@ namespace zf4::graphics {
     bool AppendDrawTextureInstrsForStr(s_list<s_draw_instr>& instrs, const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align);
 
     inline bool AppendClearInstr(s_list<s_draw_instr>& instrs, const s_vec_4d color = {}) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_clear,
             .clear = {.color = color}
         });
     }
 
     inline bool AppendSetViewMatrixInstr(s_list<s_draw_instr>& instrs, const s_matrix_4x4& mat) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_view_matrix,
             .set_view_mat = {.mat = mat}
         });
     }
 
     inline bool AppendDrawTextureInstrsForRect(s_list<s_draw_instr>& instrs, const s_rect rect, const s_vec_4d blend, const int px_tex_index, const s_textures& textures, const s_rect_i px_src_rect) {
-        return AppendDrawTextureInstr(instrs, px_tex_index, textures, px_src_rect, RectTopLeft(rect), {}, RectSize(rect), 0.0f, blend);
+        return AppendDrawTextureInstr(instrs, px_tex_index, textures, px_src_rect, rect.TopLeft(), {}, rect.Size(), 0.0f, blend);
     }
 
     inline bool AppendSetSurfInstr(s_list<s_draw_instr>& instrs, const int surf_index) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf,
             .set_surf = {.surf_index = surf_index}
         });
     }
 
     inline bool AppendUnsetSurfInstr(s_list<s_draw_instr>& instrs) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_unset_surf
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const int val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_int, .val_as_int = val}
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const float val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_float, .val_as_float = val}
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const s_vec_2d val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_v2, .val_as_v2 = val}
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const s_vec_3d val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_v3, .val_as_v3 = val}
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const s_vec_4d val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_v4, .val_as_v4 = val}
         });
     }
 
     inline bool AppendSetSurfaceShaderProgUniformInstr(s_list<s_draw_instr>& instrs, const char* const uni_name, const s_matrix_4x4 val) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_set_surf_shader_prog_uniform,
             .set_surf_shader_prog_uni = {.val_type = ek_shader_uniform_val_type_mat_4x4, .val_as_mat_4x4 = val}
         });
     }
 
     inline bool AppendDrawSurfInstr(s_list<s_draw_instr>& instrs, const int surf_index) {
-        return ListAppendTry(instrs, {
+        return instrs.Append({
             .type = ek_instr_type_draw_surf,
             .draw_surf = {.surf_index = surf_index}
         });
     }
+#endif
 }

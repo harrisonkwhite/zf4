@@ -8,8 +8,8 @@ namespace zf4 {
     constexpr float g_pi = 3.14159265359f;
 
     struct s_vec_2d {
-        float x;
-        float y;
+        float x = 0.0f;
+        float y = 0.0f;
 
         constexpr s_vec_2d operator+(const s_vec_2d other) const {
             return {x + other.x, y + other.y};
@@ -65,8 +65,8 @@ namespace zf4 {
     };
 
     struct s_vec_2d_i {
-        int x;
-        int y;
+        int x = 0;
+        int y = 0;
 
         constexpr s_vec_2d_i operator+(const s_vec_2d_i other) const {
             return {x + other.x, y + other.y};
@@ -142,9 +142,9 @@ namespace zf4 {
     };
 
     struct s_vec_3d {
-        float x;
-        float y;
-        float z;
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
 
         constexpr s_vec_3d operator+(const s_vec_3d other) const {
             return {x + other.x, y + other.y, z + other.z};
@@ -204,10 +204,10 @@ namespace zf4 {
     };
 
     struct s_vec_4d {
-        float x;
-        float y;
-        float z;
-        float w;
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+        float w = 0.0f;
 
         constexpr s_vec_4d operator+(const s_vec_4d other) const {
             return {x + other.x, y + other.y, z + other.z, w + other.w};
@@ -270,35 +270,59 @@ namespace zf4 {
         }
     };
 
-    struct s_poly_view {
-        s_array<const s_vec_2d> pts;
-    };
-
-    struct s_poly {
-        s_array<s_vec_2d> pts;
-
-        operator s_poly_view() const {
-            return {
-                .pts = pts
-            };
-        }
-    };
-
-    struct s_range {
-        int min;
-        int max;
-    };
-
-    struct s_range_f {
-        float min;
-        float max;
-    };
-
     struct s_rect {
-        float x;
-        float y;
-        float width;
-        float height;
+        float x = 0.0f;
+        float y = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
+
+        float Right() const {
+            return x + width;
+        }
+
+        float Bottom() const {
+            return y + height;
+        }
+
+        s_vec_2d Size() const {
+            return {width, height};
+        }
+
+        s_vec_2d TopLeft() const {
+            return {x, y};
+        }
+
+        s_vec_2d TopCenter() const {
+            return {x + (width / 2.0f), y};
+        }
+
+        s_vec_2d TopRight() const {
+            return {x + width, y};
+        }
+
+        s_vec_2d CenterLeft() const {
+            return {x, y + (height / 2.0f)};
+        }
+
+        s_vec_2d Center() const {
+            return {x + (width / 2.0f), y + (height / 2.0f)};
+        }
+
+        s_vec_2d CenterRight() const {
+            return {x + width, y + (height / 2.0f)};
+        }
+
+        s_vec_2d BottomLeft() const {
+            return {x, y + height};
+        }
+
+        s_vec_2d BottomCenter() const {
+            return {x + (width / 2.0f), y + height};
+        }
+
+        s_vec_2d BottomRight() const {
+            return {x + width, y + height};
+        }
     };
 
     struct s_rect_i {
@@ -309,6 +333,54 @@ namespace zf4 {
 
         operator s_rect() const {
             return s_rect(x, y, width, height);
+        }
+
+        int Right() const {
+            return x + width;
+        }
+
+        int Bottom() const {
+            return y + height;
+        }
+
+        s_vec_2d_i Size() const {
+            return {width, height};
+        }
+
+        s_vec_2d_i TopLeft() const {
+            return {x, y};
+        }
+
+        s_vec_2d_i TopCenter() const {
+            return {x + (width / 2), y};
+        }
+
+        s_vec_2d_i TopRight() const {
+            return {x + width, y};
+        }
+
+        s_vec_2d_i CenterLeft() const {
+            return {x, y + (height / 2)};
+        }
+
+        s_vec_2d_i Center() const {
+            return {x + (width / 2), y + (height / 2)};
+        }
+
+        s_vec_2d_i CenterRight() const {
+            return {x + width, y + (height / 2)};
+        }
+
+        s_vec_2d_i BottomLeft() const {
+            return {x, y + height};
+        }
+
+        s_vec_2d_i BottomCenter() const {
+            return {x + (width / 2), y + height};
+        }
+
+        s_vec_2d_i BottomRight() const {
+            return {x + width, y + height};
         }
     };
 
@@ -330,26 +402,13 @@ namespace zf4 {
         s_static_array<s_static_array<float, 4>, 4> elems;
     };
 
-    bool DoPolysIntersect(const s_poly_view poly_a, const s_poly_view poly_b);
-    s_poly PushQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, s_mem_arena& mem_arena);
-    s_poly PushRotatedQuadPoly(const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, s_mem_arena& mem_arena);
-    s_poly PushPolyOfRectTranslation(const s_vec_2d rect_size, const s_vec_2d rect_pos_a, const s_vec_2d rect_pos_b, s_mem_arena& mem_arena);
-    bool DoesPolyIntersectWithRect(const s_poly_view poly, const s_rect rect);
-    float PolyLeft(const s_poly_view poly);
-    float PolyRight(const s_poly_view poly);
-    float PolyTop(const s_poly_view poly);
-    float PolyBottom(const s_poly_view poly);
-    bool IsPolyQuad(const s_poly_view poly);
-    bool IsPolyQuadNonRot(const s_poly_view poly);
-
-    s_matrix_4x4 GenIdentityMatrix4x4();
-    s_matrix_4x4 GenOrthoMatrix4x4(const float left, const float right, const float bottom, const float top, const float near, const float far);
-
-    constexpr bool InBounds(const s_vec_2d pos, const s_vec_2d size) {
+    inline bool InBounds(const s_vec_2d pos, const s_vec_2d size) {
+        assert(size.x > 0 && size.y > 0);
         return pos.x >= 0.0f && pos.y >= 0.0f && pos.x < size.x && pos.y < size.y;
     }
 
-    constexpr bool InBounds(const s_vec_2d_i pos, const s_vec_2d_i size) {
+    inline bool InBounds(const s_vec_2d_i pos, const s_vec_2d_i size) {
+        assert(size.x > 0 && size.y > 0);
         return pos.x >= 0 && pos.y >= 0 && pos.x < size.x && pos.y < size.y;
     }
 
@@ -416,7 +475,7 @@ namespace zf4 {
         return Magnitude(b - a);
     }
 
-    constexpr float DistSquared(const s_vec_2d a, const s_vec_2d b) {
+    inline float DistSquared(const s_vec_2d a, const s_vec_2d b) {
         const float x_diff = b.x - a.x;
         const float y_diff = b.y - a.y;
         return (x_diff * x_diff) + (y_diff * y_diff);
@@ -438,151 +497,41 @@ namespace zf4 {
         return {len * cos(dir), -len * sin(dir)};
     }
 
-    constexpr s_rect GenRect(const s_vec_2d pos, const s_vec_2d size) {
-        return {pos.x, pos.y, size.x, size.y};
-    }
-
-    constexpr s_rect_i GenRect(const s_vec_2d_i pos, const s_vec_2d_i size) {
-        return {pos.x, pos.y, size.x, size.y};
-    }
-
-    constexpr s_vec_2d RectSize(const s_rect rect) {
-        return {rect.width, rect.height};
-    }
-
-    constexpr s_vec_2d_i RectSize(const s_rect_i rect) {
-        return {rect.width, rect.height};
-    }
-
-    constexpr float RectRight(const s_rect rect) {
-        return rect.x + rect.width;
-    }
-
-    constexpr int RectRight(const s_rect_i rect) {
-        return rect.x + rect.width;
-    }
-
-    constexpr float RectBottom(const s_rect rect) {
-        return rect.y + rect.height;
-    }
-
-    constexpr int RectBottom(const s_rect_i rect) {
-        return rect.y + rect.height;
-    }
-
-    constexpr s_vec_2d RectTopLeft(const s_rect rect) {
-        return {rect.x, rect.y};
-    }
-
-    constexpr s_vec_2d_i RectTopLeft(const s_rect_i rect) {
-        return {rect.x, rect.y};
-    }
-
-    constexpr s_vec_2d RectTopCenter(const s_rect rect) {
-        return {rect.x + (rect.width / 2.0f), rect.y};
-    }
-
-    constexpr s_vec_2d_i RectTopCenter(const s_rect_i rect) {
-        return {rect.x + (rect.width / 2), rect.y};
-    }
-
-    constexpr s_vec_2d RectTopRight(const s_rect rect) {
-        return {RectRight(rect), rect.y};
-    }
-
-    constexpr s_vec_2d_i RectTopRight(const s_rect_i rect) {
-        return {RectRight(rect), rect.y};
-    }
-
-    constexpr s_vec_2d RectCenterLeft(const s_rect rect) {
-        return {rect.x, rect.y + (rect.height / 2.0f)};
-    }
-
-    constexpr s_vec_2d_i RectCenterLeft(const s_rect_i rect) {
-        return {rect.x, rect.y + (rect.height / 2)};
-    }
-
-    constexpr s_vec_2d RectCenter(const s_rect rect) {
-        return {rect.x + (rect.width / 2.0f), rect.y + (rect.height / 2.0f)};
-    }
-
-    constexpr s_vec_2d_i RectCenter(const s_rect_i rect) {
-        return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)};
-    }
-
-    constexpr s_vec_2d RectCenterRight(const s_rect rect) {
-        return {RectRight(rect), rect.y + (rect.height / 2.0f)};
-    }
-
-    constexpr s_vec_2d_i RectCenterRight(const s_rect_i rect) {
-        return {RectRight(rect), rect.y + (rect.height / 2)};
-    }
-
-    constexpr s_vec_2d RectBottomLeft(const s_rect rect) {
-        return {rect.x, RectBottom(rect)};
-    }
-
-    constexpr s_vec_2d_i RectBottomLeft(const s_rect_i rect) {
-        return {rect.x, RectBottom(rect)};
-    }
-
-    constexpr s_vec_2d RectBottomCenter(const s_rect rect) {
-        return {rect.x + (rect.width / 2.0f), RectBottom(rect)};
-    }
-
-    constexpr s_vec_2d_i RectBottomCenter(const s_rect_i rect) {
-        return {rect.x + (rect.width / 2), RectBottom(rect)};
-    }
-
-    constexpr s_vec_2d RectBottomRight(const s_rect rect) {
-        return {RectRight(rect), RectBottom(rect)};
-    }
-
-    constexpr s_vec_2d_i RectBottomRight(const s_rect_i rect) {
-        return {RectRight(rect), RectBottom(rect)};
-    }
-
-    constexpr s_rect RectTranslated(const s_rect rect, const s_vec_2d trans) {
-        return {rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
-    }
-
-    constexpr s_rect_i RectTranslated(const s_rect_i rect, const s_vec_2d_i trans) {
-        return {rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
-    }
-
-    constexpr bool IsPointInRect(const zf4::s_vec_2d pt, const s_rect rect) {
+#if 0
+    inline bool IsPointInRect(const zf4::s_vec_2d pt, const s_rect rect) {
         return pt.x >= rect.x && pt.x < RectRight(rect)
             && pt.y >= rect.y && pt.y < RectBottom(rect);
     }
 
-    constexpr bool IsPointInRect(const zf4::s_vec_2d_i pt, const s_rect_i rect) {
+    inline bool IsPointInRect(const zf4::s_vec_2d_i pt, const s_rect_i rect) {
         return pt.x >= rect.x && pt.x < RectRight(rect)
             && pt.y >= rect.y && pt.y < RectBottom(rect);
     }
 
-    constexpr bool DoRectsIntersect(const s_rect a, const s_rect b) {
+    inline bool DoRectsIntersect(const s_rect a, const s_rect b) {
         return a.x < RectRight(b)
             && RectRight(a) > b.x
             && a.y < RectBottom(b)
             && RectBottom(a) > b.y;
     }
 
-    constexpr bool DoRectsIntersect(const s_rect_i a, const s_rect_i b) {
+    inline bool DoRectsIntersect(const s_rect_i a, const s_rect_i b) {
         return a.x < RectRight(b)
             && RectRight(a) > b.x
             && a.y < RectBottom(b)
             && RectBottom(a) > b.y;
     }
+#endif
 
-    constexpr float Lerp(const float a, const float b, const float t) {
+    inline float Lerp(const float a, const float b, const float t) {
         return a + ((b - a) * t);
     }
 
-    constexpr s_vec_2d Lerp(const s_vec_2d a, const s_vec_2d b, const float t) {
+    inline s_vec_2d Lerp(const s_vec_2d a, const s_vec_2d b, const float t) {
         return {Lerp(a.x, b.x, t), Lerp(a.y, b.y, t)};
     }
 
-    constexpr int Clamp(const int val, const int min, const int max) {
+    inline int Clamp(const int val, const int min, const int max) {
         if (val < min) {
             return min;
         } else if (val > max) {
@@ -592,7 +541,7 @@ namespace zf4 {
         }
     }
 
-    constexpr float Clamp(const float val, const float min, const float max) {
+    inline float Clamp(const float val, const float min, const float max) {
         if (val < min) {
             return min;
         } else if (val > max) {

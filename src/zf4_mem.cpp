@@ -1,6 +1,7 @@
 #include <zf4_mem.h>
 
 namespace zf4 {
+#if 0
     const s_static_array<const int, 256> g_first_active_bit_indexes = {
         -1, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
         4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
@@ -191,5 +192,52 @@ namespace zf4 {
         }
 
         return false;
+    }
+#endif
+    bool s_mem_arena::Init(const int size) {
+        assert(!IsInitialized());
+        assert(size > 0);
+
+        m_buf = malloc(size);
+
+        if (!m_buf) {
+            return false;
+        }
+
+        m_size = size;
+
+        return true;
+    }
+
+    void s_mem_arena::Clean() {
+        if (m_buf) {
+            free(m_buf);
+        }
+
+        *this = {};
+    }
+
+    void* s_mem_arena::Push(const int size, const int alignment) {
+        assert(IsInitialized());
+        assert(size > 0);
+        assert(IsPowerOfTwo(alignment));
+
+        const int offs_aligned = AlignForward(m_offs, alignment);
+        const int offs_next = offs_aligned + size;
+
+        if (offs_next > m_size) {
+            assert(false && "Failed to push to memory arena due to insufficient space!");
+            return nullptr;
+        }
+
+        m_offs = offs_next;
+
+        return static_cast<a_byte*>(m_buf) + offs_aligned;
+    }
+
+    void s_mem_arena::Rewind(const int offs) {
+        assert(IsInitialized());
+        assert(offs >= 0 && offs < m_offs);
+        m_offs = offs;
     }
 }

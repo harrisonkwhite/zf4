@@ -19,8 +19,6 @@ namespace zf4 {
     using a_mouse_buttons_down_bits = uint8_t;
 
     enum e_key_code {
-        eks_key_code_null,
-
         ek_key_code_space,
 
         ek_key_code_0,
@@ -94,8 +92,6 @@ namespace zf4 {
     };
 
     constexpr s_static_array<const char*, eks_key_code_cnt> g_key_code_names = {
-        "",
-
         "Space",
 
         "0",
@@ -167,8 +163,6 @@ namespace zf4 {
     };
 
     enum e_mouse_button_code {
-        ek_mouse_button_code_null,
-
         ek_mouse_button_code_left,
         ek_mouse_button_code_right,
         ek_mouse_button_code_middle,
@@ -177,8 +171,6 @@ namespace zf4 {
     };
 
     constexpr s_static_array<const char*, eks_mouse_button_code_cnt> g_mouse_button_code_names = {
-        "",
-
         "Left Mouse Button",
         "Right Mouse Button",
         "Middle Mouse Button"
@@ -186,51 +178,28 @@ namespace zf4 {
 
     struct s_window_state {
         s_vec_2d_i size;
-        bool fullscreen;
+        bool fullscreen = false;
     };
 
     struct s_input_state {
-        a_keys_down_bits keys_down;
-        a_mouse_buttons_down_bits mouse_buttons_down;
+        a_keys_down_bits keys_down = 0;
+        a_mouse_buttons_down_bits mouse_buttons_down = 0;
         s_vec_2d mouse_pos;
     };
 
     struct s_game_init_func_data {
         s_mem_arena& perm_mem_arena;
-        s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
         const s_input_state& input_state;
-        const graphics::s_textures& textures;
-        const graphics::s_fonts& fonts;
-        const graphics::s_pers_render_data& pers_render_data;
-        graphics::s_surfaces& surfs;
-        void* const custom_data;
     };
 
     struct s_game_tick_func_data {
         s_mem_arena& perm_mem_arena;
-        s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
         s_window_state& window_state_ideal; // NOTE: Possibly add to initialisation data too?
         const s_input_state& input_state;
         const s_input_state& input_state_last;
-        const graphics::s_textures& textures;
-        const graphics::s_fonts& fonts;
-        const graphics::s_pers_render_data& pers_render_data;
-        graphics::s_surfaces& surfs;
         const double fps;
-        void* custom_data;
-    };
-
-    struct s_game_draw_func_data {
-        s_mem_arena& temp_mem_arena;
-        const s_window_state& window_state_cache;
-        const s_vec_2d mouse_pos; // TEMP?
-        const graphics::s_textures& textures;
-        const graphics::s_fonts& fonts;
-        const graphics::s_pers_render_data& pers_render_data;
-        const double fps;
-        const void* custom_data; // TEMP?
     };
 
     enum e_game_tick_func_result {
@@ -241,34 +210,26 @@ namespace zf4 {
 
     using a_game_init_func = bool (*)(const s_game_init_func_data& zf4_data);
     using a_game_tick_func = e_game_tick_func_result(*)(const s_game_tick_func_data& zf4_data);
-    using a_game_append_draw_instrs_func = bool (*)(zf4::s_list<zf4::graphics::s_draw_instr>& instrs, const zf4::s_game_draw_func_data& zf4_data);
-    using a_game_cleanup_func = void (*)(void* const custom_data);
 
     struct s_game_info {
-        a_game_init_func init_func;
-        a_game_tick_func tick_func;
-        a_game_append_draw_instrs_func append_draw_instrs_func;
-        a_game_cleanup_func cleanup_func;
+        a_game_init_func init_func = nullptr;
+        a_game_tick_func tick_func = nullptr;
 
-        int perm_mem_arena_size;
-        int temp_mem_arena_size;
+        int perm_mem_arena_size = MegabytesToBytes(80);
 
-        s_vec_2d_i window_size_default;
+        s_vec_2d_i window_size_default = {1280, 720};
         s_vec_2d_i window_size_min;
-        const char* window_title;
-        enum e_window_flags window_flags;
+        const char* window_title = "";
+        enum e_window_flags window_flags = ek_window_flags_none;
 
-        int tex_cnt;
-        s_array<const char* const> tex_filenames;
-
-        int font_cnt;
-        s_array<const char* const> font_filenames;
-        s_array<const int> font_pt_sizes;
-
-        int draw_instr_limit;
-
-        int custom_data_size;
-        int custom_data_alignment;
+        bool IsValid() const {
+            return init_func
+                && tick_func
+                && perm_mem_arena_size > 0
+                && window_size_default.x > 0 && window_size_default.y > 0
+                && window_size_min.x > 0 && window_size_min.y > 0
+                && window_title;
+        }
     };
 
     bool RunGame(const s_game_info& game_info);

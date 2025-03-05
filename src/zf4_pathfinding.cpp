@@ -1,6 +1,7 @@
 #include <zf4_pathfinding.h>
 
 namespace zf4::pf {
+#if 0
     struct s_node_costs {
         float g_cost;
         float h_cost;
@@ -322,4 +323,5 @@ namespace zf4::pf {
             }
         }
     }
+#endif
 }

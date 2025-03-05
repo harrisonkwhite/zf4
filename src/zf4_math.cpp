@@ -3,6 +3,7 @@
 #include <limits>
 
 namespace zf4 {
+#if 0
     static s_range_f ProjectPts(const s_array<const s_vec_2d> pts, const s_vec_2d edge) {
         s_range_f range = {std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest()};
 
@@ -278,4 +279,5 @@ namespace zf4 {
         mat.elems[3][3] = 1.0f;
         return mat;
     }
+#endif
 }

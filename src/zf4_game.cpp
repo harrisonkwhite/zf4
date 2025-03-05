@@ -9,17 +9,14 @@ namespace zf4 {
     static constexpr double g_targ_tick_dur_secs = 1.0 / g_targ_ticks_per_sec;
 
     struct s_game_cleanup_info {
-        s_mem_arena* perm_mem_arena;
-        s_mem_arena* temp_mem_arena;
+        s_mem_arena* perm_mem_arena = nullptr;
 
-        bool glfw_initialized;
-        GLFWwindow* glfw_window;
+        bool glfw_initialized = false;
+        GLFWwindow* glfw_window = nullptr;
 
-        const graphics::s_textures* textures;
-        const graphics::s_fonts* fonts;
-
-        const graphics::s_pers_render_data* pers_render_data;
-        graphics::s_surfaces* surfs;
+        bool IsValid() const {
+            return !(!glfw_initialized && glfw_window);
+        }
     };
 
     static int ToGLFWKeyCode(const e_key_code key_code) {
@@ -108,26 +105,36 @@ namespace zf4 {
     }
 
     static inline s_vec_2d_i WindowSize(GLFWwindow* const glfw_window) {
+        assert(glfw_window);
+
         s_vec_2d_i size;
         glfwGetWindowSize(glfw_window, &size.x, &size.y);
         return size;
     }
 
-    static s_window_state LoadWindowState(const s_vec_2d_i fallback_size, GLFWwindow* const glfw_window) {
+    static s_window_state LoadWindowState(GLFWwindow* const glfw_window, const s_vec_2d_i fallback_size) {
+        assert(glfw_window);
+        assert(fallback_size.x > 0 && fallback_size.y > 0);
+
         s_vec_2d_i size;
         glfwGetWindowSize(glfw_window, &size.x, &size.y);
 
         return {
-            .size = IsStructZero(size) ? fallback_size : size,
+            .size = size.x == 0 && size.y == 0 ? fallback_size : size,
             .fullscreen = glfwGetWindowMonitor(glfw_window) != nullptr
         };
     }
 
     static a_keys_down_bits LoadKeysDown(GLFWwindow* const glfw_window) {
+        assert(glfw_window);
+
         a_keys_down_bits bits = 0;
 
         for (int i = 0; i < eks_key_code_cnt; ++i) {
-            if (glfwGetKey(glfw_window, ToGLFWKeyCode(static_cast<e_key_code>(i))) == GLFW_PRESS) {
+            const int glfw_code = ToGLFWKeyCode(static_cast<e_key_code>(i));
+            assert(glfw_code != -1);
+
+            if (glfwGetKey(glfw_window, glfw_code) == GLFW_PRESS) {
                 bits |= static_cast<a_keys_down_bits>(1) << i;
             }
         }
@@ -136,10 +143,15 @@ namespace zf4 {
     }
 
     static a_mouse_buttons_down_bits LoadMouseButtonsDown(GLFWwindow* const glfw_window) {
+        assert(glfw_window);
+
         a_mouse_buttons_down_bits bits = 0;
 
         for (int i = 0; i < eks_mouse_button_code_cnt; ++i) {
-            if (glfwGetMouseButton(glfw_window, ToGLFWMouseButtonCode(static_cast<e_mouse_button_code>(i))) == GLFW_PRESS) {
+            const int glfw_code = ToGLFWMouseButtonCode(static_cast<e_mouse_button_code>(i));
+            assert(glfw_code != -1);
+
+            if (glfwGetMouseButton(glfw_window, glfw_code) == GLFW_PRESS) {
                 bits |= static_cast<a_mouse_buttons_down_bits>(1) << i;
             }
         }
@@ -148,12 +160,16 @@ namespace zf4 {
     }
 
     static s_vec_2d MousePos(GLFWwindow* const glfw_window) {
+        assert(glfw_window);
+
         double mouse_x_dbl, mouse_y_dbl;
         glfwGetCursorPos(glfw_window, &mouse_x_dbl, &mouse_y_dbl);
         return {static_cast<float>(mouse_x_dbl), static_cast<float>(mouse_y_dbl)};
     }
 
     static s_input_state LoadInputState(GLFWwindow* const glfw_window) {
+        assert(glfw_window);
+
         return {
             .keys_down = LoadKeysDown(glfw_window),
             .mouse_buttons_down = LoadMouseButtonsDown(glfw_window),
@@ -162,24 +178,9 @@ namespace zf4 {
     }
 
     static void CleanGame(const s_game_cleanup_info& cleanup_info) {
-        if (cleanup_info.surfs) {
-            graphics::CleanAndZeroOutSurfaces(*cleanup_info.surfs);
-        }
-
-        if (cleanup_info.pers_render_data) {
-            graphics::CleanPersRenderData(*cleanup_info.pers_render_data);
-        }
-
-        if (cleanup_info.fonts) {
-            graphics::UnloadFonts(*cleanup_info.fonts);
-        }
-
-        if (cleanup_info.textures) {
-            graphics::UnloadTextures(*cleanup_info.textures);
-        }
+        assert(cleanup_info.IsValid());
 
         if (cleanup_info.glfw_window) {
-            assert(cleanup_info.glfw_initialized);
             glfwDestroyWindow(cleanup_info.glfw_window);
         }
 
@@ -187,45 +188,30 @@ namespace zf4 {
             glfwTerminate();
         }
 
-        if (cleanup_info.temp_mem_arena) {
-            CleanMemArena(*cleanup_info.temp_mem_arena);
-        }
-
         if (cleanup_info.perm_mem_arena) {
-            CleanMemArena(*cleanup_info.perm_mem_arena);
+            cleanup_info.perm_mem_arena->Clean();
         }
     }
 
     bool RunGame(const s_game_info& game_info) {
-        // TODO: Verify the game information struct.
+        assert(game_info.IsValid());
 
-        s_game_cleanup_info cleanup_info = {};
+        s_game_cleanup_info cleanup_info;
 
         //
         // Initialisation
         //
-        bool err = false;
 
         // Set up memory arenas.
-        s_mem_arena perm_mem_arena = GenMemArena(game_info.perm_mem_arena_size, err);
+        s_mem_arena perm_mem_arena;
 
-        if (err) {
-            LogError("Failed to initialise the permanent memory arena!");
+        if (!perm_mem_arena.Init(game_info.perm_mem_arena_size)) {
+            LogError("Failed to initialize the permanent memory arena!");
             CleanGame(cleanup_info);
             return false;
         }
 
         cleanup_info.perm_mem_arena = &perm_mem_arena;
-
-        s_mem_arena temp_mem_arena = GenMemArena(game_info.temp_mem_arena_size, err);
-
-        if (err) {
-            LogError("Failed to initialise the temporary memory arena!");
-            CleanGame(cleanup_info);
-            return false;
-        }
-
-        cleanup_info.temp_mem_arena = &temp_mem_arena;
 
         // Set up GLFW and the window.
         if (!glfwInit()) {
@@ -267,62 +253,19 @@ namespace zf4 {
             return false;
         }
 
-        // Load textures.
-        const graphics::s_textures textures = graphics::PushTextures(game_info.tex_cnt, game_info.tex_filenames, perm_mem_arena, err);
-
-        if (err) {
-            LogError("Failed to load textures!");
-            CleanGame(cleanup_info);
-            return false;
-        }
-
-        cleanup_info.textures = &textures;
-
-        // Load fonts.
-        const graphics::s_fonts fonts = graphics::PushFonts(game_info.font_cnt, game_info.font_filenames, game_info.font_pt_sizes, perm_mem_arena, temp_mem_arena, err);
-
-        if (err) {
-            LogError("Failed to load fonts!");
-            return false;
-        }
-
-        cleanup_info.fonts = &fonts;
-
-        // Load persistent render data.
-        const graphics::s_pers_render_data pers_render_data = graphics::GenPersRenderData();
-        cleanup_info.pers_render_data = &pers_render_data;
-
-        // Zero out surface data; this will only be initialised by the user if they want.
-        graphics::s_surfaces surfs = {};
-
         // Set up the random number generator.
         InitRNG();
 
-        // Reserve memory in the permanent arena for user data.
-        void* const custom_data = Push(game_info.custom_data_size, game_info.custom_data_alignment, perm_mem_arena);
-
-        if (!custom_data && game_info.custom_data_size > 0) {
-            LogError("Failed to reserve memory for user data!");
-            CleanGame(cleanup_info);
-            return false;
-        }
-
         // Store the initial window and input states.
-        s_window_state window_state_cache = LoadWindowState({}, glfw_window);
+        s_window_state window_state_cache = LoadWindowState(glfw_window, game_info.window_size_default);
         s_input_state input_state = LoadInputState(glfw_window);
 
         // Call the user-defined initialisation function.
         {
             const s_game_init_func_data func_data = {
                 .perm_mem_arena = perm_mem_arena,
-                .temp_mem_arena = temp_mem_arena,
                 .window_state_cache = window_state_cache,
-                .input_state = input_state,
-                .textures = textures,
-                .fonts = fonts,
-                .pers_render_data = pers_render_data,
-                .surfs = surfs,
-                .custom_data = custom_data
+                .input_state = input_state
             };
 
             if (!game_info.init_func(func_data)) {
@@ -348,7 +291,7 @@ namespace zf4 {
                 continue;
             }
 
-            window_state_cache = LoadWindowState(window_state_cache.size, glfw_window);
+            window_state_cache = LoadWindowState(glfw_window, window_state_cache.size);
             s_window_state window_state_ideal = window_state_cache;
 
             const double frame_time_last = frame_time;
@@ -364,22 +307,14 @@ namespace zf4 {
                 input_state = LoadInputState(glfw_window);
 
                 do {
-                    EmptyMemArena(temp_mem_arena);
-
                     // Execute a tick.
                     const s_game_tick_func_data func_data = {
                         .perm_mem_arena = perm_mem_arena,
-                        .temp_mem_arena = temp_mem_arena,
                         .window_state_cache = window_state_cache,
                         .window_state_ideal = window_state_ideal,
                         .input_state = input_state,
                         .input_state_last = input_state_last,
-                        .textures = textures,
-                        .fonts = fonts,
-                        .pers_render_data = pers_render_data,
-                        .surfs = surfs,
-                        .fps = fps,
-                        .custom_data = custom_data
+                        .fps = fps
                     };
 
                     const e_game_tick_func_result tick_result = game_info.tick_func(func_data);
@@ -392,35 +327,6 @@ namespace zf4 {
                 } while (frame_dur_accum >= g_targ_tick_dur_secs);
 
                 // Execute draw.
-                EmptyMemArena(temp_mem_arena);
-
-                {
-                    auto instrs = PushList<graphics::s_draw_instr>(game_info.draw_instr_limit, temp_mem_arena);
-
-                    const s_game_draw_func_data func_data = {
-                        .temp_mem_arena = temp_mem_arena,
-                        .window_state_cache = window_state_cache,
-                        .mouse_pos = input_state.mouse_pos,
-                        .textures = textures,
-                        .fonts = fonts,
-                        .pers_render_data = pers_render_data,
-                        .fps = fps,
-                        .custom_data = custom_data
-                    };
-
-                    if (IsStructZero(instrs) || !game_info.append_draw_instrs_func(instrs, func_data)) {
-                        LogError("Failed to load draw instructions!");
-                        CleanGame(cleanup_info);
-                        return false;
-                    }
-
-                    if (!graphics::ExecDrawInstrs(ToArray(instrs), window_state_cache.size, pers_render_data, surfs, textures, temp_mem_arena)) {
-                        LogError("Failed to execute draw instructions!");
-                        CleanGame(cleanup_info);
-                        return false;
-                    }
-                }
-
                 glfwSwapBuffers(glfw_window);
             }
 
@@ -449,8 +355,8 @@ namespace zf4 {
                 }();
 
                 const s_vec_2d_i central_pos = {
-                    (highest_res.x - window_state_ideal.size.x) / 2.0f,
-                    (highest_res.y - window_state_ideal.size.y) / 2.0f
+                    (highest_res.x - window_state_ideal.size.x) / 2,
+                    (highest_res.y - window_state_ideal.size.y) / 2
                 };
 
                 glfwSetWindowMonitor(glfw_window, nullptr, central_pos.x, central_pos.y, window_state_ideal.size.x, window_state_ideal.size.y, GLFW_DONT_CARE);
@@ -463,13 +369,8 @@ namespace zf4 {
 
             const s_vec_2d_i window_size_after_poll_events = WindowSize(glfw_window);
 
-            if (!IsStructZero(window_size_after_poll_events) && window_size_after_poll_events != window_state_cache.size) {
+            if (window_size_after_poll_events != s_vec_2d_i() && window_size_after_poll_events != window_state_cache.size) {
                 glViewport(0, 0, window_size_after_poll_events.x, window_size_after_poll_events.y);
-
-                if (!graphics::ResizeSurfaces(surfs, window_size_after_poll_events)) {
-                    CleanGame(cleanup_info);
-                    return false;
-                }
             }
         }
 

@@ -22,6 +22,7 @@ namespace zf4 {
         va_end(args);
     }
 
+#if 0
     s_array<const a_byte> PushFileContents(const char* const filename, s_mem_arena& mem_arena, bool& error) {
         assert(!error);
 
@@ -50,6 +51,7 @@ namespace zf4 {
 
         return contents;
     }
+#endif
 
     size_t FileSize(FILE* const fs) {
         const size_t pos_init = ftell(fs);

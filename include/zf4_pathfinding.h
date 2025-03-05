@@ -4,6 +4,7 @@
 #include <zf4_mem.h>
 
 namespace zf4::pf {
+#if 0
     enum e_node_state {
         ek_node_state_unexplored,
         ek_node_state_open,
@@ -29,4 +30,5 @@ namespace zf4::pf {
 
     s_context GenContextForGrid(const s_vec_2d node_spacing, const s_vec_2d_i grid_size, const s_array<const s_rect> other_colliders, s_mem_arena& mem_arena);
     e_path_gen_result GenPath(s_list<int>& path_node_indexes, const int src_node_index, const int dest_node_index, const s_rect collider_base, const s_context& context, s_mem_arena& scratch_space);
+#endif
 }

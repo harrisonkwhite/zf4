@@ -5,7 +5,10 @@
 #include <stb_image.h>
 #include <stb_truetype.h>
 
+#define GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)
+
 namespace zf4::graphics {
+#if 0
     static constexpr s_vec_2d_i g_texture_size_limit = {2048, 2048};
     static constexpr int g_texture_channel_cnt = 4;
 
@@ -205,8 +208,8 @@ void main() {
         return {
             static_cast<float>(src_rect.x) / tex_size.x,
             static_cast<float>(src_rect.y) / tex_size.y,
-            static_cast<float>(RectRight(src_rect)) / tex_size.x,
-            static_cast<float>(RectBottom(src_rect)) / tex_size.y
+            static_cast<float>(src_rect.Right()) / tex_size.x,
+            static_cast<float>(src_rect.Bottom()) / tex_size.y
         };
     }
 
@@ -291,7 +294,7 @@ void main() {
                     chr_draw_pos_pen.y + font_arrangement_info.chrs.ver_offsets[chr_index]
                 };
 
-                ListEnd(draw_info.chr_draw_rects) = GenRect(chr_draw_pos, RectSize(font_arrangement_info.chrs.src_rects[chr_index]));
+                ListEnd(draw_info.chr_draw_rects) = GenRect(chr_draw_pos, font_arrangement_info.chrs.src_rects[chr_index].Size());
 
                 chr_draw_pos_pen.x += font_arrangement_info.chrs.hor_advances[chr_index];
             } else {
@@ -336,7 +339,7 @@ void main() {
         if (line_cnt == 1) {
             for (int i = 0; i < str_len; ++i) {
                 top = Min(top, draw_info.chr_draw_rects[i].y);
-                bottom = Max(bottom, RectBottom(draw_info.chr_draw_rects[i]));
+                bottom = Max(bottom, draw_info.chr_draw_rects[i].Bottom());
             }
         } else {
             for (int i = 0; i < draw_info.line_infos[1].begin_chr_index; ++i) {
@@ -344,7 +347,7 @@ void main() {
             }
 
             for (int i = draw_info.line_infos[draw_info.line_infos.len - 1].begin_chr_index; i < str_len; ++i) {
-                bottom = Max(bottom, RectBottom(draw_info.chr_draw_rects[i]));
+                bottom = Max(bottom, draw_info.chr_draw_rects[i].Bottom());
             }
         }
 
@@ -357,7 +360,7 @@ void main() {
             left = Min(left, draw_info.chr_draw_rects[begin_chr_index].x);
 
             const int end_chr_index = i < line_cnt - 1 ? draw_info.line_infos[i + 1].begin_chr_index : str_len - 1;
-            right = Max(right, RectRight(draw_info.chr_draw_rects[end_chr_index]));
+            right = Max(right, draw_info.chr_draw_rects[end_chr_index].Right());
         }
 
         return {left, top, right - left, bottom - top};
@@ -574,7 +577,7 @@ void main() {
     }
 
     void UnloadFonts(const s_fonts& fonts) {
-        glDeleteTextures(fonts.tex_gl_ids.len, fonts.tex_gl_ids.elems_raw);
+        glDeleteTextures(fonts.tex_gl_ids.Len(), fonts.tex_gl_ids.Raw());
     }
 
     static s_surf_pers_data GenSurfPersData() {
@@ -928,4 +931,5 @@ void main() {
 
         return true;
     }
+#endif
 }
