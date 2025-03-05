@@ -248,8 +248,6 @@ namespace zf4 {
 
         glfwSwapInterval(1); // Enables VSync.
 
-        glfwSetWindowSizeLimits(glfw_window, game_info.window_size_min.x, game_info.window_size_min.y, GLFW_DONT_CARE, GLFW_DONT_CARE);
-
         glfwSetInputMode(glfw_window, GLFW_CURSOR, (game_info.window_flags & ek_window_flags_hide_cursor) ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
         // Set up OpenGL.
@@ -262,7 +260,7 @@ namespace zf4 {
         // Set up audio.
         s_audio_system audio_sys;
 
-        if (!audio_sys.Init(game_info.snd_file_paths, perm_mem_arena)) {
+        if (!audio_sys.Init(game_info.snd_cnt, game_info.snd_file_path_loader, perm_mem_arena)) {
             LogError("Failed to initialize audio system!");
             CleanGame(cleanup_info);
             return false;

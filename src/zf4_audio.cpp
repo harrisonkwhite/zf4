@@ -3,25 +3,29 @@
 #include <zf4_io.h>
 
 namespace zf4 {
-    bool s_audio_system::Init(const s_array<const char* const> snd_file_paths, s_mem_arena& mem_arena) {
+    bool s_audio_system::Init(const int snd_cnt, const a_snd_file_path_loader snd_file_path_loader, s_mem_arena& mem_arena) {
         assert(!m_initialized);
+        assert((snd_cnt == 0 && !snd_file_path_loader) || (snd_cnt > 0 && snd_file_path_loader));
 
         if (ma_engine_init(nullptr, &m_engine) != MA_SUCCESS) {
             LogError("Failed to initialize miniaudio engine!");
             return false;
         }
 
-        if (snd_file_paths.IsInitialized()) {
-            m_snds = mem_arena.PushArray<ma_sound>(snd_file_paths.Len());
+        if (snd_cnt > 0) {
+            m_snds = mem_arena.PushArray<ma_sound>(snd_cnt);
 
             if (!m_snds.IsInitialized()) {
                 LogError("Failed to reserve memory for miniaudio sounds!");
                 return false;
             }
 
-            for (int i = 0; i < snd_file_paths.Len(); ++i) {
-                if (ma_sound_init_from_file(&m_engine, snd_file_paths[i], MA_SOUND_FLAG_DECODE, nullptr, nullptr, &m_snds[i]) != MA_SUCCESS) {
-                    LogError("Failed to load sound effect with path \"%s\"!", snd_file_paths[i]);
+            for (int i = 0; i < snd_cnt; ++i) {
+                const char* const fp = snd_file_path_loader(i);
+                assert(fp);
+
+                if (ma_sound_init_from_file(&m_engine, fp, MA_SOUND_FLAG_DECODE, nullptr, nullptr, &m_snds[i]) != MA_SUCCESS) {
+                    LogError("Failed to load sound effect with path \"%s\"!", fp);
                     return false;
                 }
             }

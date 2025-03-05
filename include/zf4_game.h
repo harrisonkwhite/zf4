@@ -221,19 +221,19 @@ namespace zf4 {
         int perm_mem_arena_size = MegabytesToBytes(80);
 
         s_vec_2d_i window_size_default = {1280, 720};
-        s_vec_2d_i window_size_min;
         const char* window_title = "";
         enum e_window_flags window_flags = ek_window_flags_none;
 
-        s_array<const char* const> snd_file_paths;
+        int snd_cnt;
+        const char* (*snd_file_path_loader)(const int index);
 
         bool IsValid() const {
             return init_func
                 && tick_func
                 && perm_mem_arena_size > 0
                 && window_size_default.x > 0 && window_size_default.y > 0
-                && window_size_min.x > 0 && window_size_min.y > 0
-                && window_title;
+                && window_title
+                && ((snd_cnt == 0 && !snd_file_path_loader) || (snd_cnt > 0 && snd_file_path_loader));
         }
     };
 
