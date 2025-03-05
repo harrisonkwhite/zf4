@@ -11,7 +11,6 @@ endif()
 
 get_filename_component(PARENT_DIR "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(OpenAL CONFIG REQUIRED)
 
 add_library(zf4 STATIC
     src/zf4_game.cpp
@@ -25,7 +24,7 @@ add_library(zf4 STATIC
     src/external/glad.c
     src/external/stb_image.c
 	src/external/stb_truetype.c
-	src/external/dr_wav.c
+	src/external/miniaudio.c
 
     include/zf4.h
     include/zf4_game.h
@@ -43,6 +42,6 @@ target_include_directories(zf4 PRIVATE
     include/external
 )
 
-target_link_libraries(zf4 PRIVATE glfw OpenAL::OpenAL)
+target_link_libraries(zf4 PRIVATE glfw)
 
 target_compile_definitions(zf4 PRIVATE GLFW_INCLUDE_NONE)

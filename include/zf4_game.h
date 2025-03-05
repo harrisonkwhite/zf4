@@ -192,6 +192,7 @@ namespace zf4 {
         s_mem_arena& perm_mem_arena;
         const s_window_state& window_state_cache;
         const s_input_state& input_state;
+        s_audio_system& audio_sys;
     };
 
     struct s_game_tick_func_data {
@@ -200,6 +201,7 @@ namespace zf4 {
         s_window_state& window_state_ideal; // NOTE: Possibly add to initialisation data too?
         const s_input_state& input_state;
         const s_input_state& input_state_last;
+        s_audio_system& audio_sys;
         const double fps;
     };
 
@@ -223,7 +225,7 @@ namespace zf4 {
         const char* window_title = "";
         enum e_window_flags window_flags = ek_window_flags_none;
 
-        s_array<const char* const> audio_file_paths;
+        s_array<const char* const> snd_file_paths;
 
         bool IsValid() const {
             return init_func

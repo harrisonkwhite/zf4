@@ -262,7 +262,7 @@ namespace zf4 {
         // Set up audio.
         s_audio_system audio_sys;
 
-        if (!audio_sys.Init(game_info.audio_file_paths, perm_mem_arena)) {
+        if (!audio_sys.Init(game_info.snd_file_paths, perm_mem_arena)) {
             LogError("Failed to initialize audio system!");
             CleanGame(cleanup_info);
             return false;
@@ -282,7 +282,8 @@ namespace zf4 {
             const s_game_init_func_data func_data = {
                 .perm_mem_arena = perm_mem_arena,
                 .window_state_cache = window_state_cache,
-                .input_state = input_state
+                .input_state = input_state,
+                .audio_sys = audio_sys
             };
 
             if (!game_info.init_func(func_data)) {
@@ -331,6 +332,7 @@ namespace zf4 {
                         .window_state_ideal = window_state_ideal,
                         .input_state = input_state,
                         .input_state_last = input_state_last,
+                        .audio_sys = audio_sys,
                         .fps = fps
                     };
 

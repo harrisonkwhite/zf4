@@ -93,6 +93,14 @@ namespace zf4 {
             return {m_elems, tp_len};
         }
 
+        tp_type* Raw() {
+            return m_elems;
+        }
+
+        const tp_type* Raw() const {
+            return m_elems;
+        }
+
     private:
         tp_type m_elems[tp_len] = {};
     };
