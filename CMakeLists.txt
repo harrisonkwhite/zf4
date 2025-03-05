@@ -16,6 +16,7 @@ find_package(OpenAL CONFIG REQUIRED)
 add_library(zf4 STATIC
     src/zf4_game.cpp
     src/zf4_graphics.cpp
+    src/zf4_audio.cpp
     src/zf4_pathfinding.cpp
     src/zf4_rand.cpp
     src/zf4_mem.cpp
@@ -24,10 +25,12 @@ add_library(zf4 STATIC
     src/external/glad.c
     src/external/stb_image.c
 	src/external/stb_truetype.c
+	src/external/dr_wav.c
 
     include/zf4.h
     include/zf4_game.h
     include/zf4_graphics.h
+    include/zf4_audio.h
     include/zf4_pathfinding.h
     include/zf4_rand.h
     include/zf4_mem.h

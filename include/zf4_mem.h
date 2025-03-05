@@ -5,6 +5,7 @@
 #include <cstring>
 #include <type_traits>
 #include <initializer_list>
+#include <new>
 
 namespace zf4 {
     typedef unsigned char a_byte;
@@ -161,6 +162,10 @@ namespace zf4 {
             return m_buf;
         }
 
+        int Offset() const {
+            return m_offs;
+        }
+
         template<typename tp_type>
         tp_type* Push() {
             assert(IsInitialized());
@@ -182,7 +187,7 @@ namespace zf4 {
             const auto ptr = static_cast<tp_type*>(Push(sizeof(tp_type) * len, alignof(tp_type)));
 
             if (!ptr) {
-                return nullptr;
+                return {};
             }
 
             for (int i = 0; i < len; ++i) {

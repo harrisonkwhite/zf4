@@ -14,6 +14,8 @@ namespace zf4 {
         bool glfw_initialized = false;
         GLFWwindow* glfw_window = nullptr;
 
+        s_audio_system* audio_sys = nullptr;
+
         bool IsValid() const {
             return !(!glfw_initialized && glfw_window);
         }
@@ -180,6 +182,10 @@ namespace zf4 {
     static void CleanGame(const s_game_cleanup_info& cleanup_info) {
         assert(cleanup_info.IsValid());
 
+        if (cleanup_info.audio_sys) {
+            cleanup_info.audio_sys->Clean();
+        }
+
         if (cleanup_info.glfw_window) {
             glfwDestroyWindow(cleanup_info.glfw_window);
         }
@@ -248,10 +254,21 @@ namespace zf4 {
 
         // Set up OpenGL.
         if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
-            LogError("Failed to initialise OpenGL function pointers!");
+            LogError("Failed to initialize OpenGL function pointers!");
             CleanGame(cleanup_info);
             return false;
         }
+
+        // Set up audio.
+        s_audio_system audio_sys;
+
+        if (!audio_sys.Init(game_info.audio_file_paths, perm_mem_arena)) {
+            LogError("Failed to initialize audio system!");
+            CleanGame(cleanup_info);
+            return false;
+        }
+
+        cleanup_info.audio_sys = &audio_sys;
 
         // Set up the random number generator.
         InitRNG();

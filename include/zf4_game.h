@@ -2,6 +2,7 @@
 
 #include <zf4_mem.h>
 #include <zf4_graphics.h>
+#include <zf4_audio.h>
 
 namespace zf4 {
     constexpr int g_gl_version_major = 4;
@@ -221,6 +222,8 @@ namespace zf4 {
         s_vec_2d_i window_size_min;
         const char* window_title = "";
         enum e_window_flags window_flags = ek_window_flags_none;
+
+        s_array<const char* const> audio_file_paths;
 
         bool IsValid() const {
             return init_func
