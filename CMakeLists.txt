@@ -21,12 +21,11 @@ add_library(zf4 STATIC
     src/zf4_mem.cpp
     src/zf4_io.cpp
     src/zf4_math.cpp
-    src/external/glad.c
-    src/external/stb_image.c
-	src/external/stb_truetype.c
-	src/external/miniaudio.c
+    external/src/glad.c
+    external/src/stb_image.c
+	external/src/stb_truetype.c
+	external/src/miniaudio.c
 
-    include/zf4.h
     include/zf4_game.h
     include/zf4_graphics.h
     include/zf4_audio.h
@@ -39,7 +38,7 @@ add_library(zf4 STATIC
 
 target_include_directories(zf4 PRIVATE
 	include
-    include/external
+    external/include
 )
 
 target_link_libraries(zf4 PRIVATE glfw)

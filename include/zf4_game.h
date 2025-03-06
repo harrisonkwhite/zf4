@@ -225,7 +225,7 @@ namespace zf4 {
         enum e_window_flags window_flags = ek_window_flags_none;
 
         int snd_cnt;
-        const char* (*snd_file_path_loader)(const int index);
+        a_snd_file_path_loader snd_file_path_loader; // Have this return nullptr by default, in case you forget to provide a mapping.
 
         bool IsValid() const {
             return init_func
