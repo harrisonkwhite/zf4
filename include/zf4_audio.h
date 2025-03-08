@@ -4,13 +4,13 @@
 #include <zf4_mem.h>
 
 namespace zf4 {
-    using a_snd_file_path_loader = const char* (*)(const int index);
+    using a_snd_file_path_loader = const char* (*)(const size_t index);
 
     class s_audio_system {
     public:
         bool Init(const int snd_cnt, const a_snd_file_path_loader snd_file_path_loader, s_mem_arena& mem_arena);
         void Clean();
-        void PlaySnd(const int index, const float vol = 1.0f, const float pitch = 1.0f);
+        void PlaySnd(const size_t index, const float vol = 1.0f, const float pitch = 1.0f);
 
     private:
         bool m_initialized = false;

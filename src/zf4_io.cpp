@@ -22,14 +22,12 @@ namespace zf4 {
         va_end(args);
     }
 
-#if 0
-    s_array<const a_byte> PushFileContents(const char* const filename, s_mem_arena& mem_arena, bool& error) {
-        assert(!error);
+    s_array<const a_byte> PushFileContents(const char* const filename, s_mem_arena& mem_arena) {
+        assert(mem_arena.IsInitialized());
 
         FILE* const fs = fopen(filename, "rb");
 
         if (!fs) {
-            error = true;
             return {};
         }
 
@@ -39,9 +37,8 @@ namespace zf4 {
 
         const auto contents = PushArray<a_byte>(size, mem_arena);
 
-        if (IsStructZero(contents)) {
+        if (!contents.IsValid()) {
             fclose(fs);
-            error = true;
             return {};
         }
 
@@ -51,7 +48,6 @@ namespace zf4 {
 
         return contents;
     }
-#endif
 
     size_t FileSize(FILE* const fs) {
         const size_t pos_init = ftell(fs);

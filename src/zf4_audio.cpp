@@ -13,9 +13,9 @@ namespace zf4 {
         }
 
         if (snd_cnt > 0) {
-            m_snds = mem_arena.PushArray<ma_sound>(snd_cnt);
+            m_snds = PushArray<ma_sound>(snd_cnt, mem_arena);
 
-            if (!m_snds.IsInitialized()) {
+            if (!m_snds.IsValid()) {
                 LogError("Failed to reserve memory for miniaudio sounds!");
                 return false;
             }
@@ -37,8 +37,8 @@ namespace zf4 {
     }
 
     void s_audio_system::Clean() {
-        if (m_snds.IsInitialized()) {
-            for (int i = 0; i < m_snds.Len(); ++i) {
+        if (m_snds.IsValid()) {
+            for (int i = 0; i < m_snds.len; ++i) {
                 ma_sound_uninit(&m_snds[i]);
             }
         }
@@ -48,9 +48,9 @@ namespace zf4 {
         *this = {};
     }
 
-    void s_audio_system::PlaySnd(const int index, const float vol, const float pitch) {
+    void s_audio_system::PlaySnd(const size_t index, const float vol, const float pitch) {
         assert(m_initialized);
-        assert(index >= 0 && index < m_snds.Len());
+        assert(index < m_snds.len);
         assert(vol >= 0.0f); // NOTE: Consider disallowing going past 100%?
         assert(pitch > 0.0f);
 

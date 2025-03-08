@@ -10,9 +10,13 @@ namespace zf4 {
 
     struct s_game_cleanup_info {
         s_mem_arena* perm_mem_arena = nullptr;
+        s_mem_arena* temp_mem_arena = nullptr;
 
         bool glfw_initialized = false;
         GLFWwindow* glfw_window = nullptr;
+
+        graphics::s_textures* textures = nullptr;
+        graphics::s_pers_render_data* pers_render_data = nullptr;
 
         s_audio_system* audio_sys = nullptr;
 
@@ -114,15 +118,11 @@ namespace zf4 {
         return size;
     }
 
-    static s_window_state LoadWindowState(GLFWwindow* const glfw_window, const s_vec_2d_i fallback_size) {
+    static s_window_state LoadWindowState(GLFWwindow* const glfw_window) {
         assert(glfw_window);
-        assert(fallback_size.x > 0 && fallback_size.y > 0);
-
-        s_vec_2d_i size;
-        glfwGetWindowSize(glfw_window, &size.x, &size.y);
 
         return {
-            .size = size.x == 0 && size.y == 0 ? fallback_size : size,
+            .size = WindowSize(glfw_window),
             .fullscreen = glfwGetWindowMonitor(glfw_window) != nullptr
         };
     }
@@ -186,6 +186,10 @@ namespace zf4 {
             cleanup_info.audio_sys->Clean();
         }
 
+        if (cleanup_info.pers_render_data) {
+            cleanup_info.pers_render_data->Clean();
+        }
+
         if (cleanup_info.glfw_window) {
             glfwDestroyWindow(cleanup_info.glfw_window);
         }
@@ -209,7 +213,7 @@ namespace zf4 {
         //
 
         // Set up memory arenas.
-        s_mem_arena perm_mem_arena;
+        s_mem_arena perm_mem_arena; // The data here exists for the lifetime of the program.
 
         if (!perm_mem_arena.Init(game_info.perm_mem_arena_size)) {
             LogError("Failed to initialize the permanent memory arena!");
@@ -218,6 +222,16 @@ namespace zf4 {
         }
 
         cleanup_info.perm_mem_arena = &perm_mem_arena;
+
+        s_mem_arena temp_mem_arena; // The data here is reset at various points and should only be used as scratch space.
+
+        if (!temp_mem_arena.Init(game_info.temp_mem_arena_size)) {
+            LogError("Failed to initialize the temporary memory arena!");
+            CleanGame(cleanup_info);
+            return false;
+        }
+
+        cleanup_info.temp_mem_arena = &temp_mem_arena;
 
         // Set up GLFW and the window.
         if (!glfwInit()) {
@@ -232,9 +246,9 @@ namespace zf4 {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, g_gl_version_minor);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, game_info.window_flags & ek_window_flags_resizable);
-        glfwWindowHint(GLFW_VISIBLE, false);
+        glfwWindowHint(GLFW_VISIBLE, false); // We want to show the window later after everything is set up.
 
-        GLFWwindow* const glfw_window = glfwCreateWindow(game_info.window_size_default.x, game_info.window_size_default.y, game_info.window_title, nullptr, nullptr);
+        GLFWwindow* const glfw_window = glfwCreateWindow(game_info.window_init_size.x, game_info.window_init_size.y, game_info.window_title, nullptr, nullptr);
 
         if (!glfw_window) {
             LogError("Failed to create a GLFW window!");
@@ -257,10 +271,21 @@ namespace zf4 {
             return false;
         }
 
+        // Set up rendering.
+        graphics::s_pers_render_data pers_render_data;
+
+        if (!pers_render_data.Init(game_info.tex_cnt, game_info.tex_index_to_file_path_mapper, game_info.font_cnt, game_info.font_index_to_info_mapper, perm_mem_arena, temp_mem_arena)) {
+            return false;
+        }
+
+        cleanup_info.pers_render_data = &pers_render_data;
+
+        graphics::s_surfaces surfs; // Optionally initialised by the developer.
+
         // Set up audio.
         s_audio_system audio_sys;
 
-        if (!audio_sys.Init(game_info.snd_cnt, game_info.snd_file_path_loader, perm_mem_arena)) {
+        if (!audio_sys.Init(game_info.snd_cnt, game_info.snd_index_to_file_path_mapper, perm_mem_arena)) {
             LogError("Failed to initialize audio system!");
             CleanGame(cleanup_info);
             return false;
@@ -272,15 +297,17 @@ namespace zf4 {
         InitRNG();
 
         // Store the initial window and input states.
-        s_window_state window_state_cache = LoadWindowState(glfw_window, game_info.window_size_default);
+        s_window_state window_state_cache = LoadWindowState(glfw_window);
         s_input_state input_state = LoadInputState(glfw_window);
 
         // Call the user-defined initialisation function.
         {
             const s_game_init_func_data func_data = {
                 .perm_mem_arena = perm_mem_arena,
+                .temp_mem_arena = temp_mem_arena,
                 .window_state_cache = window_state_cache,
                 .input_state = input_state,
+                .surfs = surfs,
                 .audio_sys = audio_sys
             };
 
@@ -299,16 +326,18 @@ namespace zf4 {
         double frame_time = glfwGetTime();
         double frame_dur_accum = g_targ_tick_dur_secs; // Make sure that we begin with a tick.
 
+        auto draw_instrs = PushList<graphics::a_draw_instr>(game_info.draw_instr_limit, perm_mem_arena);
+
+        if (!draw_instrs.IsInitialized()) {
+            LogError("Failed to reserve memory for draw instructions!");
+            CleanGame(cleanup_info);
+            return false;
+        }
+
         Log("Entering the main loop...");
 
         while (!glfwWindowShouldClose(glfw_window)) {
-            if (!glfwGetWindowAttrib(glfw_window, GLFW_FOCUSED)) {
-                glfwPollEvents();
-                continue;
-            }
-
-            window_state_cache = LoadWindowState(glfw_window, window_state_cache.size);
-            s_window_state window_state_ideal = window_state_cache;
+            window_state_cache = LoadWindowState(glfw_window);
 
             const double frame_time_last = frame_time;
             frame_time = glfwGetTime();
@@ -322,14 +351,22 @@ namespace zf4 {
                 const s_input_state input_state_last = input_state;
                 input_state = LoadInputState(glfw_window);
 
+                s_window_state window_state_ideal = window_state_cache; // This can be mutated by the developer to signal a window state change request.
+
                 do {
                     // Execute a tick.
+                    temp_mem_arena.offs = 0;
+
                     const s_game_tick_func_data func_data = {
                         .perm_mem_arena = perm_mem_arena,
+                        .temp_mem_arena = temp_mem_arena,
                         .window_state_cache = window_state_cache,
                         .window_state_ideal = window_state_ideal,
                         .input_state = input_state,
                         .input_state_last = input_state_last,
+                        .textures = pers_render_data.textures,
+                        .fonts = pers_render_data.fonts,
+                        .surfs = surfs,
                         .audio_sys = audio_sys,
                         .fps = fps
                     };
@@ -344,42 +381,55 @@ namespace zf4 {
                 } while (frame_dur_accum >= g_targ_tick_dur_secs);
 
                 // Execute draw.
-                glfwSwapBuffers(glfw_window);
-            }
+                temp_mem_arena.offs = 0;
 
-            if (window_state_ideal.fullscreen && !window_state_cache.fullscreen) {
-                // Switch from windowed to fullscreen.
-                GLFWmonitor* const primary_monitor = glfwGetPrimaryMonitor();
-                const GLFWvidmode* video_mode = glfwGetVideoMode(primary_monitor);
-                glfwSetWindowMonitor(glfw_window, primary_monitor, 0, 0, video_mode->width, video_mode->height, video_mode->refreshRate);
-            } else if (!window_state_ideal.fullscreen && window_state_cache.fullscreen) {
-                // Switch from fullscreen to windowed.
-                const auto highest_res = []() -> s_vec_2d_i {
-                    GLFWmonitor* const primary_monitor = glfwGetPrimaryMonitor();
+                {
+                    const s_game_append_draw_instrs_func_data func_data = {
+                        .window_state_cache = window_state_cache,
+                        .textures = pers_render_data.textures,
+                        .fonts = pers_render_data.fonts,
+                        .fps = fps
+                    };
 
-                    int mode_cnt;
-                    const GLFWvidmode* const video_modes = glfwGetVideoModes(primary_monitor, &mode_cnt);
+                    draw_instrs.len = 0;
 
-                    const GLFWvidmode* best_mode = &video_modes[0];
-
-                    for (int i = 1; i < mode_cnt; i++) {
-                        if (video_modes[i].width > best_mode->width || video_modes[i].height > best_mode->height) {
-                            best_mode = &video_modes[i];
-                        }
+                    if (!game_info.append_draw_instrs_func(draw_instrs, func_data)) {
+                        LogError("Failed to load draw instructions!");
+                        CleanGame(cleanup_info);
+                        return false;
                     }
 
-                    return {best_mode->width, best_mode->height};
-                }();
+                    if (!graphics::ExecDrawInstrs(draw_instrs.ToArray(), window_state_cache.size, pers_render_data, surfs, temp_mem_arena)) {
+                        LogError("Failed to execute draw instructions!");
+                        CleanGame(cleanup_info);
+                        return false;
+                    }
+                }
 
-                const s_vec_2d_i central_pos = {
-                    (highest_res.x - window_state_ideal.size.x) / 2,
-                    (highest_res.y - window_state_ideal.size.y) / 2
-                };
+                glfwSwapBuffers(glfw_window);
 
-                glfwSetWindowMonitor(glfw_window, nullptr, central_pos.x, central_pos.y, window_state_ideal.size.x, window_state_ideal.size.y, GLFW_DONT_CARE);
-            } else if (!window_state_cache.fullscreen && window_state_ideal.size != window_state_cache.size) {
-                // Update window size if requested and in windowed mode.
-                glfwSetWindowSize(glfw_window, window_state_ideal.size.x, window_state_ideal.size.y);
+                // Process window state change requests.
+                assert(window_state_ideal.size.x > 0 && window_state_ideal.size.y > 0);
+
+                if (window_state_ideal.fullscreen && !window_state_cache.fullscreen) {
+                    // Switch from windowed to fullscreen.
+                    GLFWmonitor* const primary_monitor = glfwGetPrimaryMonitor();
+                    const GLFWvidmode* video_mode = glfwGetVideoMode(primary_monitor);
+                    glfwSetWindowMonitor(glfw_window, primary_monitor, 0, 0, video_mode->width, video_mode->height, video_mode->refreshRate);
+                } else if (!window_state_ideal.fullscreen && window_state_cache.fullscreen) {
+                    // Switch from fullscreen to windowed.
+                    GLFWmonitor* const primary_monitor = glfwGetPrimaryMonitor();
+                    const GLFWvidmode* video_mode = glfwGetVideoMode(primary_monitor);
+
+                    const s_vec_2d_i central_pos = {
+                        (video_mode->width - window_state_ideal.size.x) / 2,
+                        (video_mode->height - window_state_ideal.size.y) / 2
+                    };
+
+                    glfwSetWindowMonitor(glfw_window, nullptr, central_pos.x, central_pos.y, window_state_ideal.size.x, window_state_ideal.size.y, GLFW_DONT_CARE);
+                } else if (!window_state_cache.fullscreen && window_state_ideal.size != window_state_cache.size) {
+                    glfwSetWindowSize(glfw_window, window_state_ideal.size.x, window_state_ideal.size.y);
+                }
             }
 
             glfwPollEvents();
@@ -388,6 +438,12 @@ namespace zf4 {
 
             if (window_size_after_poll_events != s_vec_2d_i() && window_size_after_poll_events != window_state_cache.size) {
                 glViewport(0, 0, window_size_after_poll_events.x, window_size_after_poll_events.y);
+
+                if (!surfs.Resize(window_size_after_poll_events)) {
+                    LogError("Failed to resize surfaces!");
+                    CleanGame(cleanup_info);
+                    return false;
+                }
             }
         }
 

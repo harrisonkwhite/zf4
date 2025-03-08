@@ -194,50 +194,48 @@ namespace zf4 {
         return false;
     }
 #endif
-    bool s_mem_arena::Init(const int size) {
+    bool s_mem_arena::Init(const size_t size) {
+        assert(IsValid());
         assert(!IsInitialized());
         assert(size > 0);
 
-        m_buf = malloc(size);
+        buf = malloc(size);
 
-        if (!m_buf) {
+        if (!buf) {
             return false;
         }
 
-        m_size = size;
+        this->size = size;
 
         return true;
     }
 
     void s_mem_arena::Clean() {
-        if (m_buf) {
-            free(m_buf);
+        assert(IsValid());
+
+        if (buf) {
+            free(buf);
         }
 
         *this = {};
     }
 
-    void* s_mem_arena::Push(const int size, const int alignment) {
+    void* s_mem_arena::Push(const size_t size, const size_t alignment) {
+        assert(IsValid());
         assert(IsInitialized());
         assert(size > 0);
         assert(IsPowerOfTwo(alignment));
 
-        const int offs_aligned = AlignForward(m_offs, alignment);
+        const int offs_aligned = AlignForward(offs, alignment);
         const int offs_next = offs_aligned + size;
 
-        if (offs_next > m_size) {
+        if (offs_next > this->size) {
             assert(false && "Failed to push to memory arena due to insufficient space!");
             return nullptr;
         }
 
-        m_offs = offs_next;
+        offs = offs_next;
 
-        return static_cast<a_byte*>(m_buf) + offs_aligned;
-    }
-
-    void s_mem_arena::Rewind(const int offs) {
-        assert(IsInitialized());
-        assert(offs >= 0 && offs < m_offs);
-        m_offs = offs;
+        return static_cast<a_byte*>(buf) + offs_aligned;
     }
 }

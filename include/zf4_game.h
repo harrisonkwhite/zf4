@@ -190,18 +190,31 @@ namespace zf4 {
 
     struct s_game_init_func_data {
         s_mem_arena& perm_mem_arena;
+        s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
         const s_input_state& input_state;
+        graphics::s_surfaces& surfs;
         s_audio_system& audio_sys;
     };
 
     struct s_game_tick_func_data {
         s_mem_arena& perm_mem_arena;
+        s_mem_arena& temp_mem_arena;
         const s_window_state& window_state_cache;
-        s_window_state& window_state_ideal; // NOTE: Possibly add to initialisation data too?
+        s_window_state& window_state_ideal;
         const s_input_state& input_state;
         const s_input_state& input_state_last;
+        const graphics::s_textures& textures;
+        const graphics::s_fonts& fonts;
+        graphics::s_surfaces& surfs;
         s_audio_system& audio_sys;
+        const double fps;
+    };
+
+    struct s_game_append_draw_instrs_func_data {
+        const s_window_state& window_state_cache;
+        const graphics::s_textures& textures;
+        const graphics::s_fonts& fonts;
         const double fps;
     };
 
@@ -213,27 +226,42 @@ namespace zf4 {
 
     using a_game_init_func = bool (*)(const s_game_init_func_data& zf4_data);
     using a_game_tick_func = e_game_tick_func_result(*)(const s_game_tick_func_data& zf4_data);
+    using a_game_append_draw_instrs_func = bool (*)(s_list<graphics::a_draw_instr>& instrs, const s_game_append_draw_instrs_func_data& zf4_data);
 
     struct s_game_info {
         a_game_init_func init_func = nullptr;
         a_game_tick_func tick_func = nullptr;
+        a_game_append_draw_instrs_func append_draw_instrs_func = nullptr;
 
-        int perm_mem_arena_size = MegabytesToBytes(80);
+        size_t perm_mem_arena_size = MegabytesToBytes(80);
+        size_t temp_mem_arena_size = MegabytesToBytes(20);
 
-        s_vec_2d_i window_size_default = {1280, 720};
+        s_vec_2d_i window_init_size = {1280, 720};
         const char* window_title = "";
-        enum e_window_flags window_flags = ek_window_flags_none;
+        e_window_flags window_flags = ek_window_flags_none;
 
-        int snd_cnt;
-        a_snd_file_path_loader snd_file_path_loader; // Have this return nullptr by default, in case you forget to provide a mapping.
+        size_t tex_cnt = 0;
+        graphics::a_tex_index_to_file_path_mapper tex_index_to_file_path_mapper = nullptr;
+
+        size_t font_cnt = 0;
+        graphics::a_font_index_to_info_mapper font_index_to_info_mapper = nullptr;
+
+        size_t draw_instr_limit = 1024;
+
+        size_t snd_cnt = 0;
+        a_snd_file_path_loader snd_index_to_file_path_mapper = nullptr;
 
         bool IsValid() const {
             return init_func
                 && tick_func
+                && append_draw_instrs_func
                 && perm_mem_arena_size > 0
-                && window_size_default.x > 0 && window_size_default.y > 0
+                && temp_mem_arena_size > 0
+                && window_init_size.x > 0 && window_init_size.y > 0
                 && window_title
-                && ((snd_cnt == 0 && !snd_file_path_loader) || (snd_cnt > 0 && snd_file_path_loader));
+                && ((tex_cnt == 0 && !tex_index_to_file_path_mapper) || (tex_cnt > 0 && tex_index_to_file_path_mapper))
+                && ((font_cnt == 0 && !font_index_to_info_mapper) || (font_cnt > 0 && font_index_to_info_mapper))
+                && ((snd_cnt == 0 && !snd_index_to_file_path_mapper) || (snd_cnt > 0 && snd_index_to_file_path_mapper));
         }
     };
 

@@ -8,9 +8,9 @@
 #define GL_CALL(X) X; assert(glGetError() == GL_NO_ERROR)
 
 namespace zf4::graphics {
-#if 0
-    static constexpr s_vec_2d_i g_texture_size_limit = {2048, 2048};
     static constexpr int g_texture_channel_cnt = 4;
+    static constexpr size_t g_font_texture_width = 2048;
+    static constexpr size_t g_font_texture_height_limit = 2048;
 
     static constexpr int g_textured_quad_shader_prog_vert_cnt = 13;
 
@@ -19,25 +19,215 @@ namespace zf4::graphics {
     static constexpr int g_batch_slot_indices_cnt = 6;
     static constexpr int g_batch_slot_limit = 2048;
 
-    static bool AttachFramebufferTexture(const GLuint fb_gl_id, const GLuint tex_gl_id, const s_vec_2d_i tex_size) {
-        assert(tex_gl_id);
-        assert(fb_gl_id);
-        assert(tex_size.x > 0 && tex_size.y > 0);
+    static s_textures PushTextures(const size_t tex_cnt, const a_tex_index_to_file_path_mapper tex_index_to_file_path, s_mem_arena& mem_arena) {
+        assert(tex_cnt > 0);
+        assert(tex_index_to_file_path);
+        assert(mem_arena.IsInitialized());
 
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_id));
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        const auto gl_ids = PushArray<a_gl_id>(tex_cnt, mem_arena);
 
-        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb_gl_id));
+        if (gl_ids.IsInitialized()) {
+            return {};
+        }
 
-        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_gl_id, 0));
+        const auto sizes = PushArray<s_vec_2d_i>(tex_cnt, mem_arena);
 
-        const bool success = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        if (sizes.IsInitialized()) {
+            return {};
+        }
 
-        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        glGenTextures(gl_ids.len, gl_ids.elems_raw);
 
-        return success;
+        bool err = false;
+
+        for (int i = 0; i < tex_cnt; ++i) {
+            const auto fp = tex_index_to_file_path(i);
+            assert(fp);
+
+            stbi_uc* const px_data = stbi_load(fp, &sizes[i].x, &sizes[i].y, nullptr, 4);
+
+            if (!px_data) {
+                LogError("Failed to load texture with file path \"%s\"!", fp);
+                err = true;
+                break;
+            }
+
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, gl_ids[i]));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sizes[i].x, sizes[i].y, 0, GL_RGBA, GL_UNSIGNED_BYTE, px_data));
+
+            stbi_image_free(px_data);
+        }
+
+        if (err) {
+            glDeleteTextures(gl_ids.len, gl_ids.elems_raw);
+            return {};
+        }
+
+        return {
+            .gl_ids = gl_ids,
+            .sizes = sizes,
+            .cnt = tex_cnt
+        };
+    }
+
+    static s_fonts PushFonts(const size_t font_cnt, const a_font_index_to_info_mapper font_index_to_info, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
+        assert(font_cnt > 0);
+        assert(font_index_to_info);
+        assert(mem_arena.IsInitialized());
+        assert(scratch_space.IsInitialized());
+
+        // Reserve memory for font data.
+        const auto arrangement_infos = PushArray<s_font_arrangement_info>(font_cnt, mem_arena);
+
+        if (!arrangement_infos.IsValid()) {
+            return {};
+        }
+
+        const auto tex_gl_ids = PushArray<a_gl_id>(font_cnt, mem_arena);
+
+        if (!tex_gl_ids.IsValid()) {
+            return {};
+        }
+
+        const auto tex_heights = PushArray<size_t>(font_cnt, mem_arena);
+
+        if (!tex_heights.IsValid()) {
+            return {};
+        }
+
+        // Reserve scratch space for texture pixel data, to be reused for all font atlases.
+        const auto px_data_scratch_space = PushArray<a_byte>(g_font_texture_width * g_font_texture_height_limit, scratch_space);
+
+        if (!px_data_scratch_space.IsValid()) {
+            return {};
+        }
+
+        // Generate all font textures upfront.
+        glGenTextures(tex_gl_ids.len, tex_gl_ids.elems_raw);
+
+        // Do an iteration for each font...
+        bool err = false;
+
+        for (int i = 0; i < font_cnt; ++i) {
+            const auto scratch_space_init_offs = scratch_space.offs;
+
+            const auto font_info = font_index_to_info(i);
+            assert(font_info.file_path);
+            assert(font_info.height > 0);
+
+            // Get the contents of the font file.
+            const auto file_contents = PushFileContents(font_info.file_path, scratch_space);
+
+            if (!file_contents.IsValid()) {
+                LogError("Failed to load file contents of font \"%s\".", font_info.file_path);
+                err = true;
+                break;
+            }
+
+            // Initialise the font.
+            stbtt_fontinfo font;
+
+            if (!stbtt_InitFont(&font, file_contents.elems_raw, stbtt_GetFontOffsetForIndex(file_contents.elems_raw, 0))) {
+                LogError("Failed to initialize font \"%s\".", font_info.file_path);
+                err = true;
+                break;
+            }
+
+            // Extract basic font metrics and calculate line height.
+            const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(font_info.height));
+
+            int ascent, descent, line_gap;
+            stbtt_GetFontVMetrics(&font, &ascent, &descent, &line_gap);
+
+            arrangement_infos[i].line_height = static_cast<int>((ascent - descent + line_gap) * scale);
+
+            // Set the pixel data for the font atlas texture, and record the character metrics.
+            memset(px_data_scratch_space.elems_raw, 0, px_data_scratch_space.SizeInBytes());
+
+            s_vec_2d_i char_draw_pos;
+
+            for (int j = 0; j < g_font_char_range_len; j++) {
+                const char chr = g_font_char_range_begin + j;
+
+                int advance;
+                stbtt_GetCodepointHMetrics(&font, chr, &advance, nullptr);
+
+                arrangement_infos[i].chrs.hor_advances[j] = static_cast<int>(advance * scale);
+
+                if (chr == ' ') {
+                    continue;
+                }
+
+                s_vec_2d_i size, offs;
+                unsigned char* const bitmap_raw = stbtt_GetCodepointBitmap(&font, 0, scale, chr, &size.x, &size.y, &offs.x, &offs.y);
+
+                if (!bitmap_raw) {
+                    LogError("Failed to get a character glyph bitmap from \"%s\" for character '%c'!", font_info.file_path, chr);
+                    err = true;
+                    break;
+                }
+
+                const s_array<const a_byte> bitmap = {bitmap_raw, static_cast<size_t>(size.x) * static_cast<size_t>(size.y)};
+
+                if (char_draw_pos.x + size.x > g_font_texture_width) {
+                    char_draw_pos.x = 0;
+                    char_draw_pos.y += arrangement_infos[i].line_height;
+                }
+
+                tex_heights[i] = Max(char_draw_pos.y + size.y, tex_heights[i]);
+
+                if (tex_heights[i] > g_font_texture_height_limit) {
+                    LogError("Font texture height limit exceeded for font \"%s\"!", font_info.file_path);
+                    err = true;
+                    break;
+                }
+
+                arrangement_infos[i].chrs.hor_offsets[j] = offs.x;
+                arrangement_infos[i].chrs.ver_offsets[j] = offs.y + (ascent * scale);
+                arrangement_infos[i].chrs.src_rects[j] = {char_draw_pos, size};
+
+                for (int y = 0; y < size.y; y++) {
+                    for (int x = 0; x < size.x; x++) {
+                        const int px_index = (((char_draw_pos.y + y) * g_font_texture_width) + (char_draw_pos.x + x)) * g_texture_channel_cnt;
+                        const int bitmap_index = (y * size.x) + x;
+
+                        px_data_scratch_space[px_index + 0] = 255;
+                        px_data_scratch_space[px_index + 1] = 255;
+                        px_data_scratch_space[px_index + 2] = 255;
+                        px_data_scratch_space[px_index + 3] = bitmap[bitmap_index];
+                    }
+                }
+
+                stbtt_FreeBitmap(bitmap_raw, nullptr);
+
+                char_draw_pos.x += size.x;
+            }
+
+            if (err) {
+                break;
+            }
+
+            scratch_space.offs = scratch_space_init_offs;
+
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_ids[i]));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_font_texture_width, tex_heights[i], 0, GL_RGBA, GL_UNSIGNED_BYTE, px_data_scratch_space.elems_raw));
+        }
+
+        if (err) {
+            glDeleteTextures(tex_gl_ids.len, tex_gl_ids.elems_raw);
+            return {};
+        }
+
+        return {
+            .arrangement_infos = arrangement_infos,
+            .tex_gl_ids = tex_gl_ids,
+            .tex_heights = tex_heights,
+            .cnt = font_cnt
+        };
     }
 
     static GLuint CreateShaderFromSrc(const char* const src, const bool frag) {
@@ -145,7 +335,9 @@ void main() {
     }
 
     static void WriteVerts(const s_array<float> verts, const a_gl_id tex_gl_id, const s_rect_edges tex_coords, const s_vec_2d pos, const s_vec_2d size, const s_vec_2d origin, const float rot, const s_vec_4d blend) {
+        assert(verts.IsValid());
         assert(verts.len == g_textured_quad_shader_prog_vert_cnt * 4);
+        assert(tex_gl_id);
 
         verts[0] = 0.0f - origin.x;
         verts[1] = 0.0f - origin.y;
@@ -213,23 +405,23 @@ void main() {
         };
     }
 
-    static s_batch GenBatch() {
-        s_batch batch = {};
+    static s_gl_ids GenBatchGLBufs() {
+        s_gl_ids gl_ids = {};
 
         // Generate vertex array.
-        GL_CALL(glGenVertexArrays(1, &batch.vert_array_gl_id));
-        GL_CALL(glBindVertexArray(batch.vert_array_gl_id));
+        GL_CALL(glGenVertexArrays(1, &gl_ids.vert_array_gl_id));
+        GL_CALL(glBindVertexArray(gl_ids.vert_array_gl_id));
 
         // Generate vertex buffer.
-        GL_CALL(glGenBuffers(1, &batch.vert_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, batch.vert_buf_gl_id));
+        GL_CALL(glGenBuffers(1, &gl_ids.vert_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, gl_ids.vert_buf_gl_id));
         GL_CALL(glBufferData(GL_ARRAY_BUFFER, g_batch_slot_verts_size * g_batch_slot_limit, nullptr, GL_DYNAMIC_DRAW));
 
         // Generate element buffer.
-        GL_CALL(glGenBuffers(1, &batch.elem_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.elem_buf_gl_id));
+        GL_CALL(glGenBuffers(1, &gl_ids.elem_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_ids.elem_buf_gl_id));
 
-        static unsigned short indices[6 * g_batch_slot_limit]; // TEMP!
+        s_static_array<unsigned short, 6 * g_batch_slot_limit> indices;
 
         for (int i = 0; i < g_batch_slot_limit; i++) {
             indices[(i * 6) + 0] = static_cast<unsigned short>((i * 4) + 0);
@@ -240,8 +432,7 @@ void main() {
             indices[(i * 6) + 5] = static_cast<unsigned short>((i * 4) + 0);
         }
 
-        GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW));
-        //GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArraySizeInBytes(static_cast<s_array<const unsigned short>>(indices)), indices.elems_raw, GL_STATIC_DRAW));
+        GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.elems_raw, GL_STATIC_DRAW));
 
         // Set vertex attribute pointers.
         const int verts_stride = sizeof(float) * g_textured_quad_shader_prog_vert_cnt;
@@ -264,15 +455,160 @@ void main() {
         GL_CALL(glVertexAttribPointer(5, 4, GL_FLOAT, false, verts_stride, reinterpret_cast<const void*>(sizeof(float) * 9)));
         GL_CALL(glEnableVertexAttribArray(5));
 
-        return batch;
+        return gl_ids;
+    }
+
+    static s_gl_ids GenSurfGLBufs() {
+        s_gl_ids gl_ids = {};
+
+        GL_CALL(glGenVertexArrays(1, &gl_ids.vert_array_gl_id));
+        GL_CALL(glBindVertexArray(gl_ids.vert_array_gl_id));
+
+        GL_CALL(glGenBuffers(1, &gl_ids.vert_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, gl_ids.vert_buf_gl_id));
+
+        {
+            const float verts[] = {
+                -1.0f, -1.0f, 0.0f, 0.0f,
+                1.0f, -1.0f, 1.0f, 0.0f,
+                1.0f, 1.0f, 1.0f, 1.0f,
+                -1.0f, 1.0f, 0.0f, 1.0f
+            };
+
+            GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW));
+        }
+
+        GL_CALL(glGenBuffers(1, &gl_ids.elem_buf_gl_id));
+        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_ids.elem_buf_gl_id));
+
+        {
+            const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
+            GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW));
+        }
+
+        GL_CALL(glEnableVertexAttribArray(0));
+        GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, (const void*)(sizeof(float) * 0)));
+
+        GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, (const void*)(sizeof(float) * 2)));
+        GL_CALL(glEnableVertexAttribArray(1));
+
+        GL_CALL(glBindVertexArray(0));
+
+        return gl_ids;
+    }
+
+    static bool AttachFramebufferTexture(const GLuint fb_gl_id, const GLuint tex_gl_id, const s_vec_2d_i tex_size) {
+        assert(tex_gl_id);
+        assert(fb_gl_id);
+        assert(tex_size.x > 0 && tex_size.y > 0);
+
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_id));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb_gl_id));
+
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_gl_id, 0));
+
+        const bool success = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+        return success;
+    }
+
+    bool s_pers_render_data::Init(const size_t tex_cnt, const a_tex_index_to_file_path_mapper tex_index_to_file_path, const size_t font_cnt, const a_font_index_to_info_mapper font_index_to_info, s_mem_arena& mem_arena, s_mem_arena& scratch_space) {
+        assert(IsDefault(*this));
+
+        if (tex_cnt > 0) {
+            textures = PushTextures(tex_cnt, tex_index_to_file_path, mem_arena);
+
+            if (textures.cnt == 0) {
+                return false;
+            }
+        }
+
+        if (font_cnt > 0) {
+            fonts = PushFonts(font_cnt, font_index_to_info, mem_arena, scratch_space);
+
+            if (fonts.cnt == 0) {
+                return false;
+            }
+        }
+
+        textured_quad_shader_prog = LoadTexturedQuadShaderProg();
+        batch_gl_ids = GenBatchGLBufs();
+        surf_gl_ids = GenSurfGLBufs();
+
+        return true;
+    }
+
+    void s_pers_render_data::Clean() {
+        assert(IsValid());
+
+        GL_CALL(glDeleteBuffers(1, &batch_gl_ids.elem_buf_gl_id));
+        GL_CALL(glDeleteBuffers(1, &batch_gl_ids.vert_buf_gl_id));
+        GL_CALL(glDeleteVertexArrays(1, &batch_gl_ids.vert_array_gl_id));
+
+        GL_CALL(glDeleteBuffers(1, &surf_gl_ids.elem_buf_gl_id));
+        GL_CALL(glDeleteBuffers(1, &surf_gl_ids.vert_buf_gl_id));
+        GL_CALL(glDeleteVertexArrays(1, &surf_gl_ids.vert_array_gl_id));
+
+        glDeleteTextures(fonts.tex_gl_ids.len, fonts.tex_gl_ids.elems_raw);
+        glDeleteTextures(textures.gl_ids.len, textures.gl_ids.elems_raw);
+
+        *this = {};
+    }
+
+    bool s_surfaces::Init(const int cnt, const s_vec_2d_i size) {
+        assert(cnt > 0 && cnt <= g_surface_limit);
+        assert(size.x > 0 && size.y > 0);
+
+        GL_CALL(glGenFramebuffers(cnt, framebuffer_gl_ids.elems_raw));
+        GL_CALL(glGenTextures(cnt, framebuffer_tex_gl_ids.elems_raw));
+
+        this->cnt = cnt;
+
+        for (int i = 0; i < cnt; ++i) {
+            if (!AttachFramebufferTexture(framebuffer_gl_ids[i], framebuffer_tex_gl_ids[i], size)) {
+                Clean();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void s_surfaces::Clean() {
+        GL_CALL(glDeleteTextures(cnt, framebuffer_tex_gl_ids.elems_raw));
+        GL_CALL(glDeleteFramebuffers(cnt, framebuffer_gl_ids.elems_raw));
+
+        *this = {};
+    }
+
+    bool s_surfaces::Resize(const s_vec_2d_i size) {
+        assert(size.x > 0 && size.y > 0);
+
+        if (cnt > 0) {
+            glDeleteTextures(cnt, framebuffer_tex_gl_ids.elems_raw);
+            glGenTextures(cnt, framebuffer_tex_gl_ids.elems_raw);
+
+            for (int i = 0; i < cnt; ++i) {
+                if (!AttachFramebufferTexture(framebuffer_gl_ids[i], framebuffer_tex_gl_ids[i], size)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     s_str_draw_info GenStrDrawInfo(const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const e_str_hor_align hor_align, const e_str_ver_align ver_align) {
         assert(str && str[0]);
 
-        s_str_draw_info draw_info = {
-            .line_infos = {.len = 1}
-        };
+        s_str_draw_info draw_info;
+        draw_info.line_infos.len = 1;
 
         //
         // First Pass
@@ -294,20 +630,20 @@ void main() {
                     chr_draw_pos_pen.y + font_arrangement_info.chrs.ver_offsets[chr_index]
                 };
 
-                ListEnd(draw_info.chr_draw_rects) = GenRect(chr_draw_pos, font_arrangement_info.chrs.src_rects[chr_index].Size());
+                draw_info.chr_draw_rects.Last() = {chr_draw_pos, font_arrangement_info.chrs.src_rects[chr_index].Size()};
 
                 chr_draw_pos_pen.x += font_arrangement_info.chrs.hor_advances[chr_index];
             } else {
-                ListEnd(draw_info.line_infos).width_including_offs = chr_draw_pos_pen.x;
+                draw_info.line_infos.Last().width_including_offs = chr_draw_pos_pen.x;
                 ++draw_info.line_infos.len;
-                ListEnd(draw_info.line_infos).begin_chr_index = draw_info.chr_draw_rects.len;
+                draw_info.line_infos.Last().begin_chr_index = draw_info.chr_draw_rects.len;
 
                 chr_draw_pos_pen.x = 0;
                 chr_draw_pos_pen.y += font_arrangement_info.line_height;
             }
         } while (str[draw_info.chr_draw_rects.len]);
 
-        ListEnd(draw_info.line_infos).width_including_offs = chr_draw_pos_pen.x;
+        draw_info.line_infos.Last().width_including_offs = chr_draw_pos_pen.x;
         const float height_including_offs = chr_draw_pos_pen.y + font_arrangement_info.line_height;
 
         //
@@ -321,7 +657,7 @@ void main() {
             const s_vec_2d offs = pos + s_vec_2d(hor_align_offs, -(height_including_offs * static_cast<float>(ver_align) * 0.5f));
 
             for (int j = draw_info.line_infos[i].begin_chr_index; j <= line_end_chr_index; ++j) {
-                draw_info.chr_draw_rects[j] = RectTranslated(draw_info.chr_draw_rects[j], offs);
+                draw_info.chr_draw_rects[j] = draw_info.chr_draw_rects[j].Translated(offs);
             }
         }
 
@@ -346,7 +682,7 @@ void main() {
                 top = Min(top, draw_info.chr_draw_rects[i].y);
             }
 
-            for (int i = draw_info.line_infos[draw_info.line_infos.len - 1].begin_chr_index; i < str_len; ++i) {
+            for (int i = draw_info.line_infos.Last().begin_chr_index; i < str_len; ++i) {
                 bottom = Max(bottom, draw_info.chr_draw_rects[i].Bottom());
             }
         }
@@ -366,335 +702,26 @@ void main() {
         return {left, top, right - left, bottom - top};
     }
 
-    s_textures PushTextures(const int cnt, const s_array<const char* const> filenames, s_mem_arena& mem_arena, bool& err) {
-        assert(cnt > 0);
-        assert(cnt == filenames.len);
-        assert(!err);
-
-        const auto gl_ids = PushArray<a_gl_id>(cnt, mem_arena);
-
-        if (IsStructZero(gl_ids)) {
-            err = true;
-            return {};
-        }
-
-        const auto sizes = PushArray<s_vec_2d_i>(cnt, mem_arena);
-
-        if (IsStructZero(sizes)) {
-            err = true;
-            return {};
-        }
-
-        glGenTextures(cnt, gl_ids.elems_raw);
-
-        for (int i = 0; i < cnt; ++i) {
-            stbi_uc* const px_data = stbi_load(filenames[i], &sizes[i].x, &sizes[i].y, nullptr, 4);
-
-            if (!px_data) {
-                LogError("Failed to load texture with filename \"%s\"!", filenames[i]);
-                err = true;
-                break;
-            }
-
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, gl_ids[i]));
-            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sizes[i].x, sizes[i].y, 0, GL_RGBA, GL_UNSIGNED_BYTE, px_data));
-
-            stbi_image_free(px_data);
-        }
-
-        if (err) {
-            glDeleteTextures(cnt, gl_ids.elems_raw);
-            return {};
-        }
-
-        return {
-            .gl_ids = gl_ids,
-            .sizes = sizes,
-            .cnt = cnt
-        };
-    }
-
-    void UnloadTextures(const s_textures& textures) {
-        glDeleteTextures(textures.gl_ids.len, textures.gl_ids.elems_raw);
-    }
-
-    s_fonts PushFonts(const int cnt, const s_array<const char* const> filenames, const s_array<const int> heights, s_mem_arena& mem_arena, s_mem_arena& scratch_space, bool& err) {
-        assert(cnt > 0);
-        assert(cnt == filenames.len);
-        assert(cnt == heights.len);
-        assert(!err);
-
-        // Reserve memory for font data.
-        const auto arrangement_infos = PushArray<s_font_arrangement_info>(cnt, mem_arena);
-
-        if (IsStructZero(arrangement_infos)) {
-            err = true;
-            return {};
-        }
-
-        const auto tex_gl_ids = PushArray<a_gl_id>(cnt, mem_arena);
-
-        if (IsStructZero(tex_gl_ids)) {
-            err = true;
-            return {};
-        }
-
-        const auto tex_sizes = PushArray<s_vec_2d_i>(cnt, mem_arena);
-
-        if (IsStructZero(tex_sizes)) {
-            err = true;
-            return {};
-        }
-
-        // Reserve scratch space for texture pixel data, to be reused for all font atlases.
-        const auto px_data_scratch_space = PushArray<a_byte>(g_texture_size_limit.x * g_texture_size_limit.y, scratch_space);
-
-        if (IsStructZero(px_data_scratch_space)) {
-            err = true;
-            return {};
-        }
-
-        // Generate all font textures upfront.
-        glGenTextures(cnt, tex_gl_ids.elems_raw);
-
-        // Do an iteration for each font...
-        for (int i = 0; i < cnt; ++i) {
-            const int scratch_space_init_offs = scratch_space.offs;
-
-            // Get the contents of the font file.
-            const auto file_contents = PushFileContents(filenames[i], scratch_space, err);
-
-            if (err) {
-                LogError("Failed to load file contents of font \"%s\".", filenames[i]);
-                break;
-            }
-
-            // Initialise the font.
-            stbtt_fontinfo font;
-
-            err = !stbtt_InitFont(&font, file_contents.elems_raw, stbtt_GetFontOffsetForIndex(file_contents.elems_raw, 0));
-
-            if (err) {
-                LogError("Failed to initialize font \"%s\".", filenames[i]);
-                break;
-            }
-
-            // Extract basic font metrics and calculate line height.
-            const float scale = stbtt_ScaleForPixelHeight(&font, static_cast<float>(heights[i]));
-
-            int ascent, descent, line_gap;
-            stbtt_GetFontVMetrics(&font, &ascent, &descent, &line_gap);
-
-            arrangement_infos[i].line_height = static_cast<int>((ascent - descent + line_gap) * scale);
-
-            // Set the pixel data for the font atlas texture.
-            ZeroOutArrayElems(px_data_scratch_space);
-
-            s_vec_2d_i char_draw_pos = {};
-
-            for (int j = 0; j < g_font_char_range_len; j++) {
-                const char chr = g_font_char_range_begin + j;
-
-                int advance;
-                stbtt_GetCodepointHMetrics(&font, chr, &advance, nullptr);
-
-                arrangement_infos[i].chrs.hor_advances[j] = static_cast<int>(advance * scale);
-
-                if (chr == ' ') {
-                    continue;
-                }
-
-                s_vec_2d_i size, offs;
-                unsigned char* const bitmap_raw = stbtt_GetCodepointBitmap(&font, 0, scale, chr, &size.x, &size.y, &offs.x, &offs.y);
-
-                err = !bitmap_raw;
-
-                if (err) {
-                    LogError("Failed to get a character glyph bitmap from \"%s\" for character '%c'!", filenames[i], chr);
-                    break;
-                }
-
-                const s_array<const a_byte> bitmap = {
-                    .elems_raw = bitmap_raw,
-                    .len = size.x * size.y
-                };
-
-                if (char_draw_pos.x + size.x > g_texture_size_limit.x) {
-                    char_draw_pos.x = 0;
-                    char_draw_pos.y += arrangement_infos[i].line_height;
-                }
-
-                arrangement_infos[i].chrs.hor_offsets[j] = offs.x;
-                arrangement_infos[i].chrs.ver_offsets[j] = offs.y + (ascent * scale);
-                arrangement_infos[i].chrs.src_rects[j] = GenRect(char_draw_pos, size);
-
-                for (int y = 0; y < size.y; y++) {
-                    for (int x = 0; x < size.x; x++) {
-                        const int px_index = (((char_draw_pos.y + y) * g_texture_size_limit.x) + (char_draw_pos.x + x)) * g_texture_channel_cnt;
-                        const int bitmap_index = (y * size.x) + x;
-
-                        px_data_scratch_space[px_index + 0] = 255;
-                        px_data_scratch_space[px_index + 1] = 255;
-                        px_data_scratch_space[px_index + 2] = 255;
-                        px_data_scratch_space[px_index + 3] = bitmap[bitmap_index];
-                    }
-                }
-
-                stbtt_FreeBitmap(bitmap_raw, nullptr);
-
-                char_draw_pos.x += size.x;
-            }
-
-            if (err) {
-                break;
-            }
-
-            RewindMemArena(scratch_space, scratch_space_init_offs);
-
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, tex_gl_ids[i]));
-            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-
-            // TODO: Only use the used section of this.
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_texture_size_limit.x, g_texture_size_limit.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, px_data_scratch_space.elems_raw));
-
-            tex_sizes[i] = g_texture_size_limit; // TEMP
-        }
-
-        if (err) {
-            glDeleteTextures(tex_gl_ids.len, tex_gl_ids.elems_raw);
-            return {};
-        }
-
-        return {
-            .arrangement_infos = arrangement_infos,
-            .tex_gl_ids = tex_gl_ids,
-            .tex_sizes = tex_sizes,
-            .cnt = cnt
-        };
-    }
-
-    void UnloadFonts(const s_fonts& fonts) {
-        glDeleteTextures(fonts.tex_gl_ids.Len(), fonts.tex_gl_ids.Raw());
-    }
-
-    static s_surf_pers_data GenSurfPersData() {
-        s_surf_pers_data surf_pers_data = {};
-
-        GL_CALL(glGenVertexArrays(1, &surf_pers_data.vert_array_gl_id));
-        GL_CALL(glBindVertexArray(surf_pers_data.vert_array_gl_id));
-
-        GL_CALL(glGenBuffers(1, &surf_pers_data.vert_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, surf_pers_data.vert_buf_gl_id));
-
-        {
-            const float verts[] = {
-                -1.0f, -1.0f, 0.0f, 0.0f,
-                1.0f, -1.0f, 1.0f, 0.0f,
-                1.0f, 1.0f, 1.0f, 1.0f,
-                -1.0f, 1.0f, 0.0f, 1.0f
-            };
-
-            GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW));
-        }
-
-        GL_CALL(glGenBuffers(1, &surf_pers_data.elem_buf_gl_id));
-        GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, surf_pers_data.elem_buf_gl_id));
-
-        {
-            const unsigned short indices[] = {0, 1, 2, 2, 3, 0};
-            GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW));
-        }
-
-        GL_CALL(glEnableVertexAttribArray(0));
-        GL_CALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 4, (const void*)(sizeof(float) * 0)));
-
-        GL_CALL(glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(float) * 4, (const void*)(sizeof(float) * 2)));
-        GL_CALL(glEnableVertexAttribArray(1));
-
-        GL_CALL(glBindVertexArray(0));
-
-        return surf_pers_data;
-    }
-
-    s_pers_render_data GenPersRenderData() {
-        return {
-            .textured_quad_shader_prog = LoadTexturedQuadShaderProg(),
-            .batch = GenBatch(),
-            .surf_pers_data = GenSurfPersData()
-        };
-    }
-
-    void CleanPersRenderData(const s_pers_render_data& render_data) {
-        GL_CALL(glDeleteBuffers(1, &render_data.batch.elem_buf_gl_id));
-        GL_CALL(glDeleteBuffers(1, &render_data.batch.vert_buf_gl_id));
-        GL_CALL(glDeleteVertexArrays(1, &render_data.batch.vert_array_gl_id));
-
-        GL_CALL(glDeleteBuffers(1, &render_data.surf_pers_data.elem_buf_gl_id));
-        GL_CALL(glDeleteBuffers(1, &render_data.surf_pers_data.vert_buf_gl_id));
-        GL_CALL(glDeleteVertexArrays(1, &render_data.surf_pers_data.vert_array_gl_id));
-    }
-
-    bool InitSurfaces(const int cnt, s_surfaces& surfs, const s_vec_2d_i window_size) {
-        assert(cnt > 0 && cnt <= g_surface_limit);
-        assert(IsStructZero(surfs));
+    bool ExecDrawInstrs(const s_array<const a_draw_instr> instrs, const s_vec_2d_i window_size, const s_pers_render_data& pers_render_data, const s_surfaces& surfs, s_mem_arena& scratch_space) {
+        assert(instrs.IsValid());
         assert(window_size.x > 0 && window_size.y > 0);
+        assert(surfs.IsValid());
+        assert(scratch_space.IsInitialized());
 
-        surfs.cnt = cnt;
-
-        GL_CALL(glGenFramebuffers(cnt, surfs.framebuffer_gl_ids.elems_raw));
-        GL_CALL(glGenTextures(cnt, surfs.framebuffer_tex_gl_ids.elems_raw));
-
-        for (int i = 0; i < cnt; ++i) {
-            if (!AttachFramebufferTexture(surfs.framebuffer_gl_ids[i], surfs.framebuffer_tex_gl_ids[i], window_size)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    void CleanAndZeroOutSurfaces(s_surfaces& surfs) {
-        GL_CALL(glDeleteTextures(surfs.cnt, surfs.framebuffer_tex_gl_ids.elems_raw));
-        GL_CALL(glDeleteFramebuffers(surfs.cnt, surfs.framebuffer_gl_ids.elems_raw));
-
-        ZeroOutStruct(surfs);
-    }
-
-    bool ResizeSurfaces(s_surfaces& surfs, const s_vec_2d_i window_size) {
-        assert(window_size.x > 0 && window_size.y > 0);
-
-        if (surfs.cnt > 0) {
-            glDeleteTextures(surfs.cnt, surfs.framebuffer_tex_gl_ids.elems_raw);
-            glGenTextures(surfs.cnt, surfs.framebuffer_tex_gl_ids.elems_raw);
-
-            for (int i = 0; i < surfs.cnt; ++i) {
-                if (!AttachFramebufferTexture(surfs.framebuffer_gl_ids[i], surfs.framebuffer_tex_gl_ids[i], window_size)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    bool ExecDrawInstrs(const s_array<const s_draw_instr> instrs, const s_vec_2d_i window_size, const s_pers_render_data& pers_render_data, const s_surfaces& surfs, const s_textures& textures, s_mem_arena& scratch_space) {
         const auto batch_verts = PushArray<float>(g_batch_slot_vert_cnt * g_batch_slot_limit, scratch_space);
 
-        if (IsStructZero(batch_verts)) {
+        if (batch_verts.IsInitialized()) {
             return false;
         }
 
-        int batch_slots_used_cnt = 0;
+        size_t batch_slots_used_cnt = 0;
         a_gl_id batch_tex_gl_id = 0; // NOTE: In the future we will support multiple texture units. This is just for simplicity right now.
 
         a_gl_id surf_shader_prog_gl_id = 0; // When we draw a surface, it will use this shader program.
-        s_static_list<int, g_surface_limit> surf_index_stack = {};
+        s_static_list<int, g_surface_limit> surf_index_stack;
 
-        const s_matrix_4x4 proj_mat = GenOrthoMatrix4x4(0.0f, window_size.x, window_size.y, 0.0f, -1.0f, 1.0f);
-        s_matrix_4x4 view_mat = {};
+        const auto proj_mat = s_matrix_4x4::GenOrtho(0.0f, window_size.x, window_size.y, 0.0f, -1.0f, 1.0f);
+        s_matrix_4x4 view_mat;
 
         // NOTE: The blend setup could be moved into game initialisation.
         GL_CALL(glEnable(GL_BLEND));
@@ -704,113 +731,99 @@ void main() {
             //
             // Instruction Processing
             //
-            const s_draw_instr& instr = instrs[i];
+            std::visit([&](const auto& instr) {
+                using T = std::decay_t<decltype(instr)>;
 
-            switch (instr.type) {
-                case ek_instr_type_clear:
-                    glClearColor(instr.clear.color.x, instr.clear.color.y, instr.clear.color.z, instr.clear.color.w);
+                if constexpr (std::is_same_v<T, s_clear_instr>) {
+                    glClearColor(instr.color.x, instr.color.y, instr.color.z, instr.color.w);
                     glClear(GL_COLOR_BUFFER_BIT);
-                    break;
+                } else if constexpr (std::is_same_v<T, s_set_view_matrix_instr>) {
+                    view_mat = instr.mat;
+                } else if constexpr (std::is_same_v<T, s_draw_texture_instr>) {
+                    static_assert(g_batch_slot_limit > 0);
 
-                case ek_instr_type_set_view_matrix:
-                    view_mat = instr.set_view_mat.mat;
-                    break;
-
-                case ek_instr_type_draw_texture:
-                    {
-                        static_assert(g_batch_slot_limit > 0);
-
-                        if (batch_slots_used_cnt == 0) {
-                            batch_tex_gl_id = instr.draw_tex.tex_gl_id;
-                        }
-
-                        const s_array<float> slot_verts = {
-                            .elems_raw = batch_verts.elems_raw + (g_batch_slot_vert_cnt * batch_slots_used_cnt),
-                            .len = g_batch_slot_vert_cnt
-                        };
-
-                        WriteVerts(slot_verts, instr.draw_tex.tex_gl_id, instr.draw_tex.tex_coords, instr.draw_tex.pos, instr.draw_tex.size, instr.draw_tex.origin, instr.draw_tex.rot, instr.draw_tex.blend);
-
-                        ++batch_slots_used_cnt;
+                    if (batch_slots_used_cnt == 0) {
+                        batch_tex_gl_id = instr.tex_gl_id;
                     }
 
-                    break;
+                    const s_array<float> slot_verts = {batch_verts.elems_raw + (g_batch_slot_vert_cnt * batch_slots_used_cnt), g_batch_slot_vert_cnt};
+                    WriteVerts(slot_verts, instr.tex_gl_id, instr.tex_coords, instr.pos, instr.size, instr.origin, instr.rot, instr.blend);
 
-                case ek_instr_type_set_surf:
-                    assert(instr.set_surf.surf_index >= 0 && instr.set_surf.surf_index < surfs.cnt);
+                    ++batch_slots_used_cnt;
+                } else if constexpr (std::is_same_v<T, s_set_surf_instr>) {
+                    assert(instr.surf_index >= 0 && instr.surf_index < surfs.cnt);
 
                     // Add the surface index to the stack.
-                    ListAppend(surf_index_stack, instr.set_surf.surf_index);
+                    if (!surf_index_stack.Append(instr.surf_index)) {
+                        //return false;
+                    }
 
                     // Bind the surface framebuffer.
-                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfs.framebuffer_gl_ids[instr.set_surf.surf_index]));
+                    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfs.framebuffer_gl_ids[instr.surf_index]));
+                } else if constexpr (std::is_same_v<T, s_unset_surf_instr>) {
+                    surf_index_stack.Pop();
 
-                    break;
-
-                case ek_instr_type_unset_surf:
-                    ListPop(surf_index_stack);
-
-                    if (IsListEmpty(surf_index_stack)) {
+                    if (surf_index_stack.len == 0) {
                         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
                     } else {
-                        const int new_surf_index = ListEnd(surf_index_stack);
+                        const int new_surf_index = surf_index_stack.Last();
                         const GLuint fb_gl_id = surfs.framebuffer_gl_ids[new_surf_index];
                         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, surfs.framebuffer_gl_ids[new_surf_index]));
                     }
-
-                    break;
-
-                case ek_instr_type_draw_surf:
-                    assert(instr.draw_surf.surf_index >= 0 && instr.draw_surf.surf_index < surfs.cnt);
+                } else if constexpr (std::is_same_v<T, s_draw_surf_instr>) {
+                    assert(instr.surf_index >= 0 && instr.surf_index < surfs.cnt);
                     assert(surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
 
                     GL_CALL(glUseProgram(surf_shader_prog_gl_id));
-
                     GL_CALL(glActiveTexture(GL_TEXTURE0));
-                    GL_CALL(glBindTexture(GL_TEXTURE_2D, surfs.framebuffer_tex_gl_ids[instr.draw_surf.surf_index]));
-
-                    GL_CALL(glBindVertexArray(pers_render_data.surf_pers_data.vert_array_gl_id));
-                    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_pers_data.elem_buf_gl_id));
+                    GL_CALL(glBindTexture(GL_TEXTURE_2D, surfs.framebuffer_tex_gl_ids[instr.surf_index]));
+                    GL_CALL(glBindVertexArray(pers_render_data.surf_gl_ids.vert_array_gl_id));
+                    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.surf_gl_ids.elem_buf_gl_id));
                     GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr));
-
-                    break;
-
-                case ek_instr_type_set_surf_shader_prog_uniform:
+                } else if constexpr (std::is_same_v<T, s_set_surf_shader_prog_uniform_instr>) {
                     assert(surf_shader_prog_gl_id); // Make sure the surface shader program has been set.
 
                     glUseProgram(surf_shader_prog_gl_id);
 
-                    const int uni_loc = glGetUniformLocation(surf_shader_prog_gl_id, instr.set_surf_shader_prog_uni.name);
+                    const int uni_loc = glGetUniformLocation(surf_shader_prog_gl_id, instr.name);
                     assert(uni_loc != -1);
 
-                    switch (instr.set_surf_shader_prog_uni.val_type) {
+                    // std::variant<int, float, s_vec_2d, s_vec_3d, s_vec_4d, s_matrix_4x4> val;
+
+#if 0
+                    glUseProgram(surf_shader_prog_gl_id);
+
+                    const int uni_loc = glGetUniformLocation(surf_shader_prog_gl_id, instr.SetSurfShaderProgUniform().name);
+                    assert(uni_loc != -1);
+
+                    switch (instr.SetSurfShaderProgUniform().val_type) {
                         case ek_shader_uniform_val_type_int:
-                            GL_CALL(glUniform1i(uni_loc, instr.set_surf_shader_prog_uni.val_as_int));
+                            GL_CALL(glUniform1i(uni_loc, instr.SetSurfShaderProgUniform().ValAsInt()));
                             break;
 
                         case ek_shader_uniform_val_type_float:
-                            GL_CALL(glUniform1f(uni_loc, instr.set_surf_shader_prog_uni.val_as_float));
+                            GL_CALL(glUniform1f(uni_loc, instr.SetSurfShaderProgUniform().ValAsFloat()));
                             break;
 
                         case ek_shader_uniform_val_type_v2:
-                            GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v2)));
+                            GL_CALL(glUniform2fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.SetSurfShaderProgUniform().ValAsV2()));
                             break;
 
                         case ek_shader_uniform_val_type_v3:
-                            GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v3)));
+                            GL_CALL(glUniform3fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.SetSurfShaderProgUniform().ValAsV3()));
                             break;
 
                         case ek_shader_uniform_val_type_v4:
-                            GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_v4)));
+                            GL_CALL(glUniform4fv(uni_loc, 1, reinterpret_cast<const float*>(&instr.SetSurfShaderProgUniform().ValAsV4()));
                             break;
 
                         case ek_shader_uniform_val_type_mat_4x4:
-                            GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&instr.set_surf_shader_prog_uni.val_as_mat_4x4)));
+                            GL_CALL(glUniformMatrix4fv(uni_loc, 1, false, reinterpret_cast<const float*>(&instr.SetSurfShaderProgUniform().ValAsMat4x4()));
                             break;
                     }
-
-                    break;
-            }
+#endif
+                }
+            }, instrs[i]);
 
             //
             // Batch Flushing
@@ -825,23 +838,23 @@ void main() {
             if (i == instrs.len - 1) {
                 flush = true;
             } else {
-                const s_draw_instr& instr_next = instrs[i + 1];
+                const a_draw_instr& instr_next = instrs[i + 1];
 
                 if (batch_slots_used_cnt == g_batch_slot_limit
-                    || instr_next.type == ek_instr_type_set_view_matrix
-                    || instr_next.type == ek_instr_type_set_surf
-                    || instr_next.type == ek_instr_type_unset_surf
-                    || (instr_next.type == ek_instr_type_draw_texture && instr_next.draw_tex.tex_gl_id != batch_tex_gl_id)) {
+                    || std::holds_alternative<s_set_view_matrix_instr>(instr_next)
+                    || std::holds_alternative<s_set_surf_instr>(instr_next)
+                    || std::holds_alternative<s_unset_surf_instr>(instr_next)
+                    || (std::holds_alternative<s_draw_texture_instr>(instr_next) && std::get_if<s_draw_texture_instr>(&instr_next)->tex_gl_id != batch_tex_gl_id)) {
                     flush = true;
                 }
             }
 
             if (flush) {
                 // Write the batch vertex data to the GPU.
-                GL_CALL(glBindVertexArray(pers_render_data.batch.vert_array_gl_id));
-                GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data.batch.vert_buf_gl_id));
+                GL_CALL(glBindVertexArray(pers_render_data.batch_gl_ids.vert_array_gl_id));
+                GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, pers_render_data.batch_gl_ids.vert_buf_gl_id));
 
-                const int write_size = g_batch_slot_verts_size * batch_slots_used_cnt;
+                const size_t write_size = g_batch_slot_verts_size * batch_slots_used_cnt;
                 GL_CALL(glBufferSubData(GL_ARRAY_BUFFER, 0, write_size, batch_verts.elems_raw));
 
                 // Draw the batch.
@@ -854,11 +867,10 @@ void main() {
 
                 GL_CALL(glBindTexture(GL_TEXTURE_2D, batch_tex_gl_id));
 
-                GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.batch.elem_buf_gl_id));
+                GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pers_render_data.batch_gl_ids.elem_buf_gl_id));
                 GL_CALL(glDrawElements(GL_TRIANGLES, g_batch_slot_indices_cnt * batch_slots_used_cnt, GL_UNSIGNED_SHORT, nullptr));
 
                 // Clear batch state.
-                ZeroOutArrayElems(batch_verts);
                 batch_slots_used_cnt = 0;
                 batch_tex_gl_id = 0;
             }
@@ -867,7 +879,12 @@ void main() {
         return true;
     }
 
-    bool AppendDrawTextureInstr(s_list<s_draw_instr>& instrs, const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
+    bool AppendDrawTextureInstr(s_list<a_draw_instr>& instrs, const int tex_index, const s_textures& textures, const s_rect_i src_rect, const s_vec_2d pos, const s_vec_2d origin, const s_vec_2d scale, const float rot, const s_vec_4d blend) {
+        assert(instrs.IsInitialized());
+        assert(textures.IsValid());
+        assert(tex_index >= 0 && tex_index < textures.cnt);
+        assert(IsColorValid(blend));
+
         const s_vec_2d_i tex_size = textures.sizes[tex_index];
 
         const s_draw_texture_instr draw_tex = {
@@ -880,21 +897,21 @@ void main() {
             .blend = blend
         };
 
-        return zf4::ListAppendTry(instrs, {
-            .type = ek_instr_type_draw_texture,
-            .draw_tex = draw_tex
-        });
+        return instrs.Append(draw_tex);
     }
 
-    bool AppendDrawTextureInstrsForStr(s_list<s_draw_instr>& instrs, const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align) {
+    bool AppendDrawTextureInstrsForStr(s_list<a_draw_instr>& instrs, const char* const str, const int font_index, const s_fonts& fonts, const s_vec_2d pos, const s_vec_4d blend, const e_str_hor_align hor_align, const e_str_ver_align ver_align) {
+        assert(instrs.IsInitialized());
         assert(str);
+        assert(fonts.IsValid());
         assert(font_index >= 0 && font_index < fonts.cnt);
+        assert(IsColorValid(blend));
 
         const s_str_draw_info str_draw_info = GenStrDrawInfo(str, font_index, fonts, pos, hor_align, ver_align); // TODO: Cache this, but only if it's actually a bottleneck on performance.
 
         const s_font_arrangement_info& font_arrangement_info = fonts.arrangement_infos[font_index];
         const GLuint font_tex_gl_id = fonts.tex_gl_ids[font_index];
-        const s_vec_2d_i font_tex_size = fonts.tex_sizes[font_index];
+        const s_vec_2d_i font_tex_size = {g_font_texture_width, fonts.tex_heights[font_index]};
 
         int line_index = 0;
 
@@ -914,22 +931,16 @@ void main() {
             const s_draw_texture_instr draw_tex = {
                 .tex_gl_id = font_tex_gl_id,
                 .tex_coords = CalcTexCoords(char_src_rect, font_tex_size),
-                .pos = RectTopLeft(str_draw_info.chr_draw_rects[i]),
-                .size = RectSize(str_draw_info.chr_draw_rects[i]),
+                .pos = str_draw_info.chr_draw_rects[i].TopLeft(),
+                .size = str_draw_info.chr_draw_rects[i].Size(),
                 .blend = blend
             };
 
-            const s_draw_instr instr = {
-                .type = ek_instr_type_draw_texture,
-                .draw_tex = draw_tex
-            };
-
-            if (!zf4::ListAppendTry(instrs, instr)) {
+            if (!instrs.Append(draw_tex)) {
                 return false;
             }
         }
 
         return true;
     }
-#endif
 }

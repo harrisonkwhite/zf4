@@ -276,6 +276,10 @@ namespace zf4 {
         float width = 0.0f;
         float height = 0.0f;
 
+        s_rect() = default;
+        s_rect(const float x, const float y, const float width, const float height) : x(x), y(y), width(width), height(height) {}
+        s_rect(const s_vec_2d pos, const s_vec_2d size) : x(pos.x), y(pos.y), width(size.x), height(size.y) {}
+
         float Right() const {
             return x + width;
         }
@@ -323,13 +327,21 @@ namespace zf4 {
         s_vec_2d BottomRight() const {
             return {x + width, y + height};
         }
+
+        s_rect Translated(const s_vec_2d trans) {
+            return {TopLeft() + trans, Size()};
+        }
     };
 
     struct s_rect_i {
-        int x;
-        int y;
-        int width;
-        int height;
+        int x = 0;
+        int y = 0;
+        int width = 0;
+        int height = 0;
+
+        s_rect_i() = default;
+        s_rect_i(const int x, const int y, const int width, const int height) : x(x), y(y), width(width), height(height) {}
+        s_rect_i(const s_vec_2d_i pos, const s_vec_2d_i size) : x(pos.x), y(pos.y), width(size.x), height(size.y) {}
 
         operator s_rect() const {
             return s_rect(x, y, width, height);
@@ -382,6 +394,10 @@ namespace zf4 {
         s_vec_2d_i BottomRight() const {
             return {x + width, y + height};
         }
+
+        s_rect_i Translated(const s_vec_2d_i trans) {
+            return {TopLeft() + trans, Size()};
+        }
     };
 
     struct s_rect_edges {
@@ -400,6 +416,9 @@ namespace zf4 {
 
     struct s_matrix_4x4 {
         s_static_array<s_static_array<float, 4>, 4> elems;
+
+        static s_matrix_4x4 GenIdentity();
+        static s_matrix_4x4 GenOrtho(const float left, const float right, const float bottom, const float top, const float near, const float far);
     };
 
     inline bool InBounds(const s_vec_2d pos, const s_vec_2d size) {

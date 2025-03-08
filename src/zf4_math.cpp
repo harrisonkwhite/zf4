@@ -1,8 +1,27 @@
 #include <zf4_math.h>
 
-#include <limits>
-
 namespace zf4 {
+    s_matrix_4x4 s_matrix_4x4::GenIdentity() {
+        s_matrix_4x4 mat;
+        mat.elems[0][0] = 1.0f;
+        mat.elems[1][1] = 1.0f;
+        mat.elems[2][2] = 1.0f;
+        mat.elems[3][3] = 1.0f;
+        return mat;
+    }
+
+    s_matrix_4x4 s_matrix_4x4::GenOrtho(const float left, const float right, const float bottom, const float top, const float near, const float far) {
+        s_matrix_4x4 mat;
+        mat.elems[0][0] = 2.0f / (right - left);
+        mat.elems[1][1] = 2.0f / (top - bottom);
+        mat.elems[2][2] = -2.0f / (far - near);
+        mat.elems[3][0] = -(right + left) / (right - left);
+        mat.elems[3][1] = -(top + bottom) / (top - bottom);
+        mat.elems[3][2] = -(far + near) / (far - near);
+        mat.elems[3][3] = 1.0f;
+        return mat;
+    }
+
 #if 0
     static s_range_f ProjectPts(const s_array<const s_vec_2d> pts, const s_vec_2d edge) {
         s_range_f range = {std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest()};
