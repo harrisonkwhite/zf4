@@ -2,6 +2,7 @@ package zf4
 
 import "core:c"
 import "core:fmt"
+import vmem "core:mem/virtual"
 
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -12,15 +13,20 @@ GL_VERS_MINOR :: 3
 TARG_TICKS_PER_SEC :: 60
 TARG_TICK_DUR_SECS :: 1.0 / TARG_TICKS_PER_SEC
 
+// TODO: Update validity checking.
 Game_Info :: struct {
 	perm_mem_arena_size: u32,
 	temp_mem_arena_size: u32,
 
-	window_init_size:    Size_2D,
-	window_title:        cstring,
+	window_init_size: Size_2D,
+	window_title: cstring,
 
-    init_func:           proc(zf4_data: Game_Init_Func_Data) -> bool,
-    tick_func:           proc(zf4_data: Game_Tick_Func_Data) -> bool,
+	tex_cnt: u32,
+	tex_index_to_file_path: Texture_Index_To_File_Path,
+
+	init_func: proc(zf4_data: Game_Init_Func_Data) -> bool,
+	tick_func: proc(zf4_data: Game_Tick_Func_Data) -> bool,
+	draw_func: proc() -> bool
 }
 
 Game_Init_Func_Data :: struct {
@@ -38,6 +44,20 @@ run_game :: proc(info: Game_Info) -> bool {
     //
     // Initialisation
     //
+	fmt.println("Initialising...")
+
+	//
+	perm_mem_arena: vmem.Arena
+
+	if (vmem.arena_init_growing(&perm_mem_arena) != nil) {
+		return false
+	}
+
+	perm_mem_arena_allocator := vmem.arena_allocator(&perm_mem_arena)
+
+	defer vmem.arena_destroy(&perm_mem_arena)
+
+	//
 	if (!glfw.Init()) {
 		return false
 	}
@@ -57,7 +77,7 @@ run_game :: proc(info: Game_Info) -> bool {
 		nil
 	)
 
-	if (glfw_window == nil) {
+	if glfw_window == nil {
 		return false
 	}
 
@@ -69,6 +89,16 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	gl.load_up_to(GL_VERS_MAJOR, GL_VERS_MINOR, glfw.gl_set_proc_address)
 
+	//
+	pers_render_data, pers_render_data_gen_success := gen_pers_render_data(perm_mem_arena_allocator, info.tex_cnt, info.tex_index_to_file_path)
+
+	if !pers_render_data_gen_success {
+		return false
+	}
+
+	defer clean_pers_render_data(&pers_render_data)
+
+	//
     input_state := load_input_state(glfw_window)
 
     {
@@ -108,15 +138,19 @@ run_game :: proc(info: Game_Info) -> bool {
                     input_state_last = input_state_last
                 }
 
-                if (!info.tick_func(func_data)) {
+                if !info.tick_func(func_data) {
                     return false
                 }
 
                 frame_dur_accum -= TARG_TICK_DUR_SECS
             }
 
-            gl.ClearColor(0.2, 0.3, 0.3, 1.0)
-            gl.Clear(gl.COLOR_BUFFER_BIT)
+			draw_phase_state := begin_draw_phase()
+			defer free(draw_phase_state)
+
+			if !info.draw_func() {
+				return false
+			}
 
             glfw.SwapBuffers(glfw_window)
         }
@@ -132,6 +166,6 @@ is_game_info_valid :: proc(info: Game_Info) -> bool {
 		info.perm_mem_arena_size > 0 &&
 		info.temp_mem_arena_size > 0 &&
         info.window_init_size.x > 0 &&
-		info.window_init_size.y > 0 \
+		info.window_init_size.y > 0
 	)
 }
