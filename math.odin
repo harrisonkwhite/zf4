@@ -4,6 +4,7 @@ import "core:math"
 import "core:mem"
 
 Vec_2D :: [2]f32
+Vec_2D_I :: [2]i32
 Vec_3D :: [3]f32
 Vec_4D :: [4]f32
 

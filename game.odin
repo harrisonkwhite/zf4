@@ -2,7 +2,7 @@ package zf4
 
 import "core:c"
 import "core:fmt"
-import vmem "core:mem/virtual"
+import "core:mem"
 
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -15,15 +15,17 @@ TARG_TICK_DUR_SECS :: 1.0 / TARG_TICKS_PER_SEC
 
 // TODO: Update validity checking.
 Game_Info :: struct {
-	perm_mem_arena_size:    u32,
-	temp_mem_arena_size:    u32,
-	window_init_size:       Size_2D,
-	window_title:           cstring,
-	tex_cnt:                i32,
-	tex_index_to_file_path: Texture_Index_To_File_Path,
-	init_func:              proc(func_data: ^Game_Init_Func_Data) -> bool,
-	tick_func:              proc(func_data: ^Game_Tick_Func_Data) -> bool,
-	draw_func:              proc(func_data: ^Game_Draw_Func_Data) -> bool,
+	perm_mem_arena_size:     u32, // NOTE: If either arena is given too small a size, the game will fail to initialise.
+	temp_mem_arena_size:     u32,
+	window_init_size:        Size_2D,
+	window_title:            cstring,
+	tex_cnt:                 i32,
+	tex_index_to_file_path:  Texture_Index_To_File_Path,
+	font_cnt:                i32,
+	font_index_to_load_info: Font_Index_To_Load_Info,
+	init_func:               proc(func_data: ^Game_Init_Func_Data) -> bool,
+	tick_func:               proc(func_data: ^Game_Tick_Func_Data) -> bool,
+	draw_func:               proc(func_data: ^Game_Draw_Func_Data) -> bool,
 }
 
 Game_Init_Func_Data :: struct {
@@ -46,16 +48,35 @@ run_game :: proc(info: Game_Info) -> bool {
 	//
 	fmt.println("Initialising...")
 
-	// Set up the memory arenas.
-	perm_mem_arena: vmem.Arena
+	// Set up the main memory arena.
+	perm_mem_arena_buf := make([]byte, info.perm_mem_arena_size)
 
-	if (vmem.arena_init_growing(&perm_mem_arena) != nil) {
+	if (perm_mem_arena_buf == nil) {
+		fmt.eprintln("Failed to allocate memory for the main memory arena!")
 		return false
 	}
 
-	perm_mem_arena_allocator := vmem.arena_allocator(&perm_mem_arena)
+	defer delete(perm_mem_arena_buf)
 
-	defer vmem.arena_destroy(&perm_mem_arena)
+	perm_mem_arena: mem.Arena
+	mem.arena_init(&perm_mem_arena, perm_mem_arena_buf)
+
+	perm_mem_arena_allocator := mem.arena_allocator(&perm_mem_arena)
+
+	// Set up the temporary memory arena.
+	temp_mem_arena_buf := make([]byte, info.temp_mem_arena_size)
+
+	if (temp_mem_arena_buf == nil) {
+		fmt.eprintln("Failed to allocate memory for the temporary memory arena!")
+		return false
+	}
+
+	defer delete(temp_mem_arena_buf)
+
+	temp_mem_arena: mem.Arena
+	mem.arena_init(&temp_mem_arena, temp_mem_arena_buf)
+
+	temp_mem_arena_allocator := mem.arena_allocator(&temp_mem_arena)
 
 	//
 	if (!glfw.Init()) {
@@ -95,8 +116,11 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	pers_render_data, pers_render_data_gen_success := gen_pers_render_data(
 		perm_mem_arena_allocator,
+		temp_mem_arena_allocator,
 		info.tex_cnt,
 		info.tex_index_to_file_path,
+		info.font_cnt,
+		info.font_index_to_load_info,
 	)
 
 	if !pers_render_data_gen_success {
@@ -126,6 +150,13 @@ run_game :: proc(info: Game_Info) -> bool {
 	frame_time := glfw.GetTime()
 	frame_dur_accum := TARG_TICK_DUR_SECS // Make sure that we begin with a tick.
 
+	draw_phase_state := new(Draw_Phase_State, perm_mem_arena_allocator)
+
+	if draw_phase_state == nil {
+		fmt.eprintf("Failed to allocate memory for draw phase state data!")
+		return false
+	}
+
 	fmt.println("Entering the main loop...")
 
 	for (!glfw.WindowShouldClose(glfw_window)) {
@@ -152,8 +183,7 @@ run_game :: proc(info: Game_Info) -> bool {
 				frame_dur_accum -= TARG_TICK_DUR_SECS
 			}
 
-			draw_phase_state := begin_draw_phase(context.allocator) // TODO: Pre-allocate this.
-			defer free(draw_phase_state)
+			begin_draw_phase(draw_phase_state)
 
 			{
 				func_data := Game_Draw_Func_Data {
@@ -166,7 +196,7 @@ run_game :: proc(info: Game_Info) -> bool {
 				}
 			}
 
-			assert(draw_phase_state.batch_slots_used_cnt == 0)
+			assert(draw_phase_state.batch_slots_used_cnt == 0) // Make sure that we flushed.
 
 			glfw.SwapBuffers(glfw_window)
 		}

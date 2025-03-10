@@ -3,12 +3,21 @@ package zf4
 import rt "base:runtime"
 import "core:fmt"
 import "core:mem"
+import "core:os"
 import gl "vendor:OpenGL"
 import stbi "vendor:stb/image"
+import stbtt "vendor:stb/truetype"
 
 TEXTURE_CHANNEL_CNT :: 4
 
+FONT_TEXTURE_WIDTH :: 2048
+FONT_TEXTURE_HEIGHT_LIMIT :: 2048
+
 TEXTURED_QUAD_SHADER_PROG_VERT_CNT :: 13
+
+FONT_CHR_RANGE_BEGIN :: 32
+FONT_CHR_RANGE_END :: 95
+FONT_CHR_RANGE_LEN :: FONT_CHR_RANGE_END - FONT_CHR_RANGE_BEGIN
 
 BATCH_SLOT_CNT :: 2048
 BATCH_SLOT_VERT_CNT :: TEXTURED_QUAD_SHADER_PROG_VERT_CNT * 4
@@ -21,13 +30,55 @@ RED :: Vec_4D{1.0, 0.0, 0.0, 1.0}
 GREEN :: Vec_4D{0.0, 1.0, 0.0, 1.0}
 BLUE :: Vec_4D{0.0, 0.0, 1.0, 1.0}
 
+StrHorAlign :: enum {
+	Left,
+	Center,
+	Right,
+}
+
+StrVerAlign :: enum {
+	Top,
+	Center,
+	Bottom,
+}
+
+StrLineDrawInfo :: struct {
+	begin_chr_index:      i32,
+	width_including_offs: f32,
+}
+
+StrDrawInfo :: struct {
+	chr_draw_rects: []Rect,
+}
+
 Textures :: struct {
 	gl_ids: []u32,
 	sizes:  []Size_2D,
 	cnt:    i32,
 }
 
+Fonts :: struct {
+	arrangement_infos: []Font_Arrangement_Info,
+	tex_gl_ids:        []u32,
+	tex_heights:       []i32,
+	cnt:               i32,
+}
+
+Font_Arrangement_Info :: struct {
+	hor_offsets:  [FONT_CHR_RANGE_LEN]i32,
+	ver_offsets:  [FONT_CHR_RANGE_LEN]i32,
+	hor_advances: [FONT_CHR_RANGE_LEN]i32,
+	src_rects:    [FONT_CHR_RANGE_LEN]Rect_I,
+	line_height:  i32,
+}
+
+Font_Load_Info :: struct {
+	file_path: string,
+	height:    i32,
+}
+
 Texture_Index_To_File_Path :: proc(index: i32) -> cstring
+Font_Index_To_Load_Info :: proc(index: i32) -> Font_Load_Info
 
 Textured_Quad_Shader_Prog :: struct {
 	gl_id:                u32,
@@ -38,6 +89,7 @@ Textured_Quad_Shader_Prog :: struct {
 
 Pers_Render_Data :: struct {
 	textures:                  Textures,
+	fonts:                     Fonts,
 	textured_quad_shader_prog: Textured_Quad_Shader_Prog,
 	batch_gl_ids:              Batch_GL_IDs,
 }
@@ -55,7 +107,7 @@ Draw_Phase_State :: struct {
 	view_mat:             Matrix_4x4,
 }
 
-CreateShaderFromSrc :: proc(src: cstring, frag: bool) -> u32 {
+create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
 	shader_type: u32
 
 	if frag {
@@ -82,13 +134,13 @@ CreateShaderFromSrc :: proc(src: cstring, frag: bool) -> u32 {
 }
 
 CreateShaderProgFromSrcs :: proc(vert_shader_src, frag_shader_src: cstring) -> u32 {
-	vert_shader_gl_id := CreateShaderFromSrc(vert_shader_src, false)
+	vert_shader_gl_id := create_shader_from_src(vert_shader_src, false)
 
 	if vert_shader_gl_id == 0 {
 		return 0
 	}
 
-	frag_shader_gl_id := CreateShaderFromSrc(frag_shader_src, true)
+	frag_shader_gl_id := create_shader_from_src(frag_shader_src, true)
 
 	if frag_shader_gl_id == 0 {
 		gl.DeleteShader(vert_shader_gl_id)
@@ -225,10 +277,177 @@ init_textures :: proc(
 	return true
 }
 
+init_fonts :: proc(
+	fonts: ^Fonts,
+	allocator: mem.Allocator,
+	scratch_space_allocator: mem.Allocator,
+	font_cnt: i32,
+	font_index_to_load_info: Font_Index_To_Load_Info,
+) -> bool {
+	assert(fonts != nil)
+	assert(font_cnt > 0)
+	assert(font_index_to_load_info != nil)
+
+	fonts.cnt = font_cnt
+
+	// Reserve memory for font data.
+	fonts.arrangement_infos = make([]Font_Arrangement_Info, font_cnt, allocator)
+
+	if fonts.arrangement_infos == nil {
+		return false
+	}
+
+	fonts.tex_gl_ids = make([]u32, font_cnt, allocator)
+
+	if fonts.tex_gl_ids == nil {
+		return false
+	}
+
+	fonts.tex_heights = make([]i32, font_cnt, allocator)
+
+	if fonts.tex_heights == nil {
+		return false
+	}
+
+	px_data_scratch_space := make(
+		[]u8,
+		TEXTURE_CHANNEL_CNT * FONT_TEXTURE_WIDTH * FONT_TEXTURE_HEIGHT_LIMIT,
+		scratch_space_allocator,
+	)
+
+	for i: i32 = 0; i < font_cnt; i += 1 {
+		font_load_info := font_index_to_load_info(i)
+		assert(font_load_info.height > 0)
+
+		font_file_data, font_file_read_err := os.read_entire_file_from_filename_or_err(
+			font_load_info.file_path,
+			scratch_space_allocator,
+		)
+
+		if font_file_read_err != nil {
+			return false
+		}
+
+		font_info: stbtt.fontinfo
+		font_index := stbtt.GetFontOffsetForIndex(&font_file_data[0], 0)
+
+		if !stbtt.InitFont(&font_info, &font_file_data[0], font_index) {
+			return false
+		}
+
+		//
+		scale := stbtt.ScaleForPixelHeight(&font_info, f32(font_load_info.height))
+
+		ascent, descent, line_gap: i32
+		stbtt.GetFontVMetrics(&font_info, &ascent, &descent, &line_gap)
+
+		fonts.arrangement_infos[i].line_height = i32(f32(ascent - descent + line_gap) * scale)
+
+		char_draw_pos: Vec_2D_I
+
+		err: bool
+
+		for j := 0; j < FONT_CHR_RANGE_LEN; j += 1 {
+			chr := rune(FONT_CHR_RANGE_BEGIN + j)
+
+			advance: i32
+			stbtt.GetCodepointHMetrics(&font_info, chr, &advance, nil)
+
+			fonts.arrangement_infos[i].hor_advances[j] = i32(f32(advance) * scale)
+
+			if chr == ' ' {
+				continue
+			}
+
+			size, offs: Vec_2D_I
+
+			bitmap := stbtt.GetCodepointBitmap(
+				&font_info,
+				0,
+				scale,
+				chr,
+				&size.x,
+				&size.y,
+				&offs.x,
+				&offs.y,
+			)
+
+			if bitmap == nil {
+				err = true
+				break
+			}
+
+			defer stbtt.FreeBitmap(bitmap, nil)
+
+			if char_draw_pos.x + size.x > FONT_TEXTURE_WIDTH {
+				char_draw_pos.x = 0
+				char_draw_pos.y += fonts.arrangement_infos[i].line_height
+			}
+
+			fonts.tex_heights[i] = max(char_draw_pos.y + size.y, fonts.tex_heights[i])
+
+			if fonts.tex_heights[i] > FONT_TEXTURE_HEIGHT_LIMIT {
+				err = true
+				break
+			}
+
+			fonts.arrangement_infos[i].hor_offsets[j] = offs.x
+			fonts.arrangement_infos[i].ver_offsets[j] = offs.y + i32(f32(ascent) * scale)
+			fonts.arrangement_infos[i].src_rects[j] = {
+				char_draw_pos.x,
+				char_draw_pos.y,
+				size.x,
+				size.y,
+			}
+
+			for y: i32; y < size.y; y += 1 {
+				for x: i32; x < size.x; x += 1 {
+					px_index :=
+						(((char_draw_pos.y + y) * FONT_TEXTURE_WIDTH) + (char_draw_pos.x + x)) *
+						TEXTURE_CHANNEL_CNT
+
+					bitmap_index := (y * size.x) + x
+
+					px_data_scratch_space[px_index + 0] = 255
+					px_data_scratch_space[px_index + 1] = 255
+					px_data_scratch_space[px_index + 2] = 255
+					px_data_scratch_space[px_index + 3] = bitmap[bitmap_index]
+				}
+			}
+
+			char_draw_pos.x += size.x
+		}
+
+		if err {
+			break
+		}
+
+		gl.BindTexture(gl.TEXTURE_2D, fonts.tex_gl_ids[i])
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGBA,
+			FONT_TEXTURE_WIDTH,
+			fonts.tex_heights[i],
+			0,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			&px_data_scratch_space[0],
+		)
+	}
+
+	return true
+}
+
 gen_pers_render_data :: proc(
 	allocator: mem.Allocator,
+	scratch_allocator: mem.Allocator,
 	tex_cnt: i32,
 	tex_index_to_file_path: Texture_Index_To_File_Path,
+	font_cnt: i32,
+	font_index_to_load_info: Font_Index_To_Load_Info,
 ) -> (
 	Pers_Render_Data,
 	bool,
@@ -236,6 +455,16 @@ gen_pers_render_data :: proc(
 	render_data: Pers_Render_Data
 
 	if !init_textures(&render_data.textures, allocator, tex_cnt, tex_index_to_file_path) {
+		return {}, false
+	}
+
+	if !init_fonts(
+		&render_data.fonts,
+		allocator,
+		scratch_allocator,
+		font_cnt,
+		font_index_to_load_info,
+	) {
 		return {}, false
 	}
 
@@ -309,10 +538,9 @@ gen_batch :: proc() -> Batch_GL_IDs {
 	return gl_ids
 }
 
-begin_draw_phase :: proc(allocator: mem.Allocator) -> ^Draw_Phase_State {
-	phase_state := new(Draw_Phase_State, allocator)
+begin_draw_phase :: proc(phase_state: ^Draw_Phase_State) {
+	mem.zero(phase_state, size_of(phase_state^))
 	init_iden_matrix_4x4(&phase_state.view_mat)
-	return phase_state
 }
 
 draw_clear :: proc(col: Vec_4D) {
