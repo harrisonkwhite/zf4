@@ -67,8 +67,16 @@ Fonts :: struct {
 is_fonts_valid :: proc(fonts: ^Fonts) -> bool {
 	assert(fonts != nil)
 
-	return ((fonts.cnt == 0 && fonts.arrangement_infos == nil && fonts.tex_gl_ids == nil && fonts.tex_heights == nil)
-		|| (fonts.cnt > 0 && len(fonts.arrangement_infos) == fonts.cnt && len(fonts.tex_gl_ids) == fonts.cnt && len(fonts.tex_heights) == fonts.cnt)) \
+	return(
+		(fonts.cnt == 0 &&
+			fonts.arrangement_infos == nil &&
+			fonts.tex_gl_ids == nil &&
+			fonts.tex_heights == nil) ||
+		(fonts.cnt > 0 &&
+				len(fonts.arrangement_infos) == fonts.cnt &&
+				len(fonts.tex_gl_ids) == fonts.cnt &&
+				len(fonts.tex_heights) == fonts.cnt) \
+	)
 }
 
 Font_Arrangement_Info :: struct {
@@ -76,7 +84,7 @@ Font_Arrangement_Info :: struct {
 	chr_ver_offsets:  [FONT_CHR_RANGE_LEN]int,
 	chr_hor_advances: [FONT_CHR_RANGE_LEN]int,
 	chr_src_rects:    [FONT_CHR_RANGE_LEN]Rect_I,
-	line_height:  int,
+	line_height:      int,
 }
 
 Font_Load_Info :: struct {
@@ -122,7 +130,10 @@ gen_str_draw_info :: proc(
 	pos: Vec_2D,
 	hor_align: Str_Hor_Align,
 	ver_align: Str_Ver_Align,
-) -> (Str_Draw_Info, bool) {
+) -> (
+	Str_Draw_Info,
+	bool,
+) {
 	assert(is_fonts_valid(fonts))
 	assert(font_index >= 0 && font_index < fonts.cnt)
 
@@ -136,7 +147,7 @@ gen_str_draw_info :: proc(
 	if draw_info.chr_draw_rects == nil {
 		return draw_info, false
 	}
-	
+
 	draw_info.line_draw_infos = make([]Str_Line_Draw_Info, str_len + 1, allocator) // Maximised for the case where all characters are newlines.	
 
 	if draw_info.line_draw_infos == nil {
@@ -149,15 +160,17 @@ gen_str_draw_info :: proc(
 	//
 	// First Phase: Determining the bases of character draw rectangles and also line information.
 	//
-	for i in 0..<str_len {
+	for i in 0 ..< str_len {
 		chr := str[i]
 
 		if chr != '\n' {
 			chr_index := int(chr) - FONT_CHR_RANGE_BEGIN
 
 			chr_draw_pos := Vec_2D_I {
-				chr_draw_pos_pen.x + fonts.arrangement_infos[font_index].chr_hor_offsets[chr_index],
-				chr_draw_pos_pen.y + fonts.arrangement_infos[font_index].chr_ver_offsets[chr_index]
+				chr_draw_pos_pen.x +
+				fonts.arrangement_infos[font_index].chr_hor_offsets[chr_index],
+				chr_draw_pos_pen.y +
+				fonts.arrangement_infos[font_index].chr_ver_offsets[chr_index],
 			}
 
 			draw_info.chr_draw_rects[i] = {
@@ -184,7 +197,7 @@ gen_str_draw_info :: proc(
 	height_including_offs := chr_draw_pos_pen.y + fonts.arrangement_infos[font_index].line_height
 	ver_align_offs := -(f32(height_including_offs) * f32(ver_align) * 0.5)
 
-	for i in 0..<len(draw_info.line_draw_infos) {
+	for i in 0 ..< len(draw_info.line_draw_infos) {
 		line_end_chr_index: int
 
 		if i < len(draw_info.line_draw_infos) - 1 {
@@ -193,7 +206,9 @@ gen_str_draw_info :: proc(
 			line_end_chr_index = len(draw_info.chr_draw_rects)
 		}
 
-		hor_align_offs := -(f32(draw_info.line_draw_infos[i].width_including_offs) * f32(hor_align) * 0.5)
+		hor_align_offs := -(f32(draw_info.line_draw_infos[i].width_including_offs) *
+			f32(hor_align) *
+			0.5)
 
 		for j := draw_info.line_draw_infos[i].begin_chr_index; j < line_end_chr_index; j += 1 {
 			translate_rect(&draw_info.chr_draw_rects[j], {hor_align_offs, ver_align_offs})
@@ -336,7 +351,7 @@ load_textures :: proc(
 
 	gl.GenTextures(i32(tex_cnt), &gl_ids[0])
 
-	for i in 0..<tex_cnt {
+	for i in 0 ..< tex_cnt {
 		fp := tex_index_to_file_path(i)
 		assert(fp != nil)
 
@@ -419,7 +434,7 @@ load_fonts :: proc(
 	)
 
 	// Load each font.
-	for i in 0..<font_cnt {
+	for i in 0 ..< font_cnt {
 		font_load_info := font_index_to_load_info(i)
 		assert(font_load_info.height > 0)
 
@@ -448,8 +463,8 @@ load_fonts :: proc(
 
 		char_draw_pos: Vec_2D_I
 
-		for y in 0..<FONT_TEXTURE_HEIGHT_LIMIT {
-			for x in 0..<FONT_TEXTURE_WIDTH {
+		for y in 0 ..< FONT_TEXTURE_HEIGHT_LIMIT {
+			for x in 0 ..< FONT_TEXTURE_WIDTH {
 				px_index := ((y * FONT_TEXTURE_WIDTH) + x) * TEXTURE_CHANNEL_CNT
 
 				// Initialise to transparent white.
@@ -459,7 +474,7 @@ load_fonts :: proc(
 				px_data_scratch_space[px_index + 3] = 0
 			}
 		}
-		
+
 		err: bool
 
 		for j := 0; j < FONT_CHR_RANGE_LEN; j += 1 {
@@ -493,7 +508,10 @@ load_fonts :: proc(
 				break
 			}
 
-			bitmap := mem.slice_ptr(bitmap_raw, int(bitmap_width * bitmap_height * TEXTURE_CHANNEL_CNT))
+			bitmap := mem.slice_ptr(
+				bitmap_raw,
+				int(bitmap_width * bitmap_height * TEXTURE_CHANNEL_CNT),
+			)
 
 			defer stbtt.FreeBitmap(bitmap_raw, nil)
 
@@ -511,17 +529,17 @@ load_fonts :: proc(
 
 			arrangement_infos[i].chr_hor_offsets[j] = int(bitmap_offs_x)
 			arrangement_infos[i].chr_ver_offsets[j] = int(bitmap_offs_y) + int(f32(ascent) * scale)
-			
+
 			arrangement_infos[i].chr_src_rects[j] = {
 				char_draw_pos.x,
 				char_draw_pos.y,
 				int(bitmap_width),
-				int(bitmap_height)
+				int(bitmap_height),
 			}
 
-			for y in 0..<int(bitmap_height) {
-				for x in 0..<int(bitmap_width) {
-					px_pos := Vec_2D_I {char_draw_pos.x + x, char_draw_pos.y + y}
+			for y in 0 ..< int(bitmap_height) {
+				for x in 0 ..< int(bitmap_width) {
+					px_pos := Vec_2D_I{char_draw_pos.x + x, char_draw_pos.y + y}
 					px_index := ((px_pos.y * FONT_TEXTURE_WIDTH) + px_pos.x) * TEXTURE_CHANNEL_CNT
 
 					bitmap_index := (y * int(bitmap_width)) + x
@@ -688,6 +706,7 @@ draw :: proc(
 	size: Vec_2D,
 	draw_phase_state: ^Draw_Phase_State,
 	pers_render_data: ^Pers_Render_Data,
+	window_size: Vec_2D_I,
 	origin := Vec_2D{0.5, 0.5},
 	rot: f32 = 0.0,
 	blend := WHITE,
@@ -696,7 +715,7 @@ draw :: proc(
 		draw_phase_state.batch_tex_gl_id = tex_gl_id
 	} else if draw_phase_state.batch_slots_used_cnt == BATCH_SLOT_CNT ||
 	   tex_gl_id != draw_phase_state.batch_tex_gl_id {
-		flush(draw_phase_state, pers_render_data)
+		flush(draw_phase_state, pers_render_data, window_size)
 		draw(
 			tex_gl_id,
 			tex_coords,
@@ -704,6 +723,7 @@ draw :: proc(
 			size,
 			draw_phase_state,
 			pers_render_data,
+			window_size,
 			origin,
 			rot,
 			blend,
@@ -780,6 +800,7 @@ draw_texture :: proc(
 	pos: Vec_2D,
 	draw_phase_state: ^Draw_Phase_State,
 	pers_render_data: ^Pers_Render_Data,
+	window_size: Vec_2D_I,
 	origin := Vec_2D{0.5, 0.5},
 	scale := Vec_2D{1.0, 1.0},
 	rot: f32 = 0.0,
@@ -796,40 +817,82 @@ draw_texture :: proc(
 		{f32(src_rect.width) * scale.x, f32(src_rect.height) * scale.y},
 		draw_phase_state,
 		pers_render_data,
+		window_size,
 		origin,
 		rot,
 		blend,
 	)
 }
 
-draw_str :: proc(str: string, font_index: int, pos: Vec_2D, draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Render_Data, scratch_space_allocator: mem.Allocator, hor_align := Str_Hor_Align.Center, ver_align := Str_Ver_Align.Center, blend := WHITE) -> bool {
-	draw_info, draw_info_gen_success := gen_str_draw_info(str, scratch_space_allocator, font_index, &pers_render_data.fonts, pos, hor_align, ver_align)
+draw_str :: proc(
+	str: string,
+	font_index: int,
+	pos: Vec_2D,
+	draw_phase_state: ^Draw_Phase_State,
+	pers_render_data: ^Pers_Render_Data,
+	window_size: Vec_2D_I,
+	scratch_space_allocator: mem.Allocator,
+	hor_align := Str_Hor_Align.Center,
+	ver_align := Str_Ver_Align.Center,
+	blend := WHITE,
+) -> bool {
+	draw_info, draw_info_gen_success := gen_str_draw_info(
+		str,
+		scratch_space_allocator,
+		font_index,
+		&pers_render_data.fonts,
+		pos,
+		hor_align,
+		ver_align,
+	)
 
 	if !draw_info_gen_success {
 		return false
 	}
 
 	font_tex_gl_id := pers_render_data.fonts.tex_gl_ids[font_index]
-	font_tex_size := Vec_2D_I {FONT_TEXTURE_WIDTH, pers_render_data.fonts.tex_heights[font_index]}
+	font_tex_size := Vec_2D_I{FONT_TEXTURE_WIDTH, pers_render_data.fonts.tex_heights[font_index]}
 
-	for i in 0..<len(draw_info.chr_draw_rects) {
+	for i in 0 ..< len(draw_info.chr_draw_rects) {
 		if str[i] == ' ' {
 			continue
 		}
 
 		chr_index := str[i] - FONT_CHR_RANGE_BEGIN
 
-		chr_tex_coords := calc_texture_coords(pers_render_data.fonts.arrangement_infos[font_index].chr_src_rects[chr_index], font_tex_size)
+		chr_tex_coords := calc_texture_coords(
+			pers_render_data.fonts.arrangement_infos[font_index].chr_src_rects[chr_index],
+			font_tex_size,
+		)
 		chr_pos := calc_rect_pos(draw_info.chr_draw_rects[i])
 		chr_size := calc_rect_size(draw_info.chr_draw_rects[i])
 
-		draw(pers_render_data.fonts.tex_gl_ids[font_index], chr_tex_coords, chr_pos, chr_size, draw_phase_state, pers_render_data, {}, 0.0, blend)
+		draw(
+			pers_render_data.fonts.tex_gl_ids[font_index],
+			chr_tex_coords,
+			chr_pos,
+			chr_size,
+			draw_phase_state,
+			pers_render_data,
+			window_size,
+			{},
+			0.0,
+			blend,
+		)
 	}
 
 	return true
 }
 
-flush :: proc(draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Render_Data) {
+flush :: proc(
+	draw_phase_state: ^Draw_Phase_State,
+	pers_render_data: ^Pers_Render_Data,
+	window_size: Vec_2D_I,
+) {
+	assert(draw_phase_state != nil)
+	assert(pers_render_data != nil)
+	assert(is_size_i(window_size))
+
 	if draw_phase_state.batch_slots_used_cnt == 0 {
 		return
 	}
@@ -847,10 +910,15 @@ flush :: proc(draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Rende
 	gl.UseProgram(prog.gl_id)
 
 	proj_mat: Matrix_4x4
-	init_ortho_matrix_4x4(&proj_mat, 0.0, 1280.0, 720.0, 0.0, -1.0, 1.0)
+	init_ortho_matrix_4x4(&proj_mat, 0.0, f32(window_size.x), f32(window_size.y), 0.0, -1.0, 1.0)
 
 	gl.UniformMatrix4fv(i32(prog.proj_uniform_loc), 1, false, &proj_mat.elems[0][0])
-	gl.UniformMatrix4fv(i32(prog.view_uniform_loc), 1, false, &draw_phase_state.view_mat.elems[0][0])
+	gl.UniformMatrix4fv(
+		i32(prog.view_uniform_loc),
+		1,
+		false,
+		&draw_phase_state.view_mat.elems[0][0],
+	)
 
 	gl.BindTexture(gl.TEXTURE_2D, draw_phase_state.batch_tex_gl_id)
 

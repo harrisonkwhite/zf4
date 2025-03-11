@@ -31,18 +31,25 @@ Game_Info :: struct {
 Game_Init_Func_Data :: struct {
 	input_state:              ^Input_State,
 	temp_mem_arena_allocator: mem.Allocator,
+	window_state_cache:       Window_State,
 }
 
 Game_Tick_Func_Data :: struct {
 	input_state:              ^Input_State,
 	input_state_last:         ^Input_State,
 	temp_mem_arena_allocator: mem.Allocator,
+	window_state_cache:       Window_State,
 }
 
 Game_Draw_Func_Data :: struct {
 	draw_phase_state:         ^Draw_Phase_State,
 	pers_render_data:         ^Pers_Render_Data,
 	temp_mem_arena_allocator: mem.Allocator,
+	window_state_cache:       Window_State,
+}
+
+Window_State :: struct {
+	size: Vec_2D_I,
 }
 
 run_game :: proc(info: Game_Info) -> bool {
@@ -139,6 +146,7 @@ run_game :: proc(info: Game_Info) -> bool {
 		func_data := Game_Init_Func_Data {
 			input_state              = &input_state,
 			temp_mem_arena_allocator = temp_mem_arena_allocator,
+			window_state_cache       = load_window_state(glfw_window),
 		}
 
 		if (!info.init_func(&func_data)) {
@@ -164,6 +172,8 @@ run_game :: proc(info: Game_Info) -> bool {
 	fmt.println("Entering the main loop...")
 
 	for (!glfw.WindowShouldClose(glfw_window)) {
+		window_state_cache := load_window_state(glfw_window)
+
 		input_state_last := input_state
 		input_state = load_input_state(glfw_window)
 
@@ -181,6 +191,7 @@ run_game :: proc(info: Game_Info) -> bool {
 					input_state              = &input_state,
 					input_state_last         = &input_state_last,
 					temp_mem_arena_allocator = temp_mem_arena_allocator,
+					window_state_cache       = window_state_cache,
 				}
 
 				if !info.tick_func(&func_data) {
@@ -199,6 +210,7 @@ run_game :: proc(info: Game_Info) -> bool {
 					draw_phase_state         = draw_phase_state,
 					pers_render_data         = &pers_render_data,
 					temp_mem_arena_allocator = temp_mem_arena_allocator,
+					window_state_cache       = window_state_cache,
 				}
 
 				if !info.draw_func(&func_data) {
@@ -212,8 +224,26 @@ run_game :: proc(info: Game_Info) -> bool {
 		}
 
 		glfw.PollEvents()
+
+		window_state_after_poll_events := load_window_state(glfw_window)
+
+		if window_state_after_poll_events != {} &&
+		   window_state_after_poll_events.size != window_state_cache.size {
+			gl.Viewport(
+				0,
+				0,
+				i32(window_state_after_poll_events.size.x),
+				i32(window_state_after_poll_events.size.y),
+			)
+		}
 	}
 
 	return true
+}
+
+load_window_state :: proc(glfw_window: glfw.WindowHandle) -> Window_State {
+	assert(glfw_window != nil)
+	width, height := glfw.GetWindowSize(glfw_window)
+	return {size = {int(width), int(height)}}
 }
 
