@@ -1,12 +1,13 @@
 package zf4
 
-import rt "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:os"
 import gl "vendor:OpenGL"
 import stbi "vendor:stb/image"
 import stbtt "vendor:stb/truetype"
+
+// IDEA: Have the developer initialise textures and fonts themselves, so they have complete flexibility over it. They might want multiple texture structs for different texture groups, for example.
 
 TEXTURE_CHANNEL_CNT :: 4
 
@@ -36,6 +37,7 @@ Rendering_Context :: struct {
 Pers_Render_Data :: struct {
 	batch_shader_prog: Batch_Shader_Prog,
 	batch_gl_ids:      Batch_GL_IDs,
+	px_tex_gl_id:      u32,
 }
 
 Rendering_State :: struct {
@@ -109,17 +111,32 @@ Str_Line_Render_Info :: struct {
 }
 
 gen_pers_render_data :: proc() -> Pers_Render_Data {
-	return {load_batch_shader_prog(), gen_batch()}
+	render_data: Pers_Render_Data
+
+	{
+		gl.GenTextures(1, &render_data.px_tex_gl_id)
+		gl.BindTexture(gl.TEXTURE_2D, render_data.px_tex_gl_id)
+		px_data := [TEXTURE_CHANNEL_CNT]u8{255, 255, 255, 255}
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, &px_data)
+	}
+
+	render_data.batch_shader_prog = load_batch_shader_prog()
+
+	render_data.batch_gl_ids = gen_batch()
+
+	return render_data
 }
 
 clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
+	gl.DeleteTextures(1, &render_data.px_tex_gl_id)
+
 	gl.DeleteVertexArrays(1, &render_data.batch_gl_ids.vert_array_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.vert_buf_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.elem_buf_gl_id)
 
 	gl.DeleteProgram(render_data.batch_shader_prog.gl_id)
 
-	rt.mem_zero(render_data, size_of(render_data^))
+	mem.zero_item(render_data)
 }
 
 create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
@@ -397,6 +414,13 @@ load_fonts :: proc(
 		scratch_allocator,
 	)
 
+	if px_data_scratch_space == nil {
+		return fonts, false
+	}
+
+	// Generate font textures upfront.
+	gl.GenTextures(i32(len(fonts.tex_gl_ids)), &fonts.tex_gl_ids[0])
+
 	// Load each font.
 	for i in 0 ..< font_cnt {
 		font_load_info := font_index_to_load_info(i)
@@ -565,6 +589,8 @@ render :: proc(
 	rot: f32 = 0.0,
 	blend := WHITE,
 ) {
+	assert(is_color_valid_4d(blend))
+
 	if rendering_context.state.batch_slots_used_cnt == 0 {
 		rendering_context.state.batch_tex_gl_id = tex_gl_id
 	} else if rendering_context.state.batch_slots_used_cnt == BATCH_SLOT_CNT ||
@@ -649,6 +675,7 @@ render_texture :: proc(
 	blend := WHITE,
 ) {
 	assert(tex_index >= 0 && tex_index < get_texture_cnt(textures))
+	assert(is_color_valid_4d(blend))
 
 	tex_size := textures.sizes[tex_index]
 	tex_coords := calc_texture_coords(src_rect, tex_size)
@@ -675,6 +702,8 @@ render_str :: proc(
 	ver_align := Str_Ver_Align.Center,
 	blend := WHITE,
 ) -> bool {
+	assert(is_color_valid_4d(blend))
+
 	render_info, render_info_generated := gen_str_render_info(
 		str,
 		scratch_allocator,
@@ -719,6 +748,63 @@ render_str :: proc(
 	}
 
 	return true
+}
+
+render_rect :: proc(rendering_context: ^Rendering_Context, rect: Rect, blend := WHITE) {
+	assert(is_color_valid_4d(blend))
+
+	render(
+		rendering_context,
+		rendering_context.pers.px_tex_gl_id,
+		{0.0, 0.0, 1.0, 1.0},
+		calc_rect_pos(rect),
+		calc_rect_size(rect),
+		{},
+		0.0,
+		blend,
+	)
+}
+
+render_line :: proc(
+	rendering_context: ^Rendering_Context,
+	a: Vec_2D,
+	b: Vec_2D,
+	blend := WHITE,
+	width: f32 = 1.0,
+) {
+	assert(is_color_valid_4d(blend))
+	assert(width > 0.0)
+
+	len := calc_dist(a, b)
+
+	render(
+		rendering_context,
+		rendering_context.pers.px_tex_gl_id,
+		{0.0, 0.0, 1.0, 1.0},
+		a,
+		{len, width},
+		{0.0, 0.5},
+		0.0,
+		blend,
+	)
+}
+
+render_bar_hor :: proc(
+	rendering_context: ^Rendering_Context,
+	rect: Rect,
+	perc: f32,
+	col_front: Vec_3D,
+	col_back: Vec_3D,
+) {
+	assert(perc >= 0.0 && perc <= 1.0)
+	assert(is_color_valid_3d(col_front))
+	assert(is_color_valid_3d(col_back))
+
+	left_rect := Rect{rect.x, rect.y, rect.width * perc, rect.height}
+	render_rect(rendering_context, left_rect, {col_front.r, col_front.g, col_front.b, 1.0})
+
+	right_rect := Rect{rect.x + left_rect.width, rect.y, rect.width - left_rect.width, rect.height}
+	render_rect(rendering_context, right_rect, {col_back.r, col_back.g, col_back.b, 1.0})
 }
 
 flush :: proc(rendering_context: ^Rendering_Context) {
@@ -891,4 +977,19 @@ gen_str_render_info :: proc(
 	}
 
 	return render_info, true
+}
+
+is_color_valid_3d :: proc(col: Vec_3D) -> bool {
+	return(
+		col.r >= 0.0 &&
+		col.r <= 1.0 &&
+		col.g >= 0.0 &&
+		col.g <= 1.0 &&
+		col.b >= 0.0 &&
+		col.b <= 1.0 \
+	)
+}
+
+is_color_valid_4d :: proc(col: Vec_4D) -> bool {
+	return is_color_valid_3d(col.rgb) && col.a >= 0.0 && col.a <= 1.0
 }
