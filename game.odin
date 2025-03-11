@@ -17,11 +17,11 @@ TARG_TICK_DUR_SECS :: 1.0 / TARG_TICKS_PER_SEC
 Game_Info :: struct {
 	perm_mem_arena_size:     u32, // NOTE: If either arena is given too small a size, the game will fail to initialise.
 	temp_mem_arena_size:     u32,
-	window_init_size:        Size_2D,
+	window_init_size:        Vec_2D_I,
 	window_title:            cstring,
-	tex_cnt:                 i32,
+	tex_cnt:                 int,
 	tex_index_to_file_path:  Texture_Index_To_File_Path,
-	font_cnt:                i32,
+	font_cnt:                int,
 	font_index_to_load_info: Font_Index_To_Load_Info,
 	init_func:               proc(func_data: ^Game_Init_Func_Data) -> bool,
 	tick_func:               proc(func_data: ^Game_Tick_Func_Data) -> bool,
@@ -29,17 +29,20 @@ Game_Info :: struct {
 }
 
 Game_Init_Func_Data :: struct {
-	input_state: ^Input_State,
+	input_state:              ^Input_State,
+	temp_mem_arena_allocator: mem.Allocator,
 }
 
 Game_Tick_Func_Data :: struct {
-	input_state:      ^Input_State,
-	input_state_last: ^Input_State,
+	input_state:              ^Input_State,
+	input_state_last:         ^Input_State,
+	temp_mem_arena_allocator: mem.Allocator,
 }
 
 Game_Draw_Func_Data :: struct {
-	draw_phase_state: ^Draw_Phase_State,
-	pers_render_data: ^Pers_Render_Data,
+	draw_phase_state:         ^Draw_Phase_State,
+	pers_render_data:         ^Pers_Render_Data,
+	temp_mem_arena_allocator: mem.Allocator,
 }
 
 run_game :: proc(info: Game_Info) -> bool {
@@ -134,7 +137,8 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	{
 		func_data := Game_Init_Func_Data {
-			input_state = &input_state,
+			input_state              = &input_state,
+			temp_mem_arena_allocator = temp_mem_arena_allocator,
 		}
 
 		if (!info.init_func(&func_data)) {
@@ -171,9 +175,12 @@ run_game :: proc(info: Game_Info) -> bool {
 
 		if frame_dur_accum >= TARG_TICK_DUR_SECS {
 			for frame_dur_accum >= TARG_TICK_DUR_SECS {
+				mem.arena_free_all(&temp_mem_arena)
+
 				func_data := Game_Tick_Func_Data {
-					input_state      = &input_state,
-					input_state_last = &input_state_last,
+					input_state              = &input_state,
+					input_state_last         = &input_state_last,
+					temp_mem_arena_allocator = temp_mem_arena_allocator,
 				}
 
 				if !info.tick_func(&func_data) {
@@ -183,12 +190,15 @@ run_game :: proc(info: Game_Info) -> bool {
 				frame_dur_accum -= TARG_TICK_DUR_SECS
 			}
 
+			mem.arena_free_all(&temp_mem_arena)
+
 			begin_draw_phase(draw_phase_state)
 
 			{
 				func_data := Game_Draw_Func_Data {
-					draw_phase_state = draw_phase_state,
-					pers_render_data = &pers_render_data,
+					draw_phase_state         = draw_phase_state,
+					pers_render_data         = &pers_render_data,
+					temp_mem_arena_allocator = temp_mem_arena_allocator,
 				}
 
 				if !info.draw_func(&func_data) {

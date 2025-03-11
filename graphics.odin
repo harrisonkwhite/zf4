@@ -16,8 +16,7 @@ FONT_TEXTURE_HEIGHT_LIMIT :: 2048
 TEXTURED_QUAD_SHADER_PROG_VERT_CNT :: 13
 
 FONT_CHR_RANGE_BEGIN :: 32
-FONT_CHR_RANGE_END :: 95
-FONT_CHR_RANGE_LEN :: FONT_CHR_RANGE_END - FONT_CHR_RANGE_BEGIN
+FONT_CHR_RANGE_LEN :: 95
 
 BATCH_SLOT_CNT :: 2048
 BATCH_SLOT_VERT_CNT :: TEXTURED_QUAD_SHADER_PROG_VERT_CNT * 4
@@ -30,61 +29,69 @@ RED :: Vec_4D{1.0, 0.0, 0.0, 1.0}
 GREEN :: Vec_4D{0.0, 1.0, 0.0, 1.0}
 BLUE :: Vec_4D{0.0, 0.0, 1.0, 1.0}
 
-StrHorAlign :: enum {
+Str_Hor_Align :: enum {
 	Left,
 	Center,
 	Right,
 }
 
-StrVerAlign :: enum {
+Str_Ver_Align :: enum {
 	Top,
 	Center,
 	Bottom,
 }
 
-StrLineDrawInfo :: struct {
-	begin_chr_index:      i32,
-	width_including_offs: f32,
+Str_Draw_Info :: struct {
+	chr_draw_rects:  []Rect,
+	line_draw_infos: []Str_Line_Draw_Info,
 }
 
-StrDrawInfo :: struct {
-	chr_draw_rects: []Rect,
+Str_Line_Draw_Info :: struct {
+	begin_chr_index:      int,
+	width_including_offs: int,
 }
 
 Textures :: struct {
 	gl_ids: []u32,
-	sizes:  []Size_2D,
-	cnt:    i32,
+	sizes:  []Vec_2D_I,
+	cnt:    int,
 }
 
 Fonts :: struct {
 	arrangement_infos: []Font_Arrangement_Info,
 	tex_gl_ids:        []u32,
-	tex_heights:       []i32,
-	cnt:               i32,
+	tex_heights:       []int,
+	cnt:               int,
+}
+
+is_fonts_valid :: proc(fonts: ^Fonts) -> bool {
+	assert(fonts != nil)
+
+	return ((fonts.cnt == 0 && fonts.arrangement_infos == nil && fonts.tex_gl_ids == nil && fonts.tex_heights == nil)
+		|| (fonts.cnt > 0 && len(fonts.arrangement_infos) == fonts.cnt && len(fonts.tex_gl_ids) == fonts.cnt && len(fonts.tex_heights) == fonts.cnt))
 }
 
 Font_Arrangement_Info :: struct {
-	hor_offsets:  [FONT_CHR_RANGE_LEN]i32,
-	ver_offsets:  [FONT_CHR_RANGE_LEN]i32,
-	hor_advances: [FONT_CHR_RANGE_LEN]i32,
-	src_rects:    [FONT_CHR_RANGE_LEN]Rect_I,
-	line_height:  i32,
+	chr_hor_offsets:  [FONT_CHR_RANGE_LEN]int,
+	chr_ver_offsets:  [FONT_CHR_RANGE_LEN]int,
+	chr_hor_advances: [FONT_CHR_RANGE_LEN]int,
+	chr_src_rects:    [FONT_CHR_RANGE_LEN]Rect_I,
+	line_height:  int,
 }
 
 Font_Load_Info :: struct {
 	file_path: string,
-	height:    i32,
+	height:    int,
 }
 
-Texture_Index_To_File_Path :: proc(index: i32) -> cstring
-Font_Index_To_Load_Info :: proc(index: i32) -> Font_Load_Info
+Texture_Index_To_File_Path :: proc(index: int) -> cstring
+Font_Index_To_Load_Info :: proc(index: int) -> Font_Load_Info
 
 Textured_Quad_Shader_Prog :: struct {
 	gl_id:                u32,
-	proj_uniform_loc:     i32,
-	view_uniform_loc:     i32,
-	textures_uniform_loc: i32,
+	proj_uniform_loc:     int,
+	view_uniform_loc:     int,
+	textures_uniform_loc: int,
 }
 
 Pers_Render_Data :: struct {
@@ -101,10 +108,99 @@ Batch_GL_IDs :: struct {
 }
 
 Draw_Phase_State :: struct {
-	batch_slots_used_cnt: i32,
+	batch_slots_used_cnt: int,
 	batch_slot_verts:     [BATCH_SLOT_CNT][BATCH_SLOT_VERT_CNT]f32,
 	batch_tex_gl_id:      u32,
 	view_mat:             Matrix_4x4,
+}
+
+gen_str_draw_info :: proc(
+	str: string,
+	allocator: mem.Allocator,
+	font_index: int,
+	fonts: ^Fonts,
+	pos: Vec_2D,
+	hor_align: Str_Hor_Align,
+	ver_align: Str_Ver_Align,
+) -> (Str_Draw_Info, bool) {
+	assert(is_fonts_valid(fonts))
+	assert(font_index >= 0 && font_index < fonts.cnt)
+
+	str_len := len(str)
+	assert(str_len > 0)
+
+	draw_info: Str_Draw_Info
+
+	draw_info.chr_draw_rects = make([]Rect, str_len, allocator)
+
+	if draw_info.chr_draw_rects == nil {
+		return draw_info, false
+	}
+	
+	draw_info.line_draw_infos = make([]Str_Line_Draw_Info, str_len + 1, allocator) // Maximised for the case where all characters are newlines.	
+
+	if draw_info.line_draw_infos == nil {
+		return draw_info, false
+	}
+
+	chr_draw_pos_pen: Vec_2D_I = {}
+	line_index := 0
+
+	//
+	// First Phase: Determining the bases of character draw rectangles and also line information.
+	//
+	for i in 0..<str_len {
+		chr := str[i]
+
+		if chr != '\n' {
+			chr_index := int(chr) - FONT_CHR_RANGE_BEGIN
+
+			chr_draw_pos := Vec_2D_I {
+				chr_draw_pos_pen.x + fonts.arrangement_infos[font_index].chr_hor_offsets[chr_index],
+				chr_draw_pos_pen.y + fonts.arrangement_infos[font_index].chr_ver_offsets[chr_index]
+			}
+
+			draw_info.chr_draw_rects[i] = {
+				f32(chr_draw_pos.x),
+				f32(chr_draw_pos.y),
+				f32(fonts.arrangement_infos[font_index].chr_src_rects[chr_index].width),
+				f32(fonts.arrangement_infos[font_index].chr_src_rects[chr_index].height),
+			}
+
+			chr_draw_pos_pen.x += fonts.arrangement_infos[font_index].chr_hor_advances[chr_index]
+		} else {
+			draw_info.line_draw_infos[line_index].width_including_offs = chr_draw_pos_pen.x
+			line_index += 1
+			draw_info.line_draw_infos[line_index].begin_chr_index = i
+
+			chr_draw_pos_pen.x = 0
+			chr_draw_pos_pen.y += fonts.arrangement_infos[font_index].line_height
+		}
+	}
+
+	//
+	// Second Phase: Applying position and alignment offsets.
+	//
+	height_including_offs := chr_draw_pos_pen.y + fonts.arrangement_infos[font_index].line_height
+	ver_align_offs := -(f32(height_including_offs) * f32(ver_align) * 0.5)
+
+	for i in 0..<len(draw_info.line_draw_infos) {
+		line_end_chr_index: int
+
+		if i < len(draw_info.line_draw_infos) - 1 {
+			line_end_chr_index = draw_info.line_draw_infos[i + 1].begin_chr_index
+		} else {
+			line_end_chr_index = len(draw_info.chr_draw_rects)
+		}
+
+		hor_align_offs := -(f32(draw_info.line_draw_infos[i].width_including_offs) * f32(hor_align) * 0.5)
+
+		for j := draw_info.line_draw_infos[i].begin_chr_index; j < line_end_chr_index; j += 1 {
+			translate_rect(&draw_info.chr_draw_rects[j], {hor_align_offs, ver_align_offs})
+		}
+	}
+
+	return draw_info, true
 }
 
 create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
@@ -133,7 +229,7 @@ create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
 	return gl_id
 }
 
-CreateShaderProgFromSrcs :: proc(vert_shader_src, frag_shader_src: cstring) -> u32 {
+create_shader_prog_from_srcs :: proc(vert_shader_src, frag_shader_src: cstring) -> u32 {
 	vert_shader_gl_id := create_shader_from_src(vert_shader_src, false)
 
 	if vert_shader_gl_id == 0 {
@@ -158,7 +254,7 @@ CreateShaderProgFromSrcs :: proc(vert_shader_src, frag_shader_src: cstring) -> u
 	return prog_gl_id
 }
 
-LoadTexturedQuadShaderProg :: proc() -> Textured_Quad_Shader_Prog {
+load_textured_quad_shader_prog :: proc() -> Textured_Quad_Shader_Prog {
 	vert_shader_src: cstring = `#version 430 core
 layout (location = 0) in vec2 a_vert;
 layout (location = 1) in vec2 a_pos;
@@ -205,43 +301,42 @@ void main() {
 
 
 	prog: Textured_Quad_Shader_Prog
-	prog.gl_id = CreateShaderProgFromSrcs(vert_shader_src, frag_shader_src)
+	prog.gl_id = create_shader_prog_from_srcs(vert_shader_src, frag_shader_src)
 	assert(prog.gl_id != 0)
 
-	prog.proj_uniform_loc = gl.GetUniformLocation(prog.gl_id, "u_proj")
-	prog.view_uniform_loc = gl.GetUniformLocation(prog.gl_id, "u_view")
-	prog.textures_uniform_loc = gl.GetUniformLocation(prog.gl_id, "u_textures")
+	prog.proj_uniform_loc = int(gl.GetUniformLocation(prog.gl_id, "u_proj"))
+	prog.view_uniform_loc = int(gl.GetUniformLocation(prog.gl_id, "u_view"))
+	prog.textures_uniform_loc = int(gl.GetUniformLocation(prog.gl_id, "u_textures"))
 
 	return prog
 }
 
-init_textures :: proc(
-	textures: ^Textures,
+load_textures :: proc(
 	allocator: mem.Allocator,
-	tex_cnt: i32,
+	tex_cnt: int,
 	tex_index_to_file_path: Texture_Index_To_File_Path,
-) -> bool {
-	assert(textures != nil)
+) -> (
+	Textures,
+	bool,
+) {
 	assert(tex_cnt > 0)
 	assert(tex_index_to_file_path != nil)
 
-	textures.cnt = tex_cnt
+	gl_ids := make([]u32, tex_cnt, allocator)
 
-	textures.gl_ids = make([]u32, tex_cnt, allocator)
-
-	if textures.gl_ids == nil {
-		return false
+	if gl_ids == nil {
+		return {}, false
 	}
 
-	textures.sizes = make([]Size_2D, tex_cnt, allocator)
+	sizes := make([]Vec_2D_I, tex_cnt, allocator)
 
-	if textures.sizes == nil {
-		return false
+	if sizes == nil {
+		return {}, false
 	}
 
-	gl.GenTextures(tex_cnt, &textures.gl_ids[0])
+	gl.GenTextures(i32(tex_cnt), &gl_ids[0])
 
-	for i: i32 = 0; i < tex_cnt; i += 1 {
+	for i in 0..<tex_cnt {
 		fp := tex_index_to_file_path(i)
 		assert(fp != nil)
 
@@ -250,13 +345,15 @@ init_textures :: proc(
 
 		if px_data == nil {
 			fmt.printf("Failed to load texture with file path \"%s\"!\n", fp)
-			gl.DeleteTextures(tex_cnt, &textures.gl_ids[0])
-			return false
+			gl.DeleteTextures(i32(tex_cnt), &gl_ids[0])
+			return {}, false
 		}
 
-		textures.sizes[i] = {u32(width), u32(height)}
+		defer stbi.image_free(px_data)
 
-		gl.BindTexture(gl.TEXTURE_2D, textures.gl_ids[i])
+		sizes[i] = {int(width), int(height)}
+
+		gl.BindTexture(gl.TEXTURE_2D, gl_ids[i])
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexImage2D(
@@ -270,52 +367,59 @@ init_textures :: proc(
 			gl.UNSIGNED_BYTE,
 			px_data,
 		)
-
-		stbi.image_free(px_data)
 	}
 
-	return true
+	return {gl_ids = gl_ids, sizes = sizes, cnt = tex_cnt}, true
 }
 
-init_fonts :: proc(
-	fonts: ^Fonts,
+unload_textures :: proc(textures: ^Textures) {
+	if textures.cnt > 0 {
+		gl.DeleteTextures(i32(textures.cnt), &textures.gl_ids[0])
+	}
+
+	mem.zero(textures, size_of(textures^))
+}
+
+load_fonts :: proc(
 	allocator: mem.Allocator,
 	scratch_space_allocator: mem.Allocator,
-	font_cnt: i32,
+	font_cnt: int,
 	font_index_to_load_info: Font_Index_To_Load_Info,
-) -> bool {
-	assert(fonts != nil)
+) -> (
+	Fonts,
+	bool,
+) {
 	assert(font_cnt > 0)
 	assert(font_index_to_load_info != nil)
 
-	fonts.cnt = font_cnt
-
 	// Reserve memory for font data.
-	fonts.arrangement_infos = make([]Font_Arrangement_Info, font_cnt, allocator)
+	arrangement_infos := make([]Font_Arrangement_Info, font_cnt, allocator)
 
-	if fonts.arrangement_infos == nil {
-		return false
+	if arrangement_infos == nil {
+		return {}, false
 	}
 
-	fonts.tex_gl_ids = make([]u32, font_cnt, allocator)
+	tex_gl_ids := make([]u32, font_cnt, allocator)
 
-	if fonts.tex_gl_ids == nil {
-		return false
+	if tex_gl_ids == nil {
+		return {}, false
 	}
 
-	fonts.tex_heights = make([]i32, font_cnt, allocator)
+	tex_heights := make([]int, font_cnt, allocator)
 
-	if fonts.tex_heights == nil {
-		return false
+	if tex_heights == nil {
+		return {}, false
 	}
 
+	// Reserve temporary memory to use as working space to store pixel data for each font texture.
 	px_data_scratch_space := make(
 		[]u8,
 		TEXTURE_CHANNEL_CNT * FONT_TEXTURE_WIDTH * FONT_TEXTURE_HEIGHT_LIMIT,
 		scratch_space_allocator,
 	)
 
-	for i: i32 = 0; i < font_cnt; i += 1 {
+	// Load each font.
+	for i in 0..<font_cnt {
 		font_load_info := font_index_to_load_info(i)
 		assert(font_load_info.height > 0)
 
@@ -325,23 +429,22 @@ init_fonts :: proc(
 		)
 
 		if font_file_read_err != nil {
-			return false
+			return {}, false
 		}
 
 		font_info: stbtt.fontinfo
 		font_index := stbtt.GetFontOffsetForIndex(&font_file_data[0], 0)
 
 		if !stbtt.InitFont(&font_info, &font_file_data[0], font_index) {
-			return false
+			return {}, false
 		}
 
-		//
 		scale := stbtt.ScaleForPixelHeight(&font_info, f32(font_load_info.height))
 
 		ascent, descent, line_gap: i32
 		stbtt.GetFontVMetrics(&font_info, &ascent, &descent, &line_gap)
 
-		fonts.arrangement_infos[i].line_height = i32(f32(ascent - descent + line_gap) * scale)
+		arrangement_infos[i].line_height = int(f32(ascent - descent + line_gap) * scale)
 
 		char_draw_pos: Vec_2D_I
 
@@ -353,60 +456,58 @@ init_fonts :: proc(
 			advance: i32
 			stbtt.GetCodepointHMetrics(&font_info, chr, &advance, nil)
 
-			fonts.arrangement_infos[i].hor_advances[j] = i32(f32(advance) * scale)
+			arrangement_infos[i].chr_hor_advances[j] = int(f32(advance) * scale)
 
 			if chr == ' ' {
 				continue
 			}
 
-			size, offs: Vec_2D_I
+			bitmap_width, bitmap_height: i32
+			bitmap_offs_x, bitmap_offs_y: i32
 
-			bitmap := stbtt.GetCodepointBitmap(
+			bitmap_raw := stbtt.GetCodepointBitmap(
 				&font_info,
 				0,
 				scale,
 				chr,
-				&size.x,
-				&size.y,
-				&offs.x,
-				&offs.y,
+				&bitmap_width,
+				&bitmap_height,
+				&bitmap_offs_x,
+				&bitmap_offs_y,
 			)
 
-			if bitmap == nil {
+			if bitmap_raw == nil {
 				err = true
 				break
 			}
 
-			defer stbtt.FreeBitmap(bitmap, nil)
+			bitmap := mem.slice_ptr(bitmap_raw, int(bitmap_width * bitmap_height * TEXTURE_CHANNEL_CNT))
 
-			if char_draw_pos.x + size.x > FONT_TEXTURE_WIDTH {
+			defer stbtt.FreeBitmap(bitmap_raw, nil)
+
+			if char_draw_pos.x + int(bitmap_width) > FONT_TEXTURE_WIDTH {
 				char_draw_pos.x = 0
-				char_draw_pos.y += fonts.arrangement_infos[i].line_height
+				char_draw_pos.y += arrangement_infos[i].line_height
 			}
 
-			fonts.tex_heights[i] = max(char_draw_pos.y + size.y, fonts.tex_heights[i])
+			tex_heights[i] = max(char_draw_pos.y + int(bitmap_height), tex_heights[i])
 
-			if fonts.tex_heights[i] > FONT_TEXTURE_HEIGHT_LIMIT {
+			if tex_heights[i] > FONT_TEXTURE_HEIGHT_LIMIT {
 				err = true
 				break
 			}
 
-			fonts.arrangement_infos[i].hor_offsets[j] = offs.x
-			fonts.arrangement_infos[i].ver_offsets[j] = offs.y + i32(f32(ascent) * scale)
-			fonts.arrangement_infos[i].src_rects[j] = {
-				char_draw_pos.x,
-				char_draw_pos.y,
-				size.x,
-				size.y,
-			}
+			arrangement_infos[i].chr_hor_offsets[j] = int(bitmap_offs_x)
+			arrangement_infos[i].chr_ver_offsets[j] = int(bitmap_offs_y) + int(f32(ascent) * scale)
+			arrangement_infos[i].chr_src_rects[j] = {char_draw_pos.x, char_draw_pos.y, int(bitmap_width), int(bitmap_height)}
 
-			for y: i32; y < size.y; y += 1 {
-				for x: i32; x < size.x; x += 1 {
+			for y in 0..<int(bitmap_height) {
+				for x in 0..<int(bitmap_width) {
 					px_index :=
 						(((char_draw_pos.y + y) * FONT_TEXTURE_WIDTH) + (char_draw_pos.x + x)) *
 						TEXTURE_CHANNEL_CNT
 
-					bitmap_index := (y * size.x) + x
+					bitmap_index := (y * int(bitmap_width)) + x
 
 					px_data_scratch_space[px_index + 0] = 255
 					px_data_scratch_space[px_index + 1] = 255
@@ -415,14 +516,14 @@ init_fonts :: proc(
 				}
 			}
 
-			char_draw_pos.x += size.x
+			char_draw_pos.x += int(bitmap_width)
 		}
 
 		if err {
 			break
 		}
 
-		gl.BindTexture(gl.TEXTURE_2D, fonts.tex_gl_ids[i])
+		gl.BindTexture(gl.TEXTURE_2D, tex_gl_ids[i])
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexImage2D(
@@ -430,7 +531,7 @@ init_fonts :: proc(
 			0,
 			gl.RGBA,
 			FONT_TEXTURE_WIDTH,
-			fonts.tex_heights[i],
+			i32(tex_heights[i]),
 			0,
 			gl.RGBA,
 			gl.UNSIGNED_BYTE,
@@ -438,15 +539,21 @@ init_fonts :: proc(
 		)
 	}
 
-	return true
+	return {
+			arrangement_infos = arrangement_infos,
+			tex_gl_ids = tex_gl_ids,
+			tex_heights = tex_heights,
+			cnt = font_cnt,
+		},
+		true
 }
 
 gen_pers_render_data :: proc(
 	allocator: mem.Allocator,
 	scratch_allocator: mem.Allocator,
-	tex_cnt: i32,
+	tex_cnt: int,
 	tex_index_to_file_path: Texture_Index_To_File_Path,
-	font_cnt: i32,
+	font_cnt: int,
 	font_index_to_load_info: Font_Index_To_Load_Info,
 ) -> (
 	Pers_Render_Data,
@@ -454,21 +561,28 @@ gen_pers_render_data :: proc(
 ) {
 	render_data: Pers_Render_Data
 
-	if !init_textures(&render_data.textures, allocator, tex_cnt, tex_index_to_file_path) {
+	textures, textures_loaded := load_textures(allocator, tex_cnt, tex_index_to_file_path)
+
+	if !textures_loaded {
 		return {}, false
 	}
 
-	if !init_fonts(
-		&render_data.fonts,
+	fonts, fonts_loaded := load_fonts(
 		allocator,
 		scratch_allocator,
 		font_cnt,
 		font_index_to_load_info,
-	) {
+	)
+
+	if !fonts_loaded {
+		unload_textures(&textures)
 		return {}, false
 	}
 
-	render_data.textured_quad_shader_prog = LoadTexturedQuadShaderProg()
+	render_data.textures = textures
+	render_data.fonts = fonts
+
+	render_data.textured_quad_shader_prog = load_textured_quad_shader_prog()
 
 	render_data.batch_gl_ids = gen_batch()
 
@@ -476,6 +590,12 @@ gen_pers_render_data :: proc(
 }
 
 clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
+	if render_data.fonts.cnt > 0 {
+		gl.DeleteTextures(i32(render_data.fonts.cnt), &render_data.fonts.tex_gl_ids[0])
+	}
+
+	unload_textures(&render_data.textures)
+
 	gl.DeleteVertexArrays(1, &render_data.batch_gl_ids.vert_array_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.vert_buf_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.elem_buf_gl_id)
@@ -555,7 +675,7 @@ draw :: proc(
 	size: Vec_2D,
 	draw_phase_state: ^Draw_Phase_State,
 	pers_render_data: ^Pers_Render_Data,
-	origin := Vec_2D{},
+	origin := Vec_2D{0.5, 0.5},
 	rot: f32 = 0.0,
 	blend := WHITE,
 ) {
@@ -642,7 +762,7 @@ draw :: proc(
 }
 
 draw_texture :: proc(
-	tex_index: i32,
+	tex_index: int,
 	src_rect: Rect_I,
 	pos: Vec_2D,
 	draw_phase_state: ^Draw_Phase_State,
@@ -669,6 +789,33 @@ draw_texture :: proc(
 	)
 }
 
+draw_str :: proc(str: string, font_index: int, pos: Vec_2D, draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Render_Data, scratch_space_allocator: mem.Allocator, hor_align := Str_Hor_Align.Center, ver_align := Str_Ver_Align.Center, blend := WHITE) -> bool {
+	draw_info, draw_info_gen_success := gen_str_draw_info(str, scratch_space_allocator, font_index, &pers_render_data.fonts, pos, hor_align, ver_align)
+
+	if !draw_info_gen_success {
+		return false
+	}
+
+	font_tex_gl_id := pers_render_data.fonts.tex_gl_ids[font_index]
+	font_tex_size := Vec_2D_I {FONT_TEXTURE_WIDTH, pers_render_data.fonts.tex_heights[font_index]}
+
+	for i in 0..<len(draw_info.chr_draw_rects) {
+		if str[i] == ' ' {
+			continue
+		}
+
+		chr_index := str[i] - FONT_CHR_RANGE_BEGIN
+
+		chr_tex_coords := calc_texture_coords(pers_render_data.fonts.arrangement_infos[font_index].chr_src_rects[chr_index], font_tex_size)
+		chr_pos := calc_rect_pos(draw_info.chr_draw_rects[i])
+		chr_size := calc_rect_size(draw_info.chr_draw_rects[i])
+
+		draw(pers_render_data.fonts.tex_gl_ids[font_index], chr_tex_coords, chr_pos, chr_size, draw_phase_state, pers_render_data, {}, 0.0, blend)
+	}
+
+	return true
+}
+
 flush :: proc(draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Render_Data) {
 	if draw_phase_state.batch_slots_used_cnt == 0 {
 		return
@@ -689,15 +836,15 @@ flush :: proc(draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Rende
 	proj_mat: Matrix_4x4
 	init_ortho_matrix_4x4(&proj_mat, 0.0, 1280.0, 720.0, 0.0, -1.0, 1.0)
 
-	gl.UniformMatrix4fv(prog.proj_uniform_loc, 1, false, &proj_mat.elems[0][0])
-	gl.UniformMatrix4fv(prog.view_uniform_loc, 1, false, &draw_phase_state.view_mat.elems[0][0])
+	gl.UniformMatrix4fv(i32(prog.proj_uniform_loc), 1, false, &proj_mat.elems[0][0])
+	gl.UniformMatrix4fv(i32(prog.view_uniform_loc), 1, false, &draw_phase_state.view_mat.elems[0][0])
 
 	gl.BindTexture(gl.TEXTURE_2D, draw_phase_state.batch_tex_gl_id)
 
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, pers_render_data.batch_gl_ids.elem_buf_gl_id)
 	gl.DrawElements(
 		gl.TRIANGLES,
-		BATCH_SLOT_ELEM_CNT * draw_phase_state.batch_slots_used_cnt,
+		i32(BATCH_SLOT_ELEM_CNT * draw_phase_state.batch_slots_used_cnt),
 		gl.UNSIGNED_SHORT,
 		nil,
 	)
@@ -707,7 +854,9 @@ flush :: proc(draw_phase_state: ^Draw_Phase_State, pers_render_data: ^Pers_Rende
 	draw_phase_state.batch_tex_gl_id = 0
 }
 
-calc_texture_coords :: proc(src_rect: Rect_I, tex_size: Size_2D) -> Rect_Edges {
+calc_texture_coords :: proc(src_rect: Rect_I, tex_size: Vec_2D_I) -> Rect_Edges {
+	assert(src_rect.width > 0 && src_rect.height > 0 && tex_size.x > 0 && tex_size.y > 0)
+
 	return {
 		f32(src_rect.x) / f32(tex_size.x),
 		f32(src_rect.y) / f32(tex_size.y),

@@ -4,14 +4,9 @@ import "core:math"
 import "core:mem"
 
 Vec_2D :: [2]f32
-Vec_2D_I :: [2]i32
+Vec_2D_I :: [2]int
 Vec_3D :: [3]f32
 Vec_4D :: [4]f32
-
-Size_2D :: struct {
-	x: u32,
-	y: u32,
-}
 
 Rect :: struct {
 	x:      f32,
@@ -21,10 +16,10 @@ Rect :: struct {
 }
 
 Rect_I :: struct {
-	x:      i32,
-	y:      i32,
-	width:  i32,
-	height: i32,
+	x:      int,
+	y:      int,
+	width:  int,
+	height: int,
 }
 
 Rect_Edges :: struct {
@@ -38,11 +33,35 @@ Matrix_4x4 :: struct {
 	elems: [4][4]f32,
 }
 
+is_size :: proc(vec: Vec_2D) -> bool {
+	return vec.x >= 0.0 && vec.y >= 0.0
+}
+
+is_size_i :: proc(vec: Vec_2D_I) -> bool {
+	return vec.x >= 0 && vec.y >= 0
+}
+
+calc_rect_pos :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x, rect.y}
+}
+
+calc_rect_i_pos :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x, rect.y}
+}
+
+calc_rect_size :: proc(rect: Rect) -> Vec_2D {
+	return {rect.width, rect.height}
+}
+
+calc_rect_i_size :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.width, rect.height}
+}
+
 calc_rect_right :: proc(rect: Rect) -> f32 {
 	return rect.x + rect.width
 }
 
-calc_rect_i_right :: proc(rect: Rect_I) -> i32 {
+calc_rect_i_right :: proc(rect: Rect_I) -> int {
 	return rect.x + rect.width
 }
 
@@ -50,8 +69,20 @@ calc_rect_bottom :: proc(rect: Rect) -> f32 {
 	return rect.y + rect.height
 }
 
-calc_rect_i_bottom :: proc(rect: Rect_I) -> i32 {
+calc_rect_i_bottom :: proc(rect: Rect_I) -> int {
 	return rect.y + rect.height
+}
+
+translate_rect :: proc(rect: ^Rect, trans: Vec_2D) {
+	assert(rect != nil)
+	rect.x += trans.x
+	rect.y += trans.y
+}
+
+translate_rect_i :: proc(rect: ^Rect_I, trans: Vec_2D_I) {
+	assert(rect != nil)
+	rect.x += trans.x
+	rect.y += trans.y
 }
 
 init_iden_matrix_4x4 :: proc(mat: ^Matrix_4x4) {
