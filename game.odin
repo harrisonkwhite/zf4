@@ -15,37 +15,37 @@ TARG_TICK_DUR_SECS :: f64(1.0) / f64(TARG_TICKS_PER_SEC)
 
 // TODO: Update validity checking.
 Game_Info :: struct {
-	perm_mem_arena_size:     u32, // NOTE: If either arena is given too small a size, the game will fail to initialise.
-	temp_mem_arena_size:     u32,
-	window_init_size:        Vec_2D_I,
-	window_title:            cstring,
-	tex_cnt:                 int,
-	tex_index_to_file_path:  Texture_Index_To_File_Path,
-	font_cnt:                int,
-	font_index_to_load_info: Font_Index_To_Load_Info,
-	init_func:               proc(func_data: ^Game_Init_Func_Data) -> bool,
-	tick_func:               proc(func_data: ^Game_Tick_Func_Data) -> bool,
-	draw_func:               proc(func_data: ^Game_Draw_Func_Data) -> bool,
+	perm_mem_arena_size:          u32, // NOTE: If either arena is given too small a size, the game will fail to initialise.
+	temp_mem_arena_size:          u32,
+	window_init_size:             Vec_2D_I,
+	window_title:                 cstring,
+	tex_cnt:                      int,
+	tex_index_to_file_path_func:  Texture_Index_To_File_Path,
+	font_cnt:                     int,
+	font_index_to_load_info_func: Font_Index_To_Load_Info,
+	init_func:                    proc(func_data: ^Game_Init_Func_Data) -> bool,
+	tick_func:                    proc(func_data: ^Game_Tick_Func_Data) -> bool,
+	draw_func:                    proc(func_data: ^Game_Render_Func_Data) -> bool,
 }
 
 Game_Init_Func_Data :: struct {
-	input_state:              ^Input_State,
-	temp_mem_arena_allocator: mem.Allocator,
-	window_state_cache:       Window_State,
+	input_state:        ^Input_State,
+	scratch_allocator:  mem.Allocator,
+	window_state_cache: Window_State,
 }
 
 Game_Tick_Func_Data :: struct {
-	input_state:              ^Input_State,
-	input_state_last:         ^Input_State,
-	temp_mem_arena_allocator: mem.Allocator,
-	window_state_cache:       Window_State,
+	input_state:        ^Input_State,
+	input_state_last:   ^Input_State,
+	scratch_allocator:  mem.Allocator,
+	window_state_cache: Window_State,
 }
 
-Game_Draw_Func_Data :: struct {
-	draw_phase_state:         ^Draw_Phase_State,
-	pers_render_data:         ^Pers_Render_Data,
-	temp_mem_arena_allocator: mem.Allocator,
-	window_state_cache:       Window_State,
+Game_Render_Func_Data :: struct {
+	rendering_context: Rendering_Context,
+	textures:          ^Textures,
+	fonts:             ^Fonts,
+	scratch_allocator: mem.Allocator,
 }
 
 Window_State :: struct {
@@ -124,16 +124,31 @@ run_game :: proc(info: Game_Info) -> bool {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	pers_render_data, pers_render_data_gen_success := gen_pers_render_data(
+	pers_render_data := gen_pers_render_data()
+	defer clean_pers_render_data(&pers_render_data)
+
+	textures, textures_loaded := load_textures(
 		perm_mem_arena_allocator,
-		temp_mem_arena_allocator,
 		info.tex_cnt,
-		info.tex_index_to_file_path,
-		info.font_cnt,
-		info.font_index_to_load_info,
+		info.tex_index_to_file_path_func,
 	)
 
-	if !pers_render_data_gen_success {
+	defer unload_textures(&textures)
+
+	if !textures_loaded {
+		return false
+	}
+
+	fonts, fonts_loaded := load_fonts(
+		perm_mem_arena_allocator,
+		temp_mem_arena_allocator,
+		info.font_cnt,
+		info.font_index_to_load_info_func,
+	)
+
+	defer unload_fonts(&fonts)
+
+	if !fonts_loaded {
 		return false
 	}
 
@@ -144,9 +159,9 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	{
 		func_data := Game_Init_Func_Data {
-			input_state              = &input_state,
-			temp_mem_arena_allocator = temp_mem_arena_allocator,
-			window_state_cache       = load_window_state(glfw_window),
+			input_state        = &input_state,
+			scratch_allocator  = temp_mem_arena_allocator,
+			window_state_cache = load_window_state(glfw_window),
 		}
 
 		if (!info.init_func(&func_data)) {
@@ -162,10 +177,10 @@ run_game :: proc(info: Game_Info) -> bool {
 	frame_time := glfw.GetTime()
 	frame_dur_accum := TARG_TICK_DUR_SECS // Make sure that we begin with a tick.
 
-	draw_phase_state := new(Draw_Phase_State, perm_mem_arena_allocator)
+	rendering_state := new(Rendering_State, perm_mem_arena_allocator)
 
-	if draw_phase_state == nil {
-		fmt.eprintf("Failed to allocate memory for draw phase state data!")
+	if rendering_state == nil {
+		fmt.eprintf("Failed to allocate memory for render state data!")
 		return false
 	}
 
@@ -188,10 +203,10 @@ run_game :: proc(info: Game_Info) -> bool {
 				mem.arena_free_all(&temp_mem_arena)
 
 				func_data := Game_Tick_Func_Data {
-					input_state              = &input_state,
-					input_state_last         = &input_state_last,
-					temp_mem_arena_allocator = temp_mem_arena_allocator,
-					window_state_cache       = window_state_cache,
+					input_state        = &input_state,
+					input_state_last   = &input_state_last,
+					scratch_allocator  = temp_mem_arena_allocator,
+					window_state_cache = window_state_cache,
 				}
 
 				if !info.tick_func(&func_data) {
@@ -203,14 +218,19 @@ run_game :: proc(info: Game_Info) -> bool {
 
 			mem.arena_free_all(&temp_mem_arena)
 
-			begin_draw_phase(draw_phase_state)
+			begin_rendering(rendering_state)
 
 			{
-				func_data := Game_Draw_Func_Data {
-					draw_phase_state         = draw_phase_state,
-					pers_render_data         = &pers_render_data,
-					temp_mem_arena_allocator = temp_mem_arena_allocator,
-					window_state_cache       = window_state_cache,
+				func_data := Game_Render_Func_Data {
+					textures          = &textures,
+					fonts             = &fonts,
+					scratch_allocator = temp_mem_arena_allocator,
+				}
+
+				func_data.rendering_context = {
+					pers         = &pers_render_data,
+					state        = rendering_state,
+					display_size = window_state_cache.size,
 				}
 
 				if !info.draw_func(&func_data) {
@@ -218,7 +238,7 @@ run_game :: proc(info: Game_Info) -> bool {
 				}
 			}
 
-			assert(draw_phase_state.batch_slots_used_cnt == 0) // Make sure that we flushed.
+			assert(rendering_state.batch_slots_used_cnt == 0) // Make sure that we flushed.
 
 			glfw.SwapBuffers(glfw_window)
 		}
@@ -246,4 +266,3 @@ load_window_state :: proc(glfw_window: glfw.WindowHandle) -> Window_State {
 	width, height := glfw.GetWindowSize(glfw_window)
 	return {size = {int(width), int(height)}}
 }
-
