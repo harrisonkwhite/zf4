@@ -11,7 +11,7 @@ GL_VERS_MAJOR :: 4
 GL_VERS_MINOR :: 3
 
 TARG_TICKS_PER_SEC :: 60
-TARG_TICK_DUR_SECS :: 1.0 / TARG_TICKS_PER_SEC
+TARG_TICK_DUR_SECS :: f64(1.0) / f64(TARG_TICKS_PER_SEC)
 
 // TODO: Update validity checking.
 Game_Info :: struct {

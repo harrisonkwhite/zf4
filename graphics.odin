@@ -68,7 +68,7 @@ is_fonts_valid :: proc(fonts: ^Fonts) -> bool {
 	assert(fonts != nil)
 
 	return ((fonts.cnt == 0 && fonts.arrangement_infos == nil && fonts.tex_gl_ids == nil && fonts.tex_heights == nil)
-		|| (fonts.cnt > 0 && len(fonts.arrangement_infos) == fonts.cnt && len(fonts.tex_gl_ids) == fonts.cnt && len(fonts.tex_heights) == fonts.cnt))
+		|| (fonts.cnt > 0 && len(fonts.arrangement_infos) == fonts.cnt && len(fonts.tex_gl_ids) == fonts.cnt && len(fonts.tex_heights) == fonts.cnt)) \
 }
 
 Font_Arrangement_Info :: struct {
@@ -448,6 +448,18 @@ load_fonts :: proc(
 
 		char_draw_pos: Vec_2D_I
 
+		for y in 0..<FONT_TEXTURE_HEIGHT_LIMIT {
+			for x in 0..<FONT_TEXTURE_WIDTH {
+				px_index := ((y * FONT_TEXTURE_WIDTH) + x) * TEXTURE_CHANNEL_CNT
+
+				// Initialise to transparent white.
+				px_data_scratch_space[px_index + 0] = 255
+				px_data_scratch_space[px_index + 1] = 255
+				px_data_scratch_space[px_index + 2] = 255
+				px_data_scratch_space[px_index + 3] = 0
+			}
+		}
+		
 		err: bool
 
 		for j := 0; j < FONT_CHR_RANGE_LEN; j += 1 {
@@ -499,19 +511,20 @@ load_fonts :: proc(
 
 			arrangement_infos[i].chr_hor_offsets[j] = int(bitmap_offs_x)
 			arrangement_infos[i].chr_ver_offsets[j] = int(bitmap_offs_y) + int(f32(ascent) * scale)
-			arrangement_infos[i].chr_src_rects[j] = {char_draw_pos.x, char_draw_pos.y, int(bitmap_width), int(bitmap_height)}
+			
+			arrangement_infos[i].chr_src_rects[j] = {
+				char_draw_pos.x,
+				char_draw_pos.y,
+				int(bitmap_width),
+				int(bitmap_height)
+			}
 
 			for y in 0..<int(bitmap_height) {
 				for x in 0..<int(bitmap_width) {
-					px_index :=
-						(((char_draw_pos.y + y) * FONT_TEXTURE_WIDTH) + (char_draw_pos.x + x)) *
-						TEXTURE_CHANNEL_CNT
+					px_pos := Vec_2D_I {char_draw_pos.x + x, char_draw_pos.y + y}
+					px_index := ((px_pos.y * FONT_TEXTURE_WIDTH) + px_pos.x) * TEXTURE_CHANNEL_CNT
 
 					bitmap_index := (y * int(bitmap_width)) + x
-
-					px_data_scratch_space[px_index + 0] = 255
-					px_data_scratch_space[px_index + 1] = 255
-					px_data_scratch_space[px_index + 2] = 255
 					px_data_scratch_space[px_index + 3] = bitmap[bitmap_index]
 				}
 			}
