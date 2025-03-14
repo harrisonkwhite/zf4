@@ -85,6 +85,57 @@ translate_rect_i :: proc(rect: ^Rect_I, trans: Vec_2D_I) {
 	rect.y += trans.y
 }
 
+is_point_in_rect :: proc(pt: Vec_2D, rect: Rect) -> bool {
+	return(
+		pt.x >= rect.x &&
+		pt.y >= rect.y &&
+		pt.x < calc_rect_right(rect) &&
+		pt.y < calc_rect_bottom(rect) \
+	)
+}
+
+gen_spanning_rect :: proc(rects: []Rect) -> Rect {
+	assert(len(rects) > 0)
+
+	span_edges: Rect_Edges
+
+	for r in rects {
+		span_edges.left = min(r.x, span_edges.left)
+		span_edges.top = min(r.y, span_edges.top)
+		span_edges.right = max(r.x + r.width, span_edges.right)
+		span_edges.bottom = max(r.y + r.height, span_edges.bottom)
+	}
+
+	return {
+		span_edges.left,
+		span_edges.top,
+		span_edges.right - span_edges.left,
+		span_edges.bottom - span_edges.top,
+	}
+}
+
+calc_mag :: proc(vec: Vec_2D) -> f32 {
+	return math.sqrt((vec.x * vec.x) + (vec.y * vec.y))
+}
+
+calc_normal_or_zero :: proc(vec: Vec_2D) -> Vec_2D {
+	mag := calc_mag(vec)
+
+	if mag == 0.0 {
+		return {}
+	}
+
+	return {vec.x / mag, vec.y / mag}
+}
+
+calc_dist :: proc(a: Vec_2D, b: Vec_2D) -> f32 {
+	return calc_mag(a - b)
+}
+
+calc_dir :: proc(vec: Vec_2D) -> f32 {
+	return math.atan2(vec.y, vec.x)
+}
+
 init_iden_matrix_4x4 :: proc(mat: ^Matrix_4x4) {
 	mem.zero(mat, size_of(mat^))
 	mat.elems[0][0] = 1.0
@@ -111,26 +162,3 @@ init_ortho_matrix_4x4 :: proc(
 	mat.elems[3][2] = -(far + near) / (far - near)
 	mat.elems[3][3] = 1.0
 }
-
-calc_mag :: proc(vec: Vec_2D) -> f32 {
-	return math.sqrt((vec.x * vec.x) + (vec.y * vec.y))
-}
-
-calc_normal_or_zero :: proc(vec: Vec_2D) -> Vec_2D {
-	mag := calc_mag(vec)
-
-	if mag == 0.0 {
-		return {}
-	}
-
-	return {vec.x / mag, vec.y / mag}
-}
-
-calc_dist :: proc(a: Vec_2D, b: Vec_2D) -> f32 {
-	return calc_mag(a - b)
-}
-
-calc_dir :: proc(vec: Vec_2D) -> f32 {
-	return math.atan2(vec.y, vec.x)
-}
-

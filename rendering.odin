@@ -9,6 +9,9 @@ import stbtt "vendor:stb/truetype"
 
 // IDEA: Have the developer initialise textures and fonts themselves, so they have complete flexibility over it. They might want multiple texture structs for different texture groups, for example.
 
+// String render information generation is not performance-intensive, but it is inconvenient to have to generate it on the fly and to have to account for allocation failure cases.
+// We need a function which can generate the basis of the string render information (including actual positions based on alignment), as we already have.
+
 TEXTURE_CHANNEL_CNT :: 4
 
 FONT_CHR_RANGE_BEGIN :: 32
@@ -22,11 +25,17 @@ BATCH_SLOT_VERT_CNT :: BATCH_SHADER_PROG_VERT_CNT * 4
 BATCH_SLOT_VERTS_SIZE :: BATCH_SLOT_VERT_CNT * BATCH_SLOT_CNT
 BATCH_SLOT_ELEM_CNT :: 6
 
+RENDERABLE_STR_LEN_LIMIT :: 1023
+
 WHITE :: Vec_4D{1.0, 1.0, 1.0, 1.0}
 BLACK :: Vec_4D{0.0, 0.0, 0.0, 1.0}
+GRAY :: Vec_4D{0.5, 0.5, 0.5, 1.0}
 RED :: Vec_4D{1.0, 0.0, 0.0, 1.0}
 GREEN :: Vec_4D{0.0, 1.0, 0.0, 1.0}
 BLUE :: Vec_4D{0.0, 0.0, 1.0, 1.0}
+YELLOW :: Vec_4D{1.0, 1.0, 0.0, 1.0}
+MAGENTA :: Vec_4D{1.0, 0.0, 1.0, 1.0}
+CYAN :: Vec_4D{0.0, 1.0, 1.0, 1.0}
 
 Rendering_Context :: struct {
 	pers:         ^Pers_Render_Data,
@@ -100,15 +109,15 @@ Str_Ver_Align :: enum {
 	Bottom,
 }
 
-Str_Render_Info :: struct {
-	chr_rects:  []Rect,
-	line_infos: []Str_Line_Render_Info,
+Untitled :: struct {
+	chr_positions: []Vec_2D,
+	collider:      Rect,
 }
 
-Str_Line_Render_Info :: struct {
+/*Str_Line_Render_Info :: struct {
 	begin_chr_index:      int,
-	width_including_offs: int,
-}
+	width_including_offs: f32, // NOTE: Not needed by the developer outside the function scope?
+}*/
 
 gen_pers_render_data :: proc() -> Pers_Render_Data {
 	render_data: Pers_Render_Data
@@ -697,57 +706,38 @@ render_str :: proc(
 	font_index: int,
 	fonts: ^Fonts,
 	pos: Vec_2D,
-	scratch_allocator: mem.Allocator,
 	hor_align := Str_Hor_Align.Center,
 	ver_align := Str_Ver_Align.Center,
 	blend := WHITE,
-) -> bool {
+) {
 	assert(is_color_valid_4d(blend))
 
-	render_info, render_info_generated := gen_str_render_info(
-		str,
-		scratch_allocator,
-		font_index,
-		fonts,
-		pos,
-		hor_align,
-		ver_align,
-	)
-
-	if !render_info_generated {
-		return false
-	}
+	chr_positions := gen_str_chr_positions(str, font_index, fonts, pos, hor_align, ver_align)
 
 	font_tex_gl_id := fonts.tex_gl_ids[font_index]
 	font_tex_size := Vec_2D_I{FONT_TEXTURE_WIDTH, fonts.tex_heights[font_index]}
 
-	for i in 0 ..< len(render_info.chr_rects) {
+	for i in 0 ..< len(str) {
 		if str[i] == ' ' {
 			continue
 		}
 
 		chr_index := str[i] - FONT_CHR_RANGE_BEGIN
 
-		chr_tex_coords := calc_texture_coords(
-			fonts.arrangement_infos[font_index].chr_src_rects[chr_index],
-			font_tex_size,
-		)
-		chr_pos := calc_rect_pos(render_info.chr_rects[i])
-		chr_size := calc_rect_size(render_info.chr_rects[i])
+		chr_src_rect := fonts.arrangement_infos[font_index].chr_src_rects[chr_index]
+		chr_tex_coords := calc_texture_coords(chr_src_rect, font_tex_size)
 
 		render(
 			rendering_context,
 			fonts.tex_gl_ids[font_index],
 			chr_tex_coords,
-			chr_pos,
-			chr_size,
+			chr_positions[i],
+			{f32(chr_src_rect.width), f32(chr_src_rect.height)},
 			{},
 			0.0,
 			blend,
 		)
 	}
-
-	return true
 }
 
 render_rect :: proc(rendering_context: ^Rendering_Context, rect: Rect, blend := WHITE) {
@@ -874,109 +864,147 @@ calc_texture_coords :: proc(src_rect: Rect_I, tex_size: Vec_2D_I) -> Rect_Edges 
 	}
 }
 
-gen_str_render_info :: proc(
+// Collider only needs min and max of each line horizontally.
+// Collider needs positions and the line lengths.
+
+gen_str_chr_positions :: proc(
 	str: string,
-	allocator: mem.Allocator,
 	font_index: int,
 	fonts: ^Fonts,
 	pos: Vec_2D,
-	hor_align: Str_Hor_Align,
-	ver_align: Str_Ver_Align,
-) -> (
-	Str_Render_Info,
-	bool,
-) {
+	hor_align := Str_Hor_Align.Center,
+	ver_align := Str_Ver_Align.Center,
+) -> [RENDERABLE_STR_LEN_LIMIT]Vec_2D {
+	apply_hor_align_offs_to_line :: proc(
+		line_chr_positions: []Vec_2D,
+		hor_align: Str_Hor_Align,
+		line_end_x: f32,
+	) {
+		line_width := line_end_x - line_chr_positions[0].x
+		align_offs := -(f32(line_width) * f32(hor_align) * 0.5)
+
+		for i in 0 ..< len(line_chr_positions) {
+			line_chr_positions[i].x += align_offs
+		}
+	}
+
 	assert(font_index >= 0 && font_index < get_font_cnt(fonts))
 
 	str_len := len(str)
-	assert(str_len > 0)
+	assert(str_len > 0 && str_len <= RENDERABLE_STR_LEN_LIMIT)
 
-	line_cnt := cnt_num_lines(str)
+	chr_positions: [RENDERABLE_STR_LEN_LIMIT]Vec_2D
 
-	render_info: Str_Render_Info
+	font_ai := &fonts.arrangement_infos[font_index]
 
-	render_info.chr_rects = make([]Rect, str_len, allocator)
+	cur_line_begin_chr_index := 0
 
-	if render_info.chr_rects == nil {
-		return render_info, false
-	}
-
-	render_info.line_infos = make([]Str_Line_Render_Info, line_cnt, allocator)
-
-	if render_info.line_infos == nil {
-		return render_info, false
-	}
-
-	//
-	// First Phase: Determining the bases of character rectangles and also line information.
-	//
-	chr_render_pos_pen: Vec_2D_I = {}
-	line_index := 0
+	chr_pos_pen := pos // This is the position of each character before applying horizontal or vertical alignment offsets.
 
 	for i in 0 ..< str_len {
 		chr := str[i]
 
-		if chr != '\n' {
-			chr_index := int(chr) - FONT_CHR_RANGE_BEGIN
-
-			offs := Vec_2D_I {
-				fonts.arrangement_infos[font_index].chr_hor_offsets[chr_index],
-				fonts.arrangement_infos[font_index].chr_ver_offsets[chr_index],
-			}
-
-			chr_render_pos := Vec_2D_I {
-				chr_render_pos_pen.x + offs.x,
-				chr_render_pos_pen.y + offs.y,
-			}
-
-			render_info.chr_rects[i] = {
-				f32(chr_render_pos.x),
-				f32(chr_render_pos.y),
-				f32(fonts.arrangement_infos[font_index].chr_src_rects[chr_index].width),
-				f32(fonts.arrangement_infos[font_index].chr_src_rects[chr_index].height),
-			}
-
-			chr_render_pos_pen.x += fonts.arrangement_infos[font_index].chr_hor_advances[chr_index]
-		} else {
-			render_info.line_infos[line_index].width_including_offs = chr_render_pos_pen.x
-			line_index += 1
-			render_info.line_infos[line_index].begin_chr_index = i
-
-			chr_render_pos_pen.x = 0
-			chr_render_pos_pen.y += fonts.arrangement_infos[font_index].line_height
-		}
-	}
-
-	render_info.line_infos[line_index].width_including_offs = chr_render_pos_pen.x
-
-	//
-	// Second Phase: Applying position and alignment offsets.
-	//
-	height_including_offs := chr_render_pos_pen.y + fonts.arrangement_infos[font_index].line_height
-	ver_align_offs := -(f32(height_including_offs) * f32(ver_align) * 0.5)
-
-	for i in 0 ..< line_cnt {
-		line_end_chr_index: int
-
-		if i < line_cnt - 1 {
-			line_end_chr_index = render_info.line_infos[i + 1].begin_chr_index
-		} else {
-			line_end_chr_index = len(render_info.chr_rects)
-		}
-
-		hor_align_offs := -(f32(render_info.line_infos[i].width_including_offs) *
-			f32(hor_align) *
-			0.5)
-
-		for j := render_info.line_infos[i].begin_chr_index; j < line_end_chr_index; j += 1 {
-			translate_rect(
-				&render_info.chr_rects[j],
-				{pos.x + hor_align_offs, pos.y + ver_align_offs},
+		if chr == '\n' {
+			// Apply horizontal alignment offset to the past line.
+			line_chr_positions := mem.slice_ptr(
+				&chr_positions[cur_line_begin_chr_index],
+				i - cur_line_begin_chr_index,
 			)
+
+			cur_line_begin_chr_index = i + 1
+
+			apply_hor_align_offs_to_line(line_chr_positions, hor_align, chr_pos_pen.x)
+
+			// Move the pen down to the next line.
+			chr_pos_pen.x = 0.0
+			chr_pos_pen.y += f32(font_ai.line_height)
+
+			continue
+		}
+
+		chr_index := int(chr) - FONT_CHR_RANGE_BEGIN
+
+		chr_positions[i] = {
+			chr_pos_pen.x + f32(font_ai.chr_hor_offsets[chr_index]),
+			chr_pos_pen.y + f32(font_ai.chr_ver_offsets[chr_index]),
+		}
+
+		chr_pos_pen.x += f32(font_ai.chr_hor_advances[chr_index])
+	}
+
+	apply_hor_align_offs_to_line(
+		mem.slice_ptr(
+			&chr_positions[cur_line_begin_chr_index],
+			str_len - cur_line_begin_chr_index,
+		),
+		hor_align,
+		chr_pos_pen.x,
+	)
+
+	// Apply vertical alignment offset to all characters.
+	height := chr_pos_pen.y + f32(font_ai.line_height)
+	ver_align_offs := -(f32(height) * f32(ver_align) * 0.5)
+
+	for i in 0 ..< str_len {
+		chr_positions[i].y += ver_align_offs
+	}
+
+	return chr_positions
+}
+
+gen_str_collider :: proc(
+	str: string,
+	font_index: int,
+	fonts: ^Fonts,
+	pos: Vec_2D,
+	hor_align := Str_Hor_Align.Center,
+	ver_align := Str_Ver_Align.Center,
+) -> Rect {
+	str_len := len(str)
+	assert(str_len > 0)
+
+	chr_positions := gen_str_chr_positions(str, font_index, fonts, pos, hor_align, ver_align)
+
+	str_collider_edges: Rect_Edges
+	str_collider_edges_initted: bool
+
+	for i in 0 ..< str_len {
+		if str[i] == '\n' {
+			continue
+		}
+
+		chr_index := int(str[i]) - FONT_CHR_RANGE_BEGIN
+
+		chr_src_rect_size := calc_rect_i_size(
+			fonts.arrangement_infos[font_index].chr_src_rects[chr_index],
+		)
+
+		chr_collider_edges := Rect_Edges {
+			chr_positions[i].x,
+			chr_positions[i].y,
+			chr_positions[i].x + f32(chr_src_rect_size.x),
+			chr_positions[i].y + f32(chr_src_rect_size.y),
+		}
+
+		if !str_collider_edges_initted {
+			str_collider_edges = chr_collider_edges
+			str_collider_edges_initted = true
+		} else {
+			str_collider_edges.left = min(chr_collider_edges.left, str_collider_edges.left)
+			str_collider_edges.top = min(chr_collider_edges.top, str_collider_edges.top)
+			str_collider_edges.right = max(chr_collider_edges.right, str_collider_edges.right)
+			str_collider_edges.bottom = max(chr_collider_edges.bottom, str_collider_edges.bottom)
 		}
 	}
 
-	return render_info, true
+	assert(str_collider_edges_initted)
+
+	return {
+		str_collider_edges.left,
+		str_collider_edges.top,
+		str_collider_edges.right - str_collider_edges.left,
+		str_collider_edges.bottom - str_collider_edges.top,
+	}
 }
 
 is_color_valid_3d :: proc(col: Vec_3D) -> bool {
@@ -993,3 +1021,4 @@ is_color_valid_3d :: proc(col: Vec_3D) -> bool {
 is_color_valid_4d :: proc(col: Vec_4D) -> bool {
 	return is_color_valid_3d(col.rgb) && col.a >= 0.0 && col.a <= 1.0
 }
+

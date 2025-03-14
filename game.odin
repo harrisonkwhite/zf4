@@ -29,16 +29,18 @@ Game_Info :: struct {
 }
 
 Game_Init_Func_Data :: struct {
+	window_state_cache: Window_State,
 	input_state:        ^Input_State,
 	scratch_allocator:  mem.Allocator,
-	window_state_cache: Window_State,
 }
 
 Game_Tick_Func_Data :: struct {
+	window_state_cache: Window_State,
 	input_state:        ^Input_State,
 	input_state_last:   ^Input_State,
+	textures:           ^Textures,
+	fonts:              ^Fonts,
 	scratch_allocator:  mem.Allocator,
-	window_state_cache: Window_State,
 }
 
 Game_Render_Func_Data :: struct {
@@ -159,9 +161,9 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	{
 		func_data := Game_Init_Func_Data {
-			input_state        = &input_state,
-			scratch_allocator  = temp_mem_arena_allocator,
 			window_state_cache = load_window_state(glfw_window),
+			scratch_allocator  = temp_mem_arena_allocator,
+			input_state        = &input_state,
 		}
 
 		if (!info.init_func(&func_data)) {
@@ -203,10 +205,12 @@ run_game :: proc(info: Game_Info) -> bool {
 				mem.arena_free_all(&temp_mem_arena)
 
 				func_data := Game_Tick_Func_Data {
+					window_state_cache = window_state_cache,
 					input_state        = &input_state,
 					input_state_last   = &input_state_last,
+					textures           = &textures,
+					fonts              = &fonts,
 					scratch_allocator  = temp_mem_arena_allocator,
-					window_state_cache = window_state_cache,
 				}
 
 				if !info.tick_func(&func_data) {
