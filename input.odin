@@ -99,6 +99,52 @@ is_key_down :: proc(key_code: Key_Code, input_state: ^Input_State) -> bool {
 	return (input_state.keys_down & key_bit) != 0
 }
 
+is_key_pressed :: proc(
+	key_code: Key_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return is_key_down(key_code, input_state) && !is_key_down(key_code, input_state_last)
+}
+
+is_key_released :: proc(
+	key_code: Key_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return !is_key_down(key_code, input_state) && is_key_down(key_code, input_state_last)
+}
+
+is_mouse_button_down :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+) -> bool {
+	mouse_button_bit := Mouse_Buttons_Down_Bits(1) << u32(mouse_button_code)
+	return (input_state.mouse_buttons_down & mouse_button_bit) != 0
+}
+
+is_mouse_button_pressed :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return(
+		is_mouse_button_down(mouse_button_code, input_state) &&
+		!is_mouse_button_down(mouse_button_code, input_state_last) \
+	)
+}
+
+is_mouse_button_released :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return(
+		!is_mouse_button_down(mouse_button_code, input_state) &&
+		is_mouse_button_down(mouse_button_code, input_state_last) \
+	)
+}
+
 to_glfw_key_code :: proc(key_code: Key_Code) -> i32 {
 	switch key_code {
 	case Key_Code.Space:
