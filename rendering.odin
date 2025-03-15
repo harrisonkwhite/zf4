@@ -9,9 +9,6 @@ import stbtt "vendor:stb/truetype"
 
 // IDEA: Have the developer initialise textures and fonts themselves, so they have complete flexibility over it. They might want multiple texture structs for different texture groups, for example.
 
-// String render information generation is not performance-intensive, but it is inconvenient to have to generate it on the fly and to have to account for allocation failure cases.
-// We need a function which can generate the basis of the string render information (including actual positions based on alignment), as we already have.
-
 TEXTURE_CHANNEL_CNT :: 4
 
 FONT_CHR_RANGE_BEGIN :: 32

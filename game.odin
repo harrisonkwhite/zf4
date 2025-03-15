@@ -26,6 +26,7 @@ Game_Info :: struct {
 	init_func:                    proc(func_data: ^Game_Init_Func_Data) -> bool,
 	tick_func:                    proc(func_data: ^Game_Tick_Func_Data) -> bool,
 	draw_func:                    proc(func_data: ^Game_Render_Func_Data) -> bool,
+	clean_func:                   proc(),
 }
 
 Game_Init_Func_Data :: struct {
@@ -59,6 +60,8 @@ run_game :: proc(info: Game_Info) -> bool {
 	// Initialisation
 	//
 	fmt.println("Initialising...")
+
+	defer info.clean_func() // NOTE: Should this be called later, after initialisation?
 
 	// Set up the main memory arena.
 	perm_mem_arena_buf := make([]byte, info.perm_mem_arena_size)
