@@ -109,16 +109,6 @@ Str_Ver_Align :: enum {
 	Bottom,
 }
 
-Untitled :: struct {
-	chr_positions: []Vec_2D,
-	collider:      Rect,
-}
-
-/*Str_Line_Render_Info :: struct {
-	begin_chr_index:      int,
-	width_including_offs: f32, // NOTE: Not needed by the developer outside the function scope?
-}*/
-
 gen_pers_render_data :: proc() -> Pers_Render_Data {
 	render_data: Pers_Render_Data
 
@@ -864,9 +854,6 @@ calc_texture_coords :: proc(src_rect: Rect_I, tex_size: Vec_2D_I) -> Rect_Edges 
 	}
 }
 
-// Collider only needs min and max of each line horizontally.
-// Collider needs positions and the line lengths.
-
 gen_str_chr_positions :: proc(
 	str: string,
 	font_index: int,
@@ -899,7 +886,7 @@ gen_str_chr_positions :: proc(
 
 	cur_line_begin_chr_index := 0
 
-	chr_pos_pen := pos // This is the position of each character before applying horizontal or vertical alignment offsets.
+	chr_base_pos_pen: Vec_2D
 
 	for i in 0 ..< str_len {
 		chr := str[i]
@@ -913,11 +900,11 @@ gen_str_chr_positions :: proc(
 
 			cur_line_begin_chr_index = i + 1
 
-			apply_hor_align_offs_to_line(line_chr_positions, hor_align, chr_pos_pen.x)
+			apply_hor_align_offs_to_line(line_chr_positions, hor_align, chr_base_pos_pen.x + pos.x)
 
 			// Move the pen down to the next line.
-			chr_pos_pen.x = 0.0
-			chr_pos_pen.y += f32(font_ai.line_height)
+			chr_base_pos_pen.x = 0.0
+			chr_base_pos_pen.y += f32(font_ai.line_height)
 
 			continue
 		}
@@ -925,11 +912,11 @@ gen_str_chr_positions :: proc(
 		chr_index := int(chr) - FONT_CHR_RANGE_BEGIN
 
 		chr_positions[i] = {
-			chr_pos_pen.x + f32(font_ai.chr_hor_offsets[chr_index]),
-			chr_pos_pen.y + f32(font_ai.chr_ver_offsets[chr_index]),
+			chr_base_pos_pen.x + pos.x + f32(font_ai.chr_hor_offsets[chr_index]),
+			chr_base_pos_pen.y + pos.y + f32(font_ai.chr_ver_offsets[chr_index]),
 		}
 
-		chr_pos_pen.x += f32(font_ai.chr_hor_advances[chr_index])
+		chr_base_pos_pen.x += f32(font_ai.chr_hor_advances[chr_index])
 	}
 
 	apply_hor_align_offs_to_line(
@@ -938,11 +925,11 @@ gen_str_chr_positions :: proc(
 			str_len - cur_line_begin_chr_index,
 		),
 		hor_align,
-		chr_pos_pen.x,
+		chr_base_pos_pen.x + pos.x,
 	)
 
 	// Apply vertical alignment offset to all characters.
-	height := chr_pos_pen.y + f32(font_ai.line_height)
+	height := chr_base_pos_pen.y + f32(font_ai.line_height)
 	ver_align_offs := -(f32(height) * f32(ver_align) * 0.5)
 
 	for i in 0 ..< str_len {

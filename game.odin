@@ -270,3 +270,4 @@ load_window_state :: proc(glfw_window: glfw.WindowHandle) -> Window_State {
 	width, height := glfw.GetWindowSize(glfw_window)
 	return {size = {int(width), int(height)}}
 }
+
