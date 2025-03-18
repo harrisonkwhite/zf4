@@ -3,6 +3,7 @@ package zf4
 import "vendor:glfw"
 
 Key_Code :: enum {
+	None,
 	Space,
 	Num_0,
 	Num_1,
@@ -68,6 +69,7 @@ Key_Code :: enum {
 }
 
 Mouse_Button_Code :: enum {
+	None,
 	Left,
 	Right,
 	Middle,
@@ -145,8 +147,168 @@ is_mouse_button_released :: proc(
 	)
 }
 
+get_key_code_name :: proc(kc: Key_Code) -> string {
+	switch kc {
+	case Key_Code.None:
+		break
+
+	case Key_Code.Space:
+		return "Space"
+
+	case Key_Code.Num_0:
+		return "0"
+	case Key_Code.Num_1:
+		return "1"
+	case Key_Code.Num_2:
+		return "2"
+	case Key_Code.Num_3:
+		return "3"
+	case Key_Code.Num_4:
+		return "4"
+	case Key_Code.Num_5:
+		return "5"
+	case Key_Code.Num_6:
+		return "6"
+	case Key_Code.Num_7:
+		return "7"
+	case Key_Code.Num_8:
+		return "8"
+	case Key_Code.Num_9:
+		return "9"
+
+	case Key_Code.A:
+		return "A"
+	case Key_Code.B:
+		return "B"
+	case Key_Code.C:
+		return "C"
+	case Key_Code.D:
+		return "D"
+	case Key_Code.E:
+		return "E"
+	case Key_Code.F:
+		return "F"
+	case Key_Code.G:
+		return "G"
+	case Key_Code.H:
+		return "H"
+	case Key_Code.I:
+		return "I"
+	case Key_Code.J:
+		return "J"
+	case Key_Code.K:
+		return "K"
+	case Key_Code.L:
+		return "L"
+	case Key_Code.M:
+		return "M"
+	case Key_Code.N:
+		return "N"
+	case Key_Code.O:
+		return "O"
+	case Key_Code.P:
+		return "P"
+	case Key_Code.Q:
+		return "Q"
+	case Key_Code.R:
+		return "R"
+	case Key_Code.S:
+		return "S"
+	case Key_Code.T:
+		return "T"
+	case Key_Code.U:
+		return "U"
+	case Key_Code.V:
+		return "V"
+	case Key_Code.W:
+		return "W"
+	case Key_Code.X:
+		return "X"
+	case Key_Code.Y:
+		return "Y"
+	case Key_Code.Z:
+		return "Z"
+
+	case Key_Code.Escape:
+		return "Escape"
+	case Key_Code.Enter:
+		return "Enter"
+	case Key_Code.Tab:
+		return "Tab"
+
+	case Key_Code.Right:
+		return "Right"
+	case Key_Code.Left:
+		return "Left"
+	case Key_Code.Down:
+		return "Down"
+	case Key_Code.Up:
+		return "Up"
+
+	case Key_Code.F1:
+		return "F1"
+	case Key_Code.F2:
+		return "F2"
+	case Key_Code.F3:
+		return "F3"
+	case Key_Code.F4:
+		return "F4"
+	case Key_Code.F5:
+		return "F5"
+	case Key_Code.F6:
+		return "F6"
+	case Key_Code.F7:
+		return "F7"
+	case Key_Code.F8:
+		return "F8"
+	case Key_Code.F9:
+		return "F9"
+	case Key_Code.F10:
+		return "F10"
+	case Key_Code.F11:
+		return "F11"
+	case Key_Code.F12:
+		return "F12"
+
+	case Key_Code.Left_Shift:
+		return "Left Shift"
+	case Key_Code.Left_Control:
+		return "Left Control"
+	case Key_Code.Left_Alt:
+		return "Left Alt"
+
+	case Key_Code.Right_Shift:
+		return "Right Shift"
+	case Key_Code.Right_Control:
+		return "Right Control"
+	case Key_Code.Right_Alt:
+		return "Right Alt"
+	}
+
+	return ""
+}
+
+get_mouse_button_code_name :: proc(mbc: Mouse_Button_Code) -> string {
+	switch mbc {
+	case Mouse_Button_Code.None:
+		break
+
+	case Mouse_Button_Code.Left:
+		return "Left Mouse Button"
+	case Mouse_Button_Code.Right:
+		return "Right Mouse Button"
+	case Mouse_Button_Code.Middle:
+		return "Middle Mouse Button"
+	}
+
+	return ""
+}
+
 to_glfw_key_code :: proc(key_code: Key_Code) -> i32 {
 	switch key_code {
+	case Key_Code.None:
+		break
+
 	case Key_Code.Space:
 		return glfw.KEY_SPACE
 
@@ -278,24 +440,25 @@ to_glfw_key_code :: proc(key_code: Key_Code) -> i32 {
 		return glfw.KEY_RIGHT_CONTROL
 	case Key_Code.Right_Alt:
 		return glfw.KEY_RIGHT_ALT
-
-	case:
-		return -1
 	}
+
+	return -1
 }
 
 to_glfw_mouse_button_code :: proc(button_code: Mouse_Button_Code) -> i32 {
 	switch button_code {
+	case Mouse_Button_Code.None:
+		break
+
 	case Mouse_Button_Code.Left:
 		return glfw.MOUSE_BUTTON_LEFT
 	case Mouse_Button_Code.Right:
 		return glfw.MOUSE_BUTTON_RIGHT
 	case Mouse_Button_Code.Middle:
 		return glfw.MOUSE_BUTTON_MIDDLE
-
-	case:
-		return -1
 	}
+
+	return -1
 }
 
 load_keys_down :: proc(glfw_window: glfw.WindowHandle) -> Keys_Down_Bits {
@@ -303,8 +466,8 @@ load_keys_down :: proc(glfw_window: glfw.WindowHandle) -> Keys_Down_Bits {
 
 	bits: Keys_Down_Bits = 0
 
-	for i: u32 = 0; i < len(Key_Code); i += 1 {
-		glfw_code := to_glfw_key_code(cast(Key_Code)i)
+	for i: u32 = 1; i < len(Key_Code); i += 1 {
+		glfw_code := to_glfw_key_code(Key_Code(i))
 		assert(glfw_code != -1)
 
 		if glfw.GetKey(glfw_window, glfw_code) == glfw.PRESS {
@@ -320,8 +483,8 @@ load_mouse_buttons_down :: proc(glfw_window: glfw.WindowHandle) -> Mouse_Buttons
 
 	bits: Mouse_Buttons_Down_Bits = 0
 
-	for i: u32 = 0; i < len(Mouse_Button_Code); i += 1 {
-		glfw_code := to_glfw_mouse_button_code(cast(Mouse_Button_Code)i)
+	for i: u32 = 1; i < len(Mouse_Button_Code); i += 1 {
+		glfw_code := to_glfw_mouse_button_code(Mouse_Button_Code(i))
 		assert(glfw_code != -1)
 
 		if glfw.GetMouseButton(glfw_window, glfw_code) == glfw.PRESS {

@@ -22,7 +22,7 @@ BATCH_SLOT_VERT_CNT :: BATCH_SHADER_PROG_VERT_CNT * 4
 BATCH_SLOT_VERTS_SIZE :: BATCH_SLOT_VERT_CNT * BATCH_SLOT_CNT
 BATCH_SLOT_ELEM_CNT :: 6
 
-RENDERABLE_STR_LEN_LIMIT :: 1023
+RENDERABLE_STR_BUF_SIZE :: 1023
 
 WHITE :: Vec_4D{1.0, 1.0, 1.0, 1.0}
 BLACK :: Vec_4D{0.0, 0.0, 0.0, 1.0}
@@ -705,7 +705,7 @@ render_str :: proc(
 	font_tex_size := Vec_2D_I{FONT_TEXTURE_WIDTH, fonts.tex_heights[font_index]}
 
 	for i in 0 ..< len(str) {
-		if str[i] == ' ' {
+		if str[i] == 0 || str[i] == ' ' {
 			continue
 		}
 
@@ -858,7 +858,7 @@ gen_str_chr_positions :: proc(
 	pos: Vec_2D,
 	hor_align := Str_Hor_Align.Center,
 	ver_align := Str_Ver_Align.Center,
-) -> [RENDERABLE_STR_LEN_LIMIT]Vec_2D {
+) -> [RENDERABLE_STR_BUF_SIZE]Vec_2D {
 	apply_hor_align_offs_to_line :: proc(
 		line_chr_positions: []Vec_2D,
 		hor_align: Str_Hor_Align,
@@ -875,9 +875,9 @@ gen_str_chr_positions :: proc(
 	assert(font_index >= 0 && font_index < get_font_cnt(fonts))
 
 	str_len := len(str)
-	assert(str_len > 0 && str_len <= RENDERABLE_STR_LEN_LIMIT)
+	assert(str_len > 0 && str_len <= RENDERABLE_STR_BUF_SIZE)
 
-	chr_positions: [RENDERABLE_STR_LEN_LIMIT]Vec_2D
+	chr_positions: [RENDERABLE_STR_BUF_SIZE]Vec_2D
 
 	font_ai := &fonts.arrangement_infos[font_index]
 
@@ -887,6 +887,10 @@ gen_str_chr_positions :: proc(
 
 	for i in 0 ..< str_len {
 		chr := str[i]
+
+		if chr == 0 {
+			continue
+		}
 
 		if chr == '\n' {
 			// Apply horizontal alignment offset to the past line.
@@ -953,7 +957,7 @@ gen_str_collider :: proc(
 	str_collider_edges_initted: bool
 
 	for i in 0 ..< str_len {
-		if str[i] == '\n' {
+		if str[i] == 0 || str[i] == '\n' {
 			continue
 		}
 

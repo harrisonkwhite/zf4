@@ -15,8 +15,10 @@ TARG_TICK_DUR_SECS :: f64(1.0) / f64(TARG_TICKS_PER_SEC)
 
 // TODO: Update validity checking.
 Game_Info :: struct {
-	perm_mem_arena_size:          u32, // NOTE: If either arena is given too small a size, the game will fail to initialise.
-	temp_mem_arena_size:          u32,
+	perm_mem_arena_size:          int, // NOTE: If either arena is given too small a size, the game will fail to initialise.
+	temp_mem_arena_size:          int,
+	user_mem_size:                int,
+	user_mem_alignment:           int,
 	window_init_size:             Vec_2D_I,
 	window_title:                 cstring,
 	tex_cnt:                      int,
@@ -26,25 +28,31 @@ Game_Info :: struct {
 	init_func:                    proc(func_data: ^Game_Init_Func_Data) -> bool,
 	tick_func:                    proc(func_data: ^Game_Tick_Func_Data) -> bool,
 	draw_func:                    proc(func_data: ^Game_Render_Func_Data) -> bool,
-	clean_func:                   proc(),
+	clean_func:                   proc(user_mem: rawptr),
 }
 
 Game_Init_Func_Data :: struct {
+	user_mem:           rawptr,
 	window_state_cache: Window_State,
 	input_state:        ^Input_State,
+	perm_allocator:     mem.Allocator,
 	scratch_allocator:  mem.Allocator,
 }
 
 Game_Tick_Func_Data :: struct {
+	user_mem:           rawptr,
 	window_state_cache: Window_State,
 	input_state:        ^Input_State,
 	input_state_last:   ^Input_State,
 	textures:           ^Textures,
 	fonts:              ^Fonts,
+	perm_allocator:     mem.Allocator,
 	scratch_allocator:  mem.Allocator,
+	exit_game:          ^bool,
 }
 
 Game_Render_Func_Data :: struct {
+	user_mem:          rawptr,
 	rendering_context: Rendering_Context,
 	textures:          ^Textures,
 	fonts:             ^Fonts,
@@ -60,8 +68,6 @@ run_game :: proc(info: Game_Info) -> bool {
 	// Initialisation
 	//
 	fmt.println("Initialising...")
-
-	defer info.clean_func() // NOTE: Should this be called later, after initialisation?
 
 	// Set up the main memory arena.
 	perm_mem_arena_buf := make([]byte, info.perm_mem_arena_size)
@@ -159,11 +165,26 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	defer clean_pers_render_data(&pers_render_data)
 
+	user_mem, user_mem_alloc_err := mem.alloc(
+		info.user_mem_size,
+		info.user_mem_alignment,
+		perm_mem_arena_allocator,
+	)
+
+	if user_mem == nil {
+		return false
+	}
+
+	defer info.clean_func(user_mem)
+
+	defer mem.free(user_mem, perm_mem_arena_allocator)
+
 	//
 	input_state := load_input_state(glfw_window)
 
 	{
 		func_data := Game_Init_Func_Data {
+			user_mem           = user_mem,
 			window_state_cache = load_window_state(glfw_window),
 			scratch_allocator  = temp_mem_arena_allocator,
 			input_state        = &input_state,
@@ -194,9 +215,6 @@ run_game :: proc(info: Game_Info) -> bool {
 	for (!glfw.WindowShouldClose(glfw_window)) {
 		window_state_cache := load_window_state(glfw_window)
 
-		input_state_last := input_state
-		input_state = load_input_state(glfw_window)
-
 		frame_time_last := frame_time
 		frame_time = glfw.GetTime()
 
@@ -204,20 +222,31 @@ run_game :: proc(info: Game_Info) -> bool {
 		frame_dur_accum += frame_dur
 
 		if frame_dur_accum >= TARG_TICK_DUR_SECS {
+			input_state_last := input_state // PROBLEM
+			input_state = load_input_state(glfw_window)
+
 			for frame_dur_accum >= TARG_TICK_DUR_SECS {
 				mem.arena_free_all(&temp_mem_arena)
 
+				exit_game: bool
+
 				func_data := Game_Tick_Func_Data {
+					user_mem           = user_mem,
 					window_state_cache = window_state_cache,
 					input_state        = &input_state,
 					input_state_last   = &input_state_last,
 					textures           = &textures,
 					fonts              = &fonts,
 					scratch_allocator  = temp_mem_arena_allocator,
+					exit_game          = &exit_game,
 				}
 
 				if !info.tick_func(&func_data) {
 					return false
+				}
+
+				if exit_game {
+					return true
 				}
 
 				frame_dur_accum -= TARG_TICK_DUR_SECS
@@ -229,6 +258,7 @@ run_game :: proc(info: Game_Info) -> bool {
 
 			{
 				func_data := Game_Render_Func_Data {
+					user_mem          = user_mem,
 					textures          = &textures,
 					fonts             = &fonts,
 					scratch_allocator = temp_mem_arena_allocator,
