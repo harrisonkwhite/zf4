@@ -753,6 +753,7 @@ render_line :: proc(
 	assert(width > 0.0)
 
 	len := calc_dist(a, b)
+	rot := calc_dir(b - a)
 
 	render(
 		rendering_context,
@@ -761,9 +762,26 @@ render_line :: proc(
 		a,
 		{len, width},
 		{0.0, 0.5},
-		0.0,
+		rot,
 		blend,
 	)
+}
+
+render_poly_outline :: proc(
+	rendering_context: ^Rendering_Context,
+	poly: Poly,
+	blend := WHITE,
+	width: f32 = 1.0,
+) {
+	assert(is_color_valid_4d(blend))
+	assert(width > 0.0)
+
+	for i in 0 ..< len(poly.pts) {
+		pt_a := poly.pts[i]
+		pt_b := poly.pts[(i + 1) % len(poly.pts)]
+
+		render_line(rendering_context, pt_a, pt_b, blend, width)
+	}
 }
 
 render_bar_hor :: proc(
