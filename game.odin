@@ -20,6 +20,7 @@ Game_Info :: struct {
 	user_mem_size:                int,
 	user_mem_alignment:           int,
 	window_init_size:             Vec_2D_I,
+	window_min_size:              Vec_2D_I,
 	window_title:                 cstring,
 	tex_cnt:                      int,
 	tex_index_to_file_path_func:  Texture_Index_To_File_Path,
@@ -40,15 +41,16 @@ Game_Init_Func_Data :: struct {
 }
 
 Game_Tick_Func_Data :: struct {
-	user_mem:           rawptr,
-	window_state_cache: Window_State,
-	input_state:        ^Input_State,
-	input_state_last:   ^Input_State,
-	textures:           ^Textures,
-	fonts:              ^Fonts,
-	perm_allocator:     mem.Allocator,
-	scratch_allocator:  mem.Allocator,
-	exit_game:          ^bool,
+	user_mem:               rawptr,
+	window_state_cache:     Window_State,
+	fullscreen_state_ideal: ^bool,
+	input_state:            ^Input_State,
+	input_state_last:       ^Input_State,
+	textures:               ^Textures,
+	fonts:                  ^Fonts,
+	perm_allocator:         mem.Allocator,
+	scratch_allocator:      mem.Allocator,
+	exit_game:              ^bool,
 }
 
 Game_Render_Func_Data :: struct {
@@ -60,10 +62,14 @@ Game_Render_Func_Data :: struct {
 }
 
 Window_State :: struct {
-	size: Vec_2D_I,
+	pos:        Vec_2D_I,
+	size:       Vec_2D_I,
+	fullscreen: bool,
 }
 
 run_game :: proc(info: Game_Info) -> bool {
+	// TODO: Assert correctness of game information data.
+
 	//
 	// Initialisation
 	//
@@ -128,6 +134,16 @@ run_game :: proc(info: Game_Info) -> bool {
 	glfw.MakeContextCurrent(glfw_window)
 
 	glfw.SwapInterval(1)
+
+	if info.window_min_size != {} {
+		glfw.SetWindowSizeLimits(
+			glfw_window,
+			i32(info.window_min_size.x),
+			i32(info.window_min_size.y),
+			glfw.DONT_CARE,
+			glfw.DONT_CARE,
+		)
+	}
 
 	//
 	gl.load_up_to(GL_VERS_MAJOR, GL_VERS_MINOR, glfw.gl_set_proc_address)
@@ -210,10 +226,14 @@ run_game :: proc(info: Game_Info) -> bool {
 		return false
 	}
 
+	window_pos_fullscreen_switch_cache: Vec_2D_I
+	window_size_fullscreen_switch_cache: Vec_2D_I
+
 	fmt.println("Entering the main loop...")
 
 	for (!glfw.WindowShouldClose(glfw_window)) {
 		window_state_cache := load_window_state(glfw_window)
+		fullscreen_state_ideal := window_state_cache.fullscreen
 
 		frame_time_last := frame_time
 		frame_time = glfw.GetTime()
@@ -231,14 +251,15 @@ run_game :: proc(info: Game_Info) -> bool {
 				exit_game: bool
 
 				func_data := Game_Tick_Func_Data {
-					user_mem           = user_mem,
-					window_state_cache = window_state_cache,
-					input_state        = &input_state,
-					input_state_last   = &input_state_last,
-					textures           = &textures,
-					fonts              = &fonts,
-					scratch_allocator  = temp_mem_arena_allocator,
-					exit_game          = &exit_game,
+					user_mem               = user_mem,
+					window_state_cache     = window_state_cache,
+					fullscreen_state_ideal = &fullscreen_state_ideal,
+					input_state            = &input_state,
+					input_state_last       = &input_state_last,
+					textures               = &textures,
+					fonts                  = &fonts,
+					scratch_allocator      = temp_mem_arena_allocator,
+					exit_game              = &exit_game,
 				}
 
 				if !info.tick_func(&func_data) {
@@ -280,11 +301,43 @@ run_game :: proc(info: Game_Info) -> bool {
 			glfw.SwapBuffers(glfw_window)
 		}
 
+		// BUG: Maximise on a secondary monitor and go fullscreen; every time you click the window disappears.
+
+		if fullscreen_state_ideal && !window_state_cache.fullscreen {
+			monitor := glfw.GetPrimaryMonitor()
+			vid_mode := glfw.GetVideoMode(monitor)
+
+			glfw.SetWindowMonitor(
+				glfw_window,
+				monitor,
+				0,
+				0,
+				vid_mode.width,
+				vid_mode.height,
+				vid_mode.refresh_rate,
+			)
+
+			fmt.println("Going fullscreen...")
+		} else if !fullscreen_state_ideal && window_state_cache.fullscreen {
+			glfw.SetWindowMonitor(
+				glfw_window,
+				nil,
+				i32(window_pos_fullscreen_switch_cache.x),
+				i32(window_pos_fullscreen_switch_cache.y),
+				i32(window_size_fullscreen_switch_cache.x),
+				i32(window_size_fullscreen_switch_cache.y),
+				0,
+			)
+
+			fmt.println("Going windowed...")
+		}
+
 		glfw.PollEvents()
 
+		// Handle any window state changes.
 		window_state_after_poll_events := load_window_state(glfw_window)
 
-		if window_state_after_poll_events != {} &&
+		if window_state_after_poll_events.size != {} &&
 		   window_state_after_poll_events.size != window_state_cache.size {
 			gl.Viewport(
 				0,
@@ -293,6 +346,11 @@ run_game :: proc(info: Game_Info) -> bool {
 				i32(window_state_after_poll_events.size.y),
 			)
 		}
+
+		if window_state_after_poll_events.fullscreen && !window_state_cache.fullscreen {
+			window_pos_fullscreen_switch_cache = window_state_cache.pos
+			window_size_fullscreen_switch_cache = window_state_cache.size
+		}
 	}
 
 	return true
@@ -300,7 +358,14 @@ run_game :: proc(info: Game_Info) -> bool {
 
 load_window_state :: proc(glfw_window: glfw.WindowHandle) -> Window_State {
 	assert(glfw_window != nil)
+
+	x, y := glfw.GetWindowPos(glfw_window)
 	width, height := glfw.GetWindowSize(glfw_window)
-	return {size = {int(width), int(height)}}
+
+	return {
+		pos = {int(x), int(y)},
+		size = {int(width), int(height)},
+		fullscreen = glfw.GetWindowMonitor(glfw_window) != nil,
+	}
 }
 
