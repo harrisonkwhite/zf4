@@ -22,6 +22,7 @@ Game_Info :: struct {
 	window_init_size:             Vec_2D_I,
 	window_min_size:              Vec_2D_I,
 	window_title:                 cstring,
+	window_flags:                 Window_Flag_Set,
 	tex_cnt:                      int,
 	tex_index_to_file_path_func:  Texture_Index_To_File_Path,
 	font_cnt:                     int,
@@ -66,6 +67,13 @@ Window_State :: struct {
 	size:       Vec_2D_I,
 	fullscreen: bool,
 }
+
+Window_Flag :: enum {
+	Resizable,
+	Hide_Cursor,
+}
+
+Window_Flag_Set :: bit_set[Window_Flag]
 
 run_game :: proc(info: Game_Info) -> bool {
 	// TODO: Assert correctness of game information data.
@@ -144,6 +152,17 @@ run_game :: proc(info: Game_Info) -> bool {
 			glfw.DONT_CARE,
 		)
 	}
+
+	glfw.SetWindowAttrib(
+		glfw_window,
+		glfw.RESIZABLE,
+		Window_Flag.Resizable in info.window_flags ? 1 : 0,
+	)
+	glfw.SetInputMode(
+		glfw_window,
+		glfw.CURSOR,
+		Window_Flag.Hide_Cursor in info.window_flags ? glfw.CURSOR_HIDDEN : glfw.CURSOR_NORMAL,
+	)
 
 	//
 	gl.load_up_to(GL_VERS_MAJOR, GL_VERS_MINOR, glfw.gl_set_proc_address)
