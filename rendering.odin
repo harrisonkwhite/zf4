@@ -22,6 +22,8 @@ BATCH_SLOT_VERT_CNT :: BATCH_SHADER_PROG_VERT_CNT * 4
 BATCH_SLOT_VERTS_SIZE :: BATCH_SLOT_VERT_CNT * BATCH_SLOT_CNT
 BATCH_SLOT_ELEM_CNT :: 6
 
+RENDER_SURFACE_LIMIT :: 32
+
 RENDERABLE_STR_BUF_SIZE :: 1023
 
 WHITE :: Vec_4D{1.0, 1.0, 1.0, 1.0}
@@ -41,16 +43,23 @@ Rendering_Context :: struct {
 }
 
 Pers_Render_Data :: struct {
-	batch_shader_prog: Batch_Shader_Prog,
-	batch_gl_ids:      Batch_GL_IDs,
-	px_tex_gl_id:      u32,
+	batch_shader_prog:     Batch_Shader_Prog,
+	batch_gl_ids:          Batch_GL_IDs,
+	surfs:                 Render_Surfaces,
+	surf_vert_array_gl_id: u32,
+	surf_vert_buf_gl_id:   u32,
+	surf_elem_buf_gl_id:   u32,
+	px_tex_gl_id:          u32,
 }
 
 Rendering_State :: struct {
-	batch_slots_used_cnt: int,
-	batch_slot_verts:     [BATCH_SLOT_CNT][BATCH_SLOT_VERT_CNT]f32,
-	batch_tex_gl_id:      u32,
-	view_mat:             Matrix_4x4,
+	batch_slots_used_cnt:    int,
+	batch_slot_verts:        [BATCH_SLOT_CNT][BATCH_SLOT_VERT_CNT]f32,
+	batch_tex_gl_id:         u32,
+	surf_shader_prog_gl_id:  u32, // When a surface is rendered, this shader program is used.
+	surf_index_stack:        [RENDER_SURFACE_LIMIT]int,
+	surf_index_stack_height: int,
+	view_mat:                Matrix_4x4,
 }
 
 Textures :: struct {
@@ -94,6 +103,11 @@ Batch_GL_IDs :: struct {
 	elem_buf_gl_id:   u32,
 }
 
+Render_Surfaces :: struct {
+	framebuffer_gl_ids:     [RENDER_SURFACE_LIMIT]u32,
+	framebuffer_tex_gl_ids: [RENDER_SURFACE_LIMIT]u32,
+}
+
 Str_Hor_Align :: enum {
 	Left,
 	Center,
@@ -106,8 +120,14 @@ Str_Ver_Align :: enum {
 	Bottom,
 }
 
-gen_pers_render_data :: proc() -> Pers_Render_Data {
+gen_pers_render_data :: proc(display_size: Vec_2D_I) -> (Pers_Render_Data, bool) {
+	assert(display_size.x > 0 && display_size.y > 0)
+
 	render_data: Pers_Render_Data
+
+	render_data.batch_shader_prog = load_batch_shader_prog()
+
+	render_data.batch_gl_ids = gen_batch()
 
 	{
 		gl.GenTextures(1, &render_data.px_tex_gl_id)
@@ -116,15 +136,66 @@ gen_pers_render_data :: proc() -> Pers_Render_Data {
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, &px_data)
 	}
 
-	render_data.batch_shader_prog = load_batch_shader_prog()
+	if !init_render_surfaces(&render_data.surfs, display_size) {
+		return render_data, false
+	}
 
-	render_data.batch_gl_ids = gen_batch()
+	//
+	// Surfaces
+	//
+	gl.GenVertexArrays(1, &render_data.surf_vert_array_gl_id)
+	gl.BindVertexArray(render_data.surf_vert_array_gl_id)
 
-	return render_data
+	gl.GenBuffers(1, &render_data.surf_vert_buf_gl_id)
+	gl.BindBuffer(gl.ARRAY_BUFFER, render_data.surf_vert_buf_gl_id)
+
+	{
+		verts := []f32 {
+			-1.0,
+			-1.0,
+			0.0,
+			0.0,
+			1.0,
+			-1.0,
+			1.0,
+			0.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			-1.0,
+			1.0,
+			0.0,
+			1.0,
+		}
+
+		gl.BufferData(gl.ARRAY_BUFFER, size_of(verts), &verts[0], gl.STATIC_DRAW)
+	}
+
+	gl.GenBuffers(1, &render_data.surf_elem_buf_gl_id)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, render_data.surf_elem_buf_gl_id)
+
+	{
+		indices := []u16{0, 1, 2, 2, 3, 0}
+		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), &indices[0], gl.STATIC_DRAW)
+	}
+
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, size_of(f32) * 4, size_of(f32) * 0)
+
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(f32) * 4, size_of(f32) * 2)
+	gl.EnableVertexAttribArray(1)
+
+	gl.BindVertexArray(0)
+
+	return render_data, true
 }
 
 clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
 	gl.DeleteTextures(1, &render_data.px_tex_gl_id)
+
+	gl.DeleteFramebuffers(RENDER_SURFACE_LIMIT, &render_data.surfs.framebuffer_gl_ids[0])
+	gl.DeleteTextures(RENDER_SURFACE_LIMIT, &render_data.surfs.framebuffer_tex_gl_ids[0])
 
 	gl.DeleteVertexArrays(1, &render_data.batch_gl_ids.vert_array_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.vert_buf_gl_id)
@@ -133,6 +204,76 @@ clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
 	gl.DeleteProgram(render_data.batch_shader_prog.gl_id)
 
 	mem.zero_item(render_data)
+}
+
+init_render_surfaces :: proc(surfs: ^Render_Surfaces, display_size: Vec_2D_I) -> bool {
+	assert(mem.check_zero_ptr(surfs, size_of(surfs^)))
+	assert(display_size.x > 0 && display_size.y > 0)
+
+	gl.GenFramebuffers(RENDER_SURFACE_LIMIT, &surfs.framebuffer_gl_ids[0])
+	gl.GenTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+
+	for i in 0 ..< RENDER_SURFACE_LIMIT {
+		if !attach_framebuffer_texture(
+			surfs.framebuffer_gl_ids[i],
+			surfs.framebuffer_tex_gl_ids[i],
+			display_size,
+		) {
+			return false
+		}
+	}
+
+	return true
+}
+
+resize_surfaces :: proc(surfs: ^Render_Surfaces, window_size: Vec_2D_I) -> bool {
+	assert(window_size.x > 0 && window_size.y > 0)
+
+	gl.DeleteTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+	gl.GenTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+
+	for i in 0 ..< RENDER_SURFACE_LIMIT {
+		if (!attach_framebuffer_texture(
+				   surfs.framebuffer_gl_ids[i],
+				   surfs.framebuffer_tex_gl_ids[i],
+				   window_size,
+			   )) {
+			return false
+		}
+	}
+
+	return true
+}
+
+attach_framebuffer_texture :: proc(fb_gl_id: u32, tex_gl_id: u32, tex_size: Vec_2D_I) -> bool {
+	assert(fb_gl_id != 0)
+	assert(tex_gl_id != 0)
+	assert(tex_size.x > 0 && tex_size.y > 0)
+
+	gl.BindTexture(gl.TEXTURE_2D, tex_gl_id)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		i32(tex_size.x),
+		i32(tex_size.y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		nil,
+	)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fb_gl_id)
+
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex_gl_id, 0)
+
+	success := gl.CheckFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+	return success
 }
 
 create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
@@ -800,6 +941,59 @@ render_bar_hor :: proc(
 
 	right_rect := Rect{rect.x + left_rect.width, rect.y, rect.width - left_rect.width, rect.height}
 	render_rect(rendering_context, right_rect, {col_back.r, col_back.g, col_back.b, 1.0})
+}
+
+set_render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
+	// NOTE: Should flushing be a prerequisite to this?
+
+	assert(surf_index >= 0 && surf_index < RENDER_SURFACE_LIMIT)
+	assert(rendering_context.state.surf_index_stack_height < RENDER_SURFACE_LIMIT)
+
+	// Add the surface index to the stack.
+	rendering_context.state.surf_index_stack[rendering_context.state.surf_index_stack_height] =
+		surf_index
+	rendering_context.state.surf_index_stack_height += 1
+
+	// Bind the surface framebuffer.
+	gl.BindFramebuffer(gl.FRAMEBUFFER, rendering_context.pers.surfs.framebuffer_gl_ids[surf_index])
+}
+
+unset_render_surface :: proc(rendering_context: ^Rendering_Context) {
+	assert(
+		rendering_context.state.batch_slots_used_cnt == 0,
+		"The current render batch needs to have been flushed before unsetting render surface!",
+	)
+	assert(rendering_context.state.surf_index_stack_height > 0)
+
+	rendering_context.state.surf_index_stack_height -= 1
+
+	if (rendering_context.state.surf_index_stack_height == 0) {
+		gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	} else {
+		new_surf_index := rendering_context.state.surf_index_stack_height
+		fb_gl_id := rendering_context.pers.surfs.framebuffer_gl_ids[new_surf_index]
+		gl.BindFramebuffer(
+			gl.FRAMEBUFFER,
+			rendering_context.pers.surfs.framebuffer_gl_ids[new_surf_index],
+		)
+	}
+}
+
+render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
+	assert(surf_index >= 0 && surf_index < RENDER_SURFACE_LIMIT)
+	assert(
+		rendering_context.state.surf_shader_prog_gl_id != 0,
+		"Surface shader program must be set before rendering a surface!",
+	)
+
+	gl.UseProgram(rendering_context.state.surf_shader_prog_gl_id)
+
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, rendering_context.pers.surfs.framebuffer_tex_gl_ids[surf_index])
+
+	gl.BindVertexArray(rendering_context.pers.surf_vert_array_gl_id)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rendering_context.pers.surf_elem_buf_gl_id)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 }
 
 flush :: proc(rendering_context: ^Rendering_Context) {

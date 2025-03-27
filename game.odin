@@ -170,8 +170,12 @@ run_game :: proc(info: Game_Info) -> bool {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	pers_render_data := gen_pers_render_data()
+	pers_render_data, pers_render_data_generated := gen_pers_render_data(info.window_init_size)
 	defer clean_pers_render_data(&pers_render_data)
+
+	if !pers_render_data_generated {
+		return false
+	}
 
 	textures, textures_loaded := load_textures(
 		perm_mem_arena_allocator,
