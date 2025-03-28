@@ -3,6 +3,7 @@ package zf4
 import "core:fmt"
 import "core:mem"
 import "core:os"
+import "core:strings"
 import gl "vendor:OpenGL"
 import stbi "vendor:stb/image"
 import stbtt "vendor:stb/truetype"
@@ -67,7 +68,7 @@ Textures :: struct {
 	sizes:  []Vec_2D_I,
 }
 
-Texture_Index_To_File_Path :: proc(index: int) -> cstring
+Texture_Index_To_File_Path :: proc(index: int) -> string
 
 Fonts :: struct {
 	arrangement_infos: []Font_Arrangement_Info,
@@ -90,6 +91,12 @@ Font_Load_Info :: struct {
 
 Font_Index_To_Load_Info :: proc(index: int) -> Font_Load_Info
 
+Shader_Progs :: struct {
+	gl_ids: []u32,
+}
+
+Shader_Prog_Index_To_File_Paths :: proc(index: int) -> (string, string)
+
 Batch_Shader_Prog :: struct {
 	gl_id:                u32,
 	proj_uniform_loc:     int,
@@ -106,6 +113,15 @@ Batch_GL_IDs :: struct {
 Render_Surfaces :: struct {
 	framebuffer_gl_ids:     [RENDER_SURFACE_LIMIT]u32,
 	framebuffer_tex_gl_ids: [RENDER_SURFACE_LIMIT]u32,
+}
+
+Shader_Prog_Uniform_Value :: union {
+	i32,
+	f32,
+	Vec_2D,
+	Vec_3D,
+	Vec_4D,
+	Matrix_4x4,
 }
 
 Str_Hor_Align :: enum {
@@ -136,13 +152,13 @@ gen_pers_render_data :: proc(display_size: Vec_2D_I) -> (Pers_Render_Data, bool)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, &px_data)
 	}
 
-	if !init_render_surfaces(&render_data.surfs, display_size) {
-		return render_data, false
-	}
-
 	//
 	// Surfaces
 	//
+	if !init_surfaces(&render_data.surfs, display_size) {
+		return render_data, false
+	}
+
 	gl.GenVertexArrays(1, &render_data.surf_vert_array_gl_id)
 	gl.BindVertexArray(render_data.surf_vert_array_gl_id)
 
@@ -150,7 +166,7 @@ gen_pers_render_data :: proc(display_size: Vec_2D_I) -> (Pers_Render_Data, bool)
 	gl.BindBuffer(gl.ARRAY_BUFFER, render_data.surf_vert_buf_gl_id)
 
 	{
-		verts := []f32 {
+		verts := [?]f32 {
 			-1.0,
 			-1.0,
 			0.0,
@@ -206,7 +222,7 @@ clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
 	mem.zero_item(render_data)
 }
 
-init_render_surfaces :: proc(surfs: ^Render_Surfaces, display_size: Vec_2D_I) -> bool {
+init_surfaces :: proc(surfs: ^Render_Surfaces, display_size: Vec_2D_I) -> bool {
 	assert(mem.check_zero_ptr(surfs, size_of(surfs^)))
 	assert(display_size.x > 0 && display_size.y > 0)
 
@@ -276,19 +292,18 @@ attach_framebuffer_texture :: proc(fb_gl_id: u32, tex_gl_id: u32, tex_size: Vec_
 	return success
 }
 
-create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
-	shader_type: u32
+create_shader_from_src :: proc(src: string, frag: bool) -> u32 {
+	src_c_str, src_c_str_err := strings.clone_to_cstring(src, context.temp_allocator)
 
-	if frag {
-		shader_type = gl.FRAGMENT_SHADER
-	} else {
-		shader_type = gl.VERTEX_SHADER
+	if src_c_str_err != nil {
+		return 0
 	}
+
+	shader_type: u32 = frag ? gl.FRAGMENT_SHADER : gl.VERTEX_SHADER
 
 	gl_id := gl.CreateShader(shader_type)
 
-	src := src
-	gl.ShaderSource(gl_id, 1, &src, nil)
+	gl.ShaderSource(gl_id, 1, &src_c_str, nil)
 	gl.CompileShader(gl_id)
 
 	compile_success: i32
@@ -302,7 +317,7 @@ create_shader_from_src :: proc(src: cstring, frag: bool) -> u32 {
 	return gl_id
 }
 
-create_shader_prog_from_srcs :: proc(vert_shader_src, frag_shader_src: cstring) -> u32 {
+create_shader_prog_from_srcs :: proc(vert_shader_src: string, frag_shader_src: string) -> u32 {
 	vert_shader_gl_id := create_shader_from_src(vert_shader_src, false)
 
 	if vert_shader_gl_id == 0 {
@@ -328,7 +343,8 @@ create_shader_prog_from_srcs :: proc(vert_shader_src, frag_shader_src: cstring) 
 }
 
 load_batch_shader_prog :: proc() -> Batch_Shader_Prog {
-	vert_shader_src: cstring = `#version 430 core
+	vert_shader_src := `#version 430 core
+
 layout (location = 0) in vec2 a_vert;
 layout (location = 1) in vec2 a_pos;
 layout (location = 2) in vec2 a_size;
@@ -359,7 +375,8 @@ void main() {
 }`
 
 
-	frag_shader_src: cstring = `#version 430 core
+	frag_shader_src := `#version 430 core
+
 in vec2 v_tex_coord;
 in vec4 v_blend;
 
@@ -438,9 +455,9 @@ gen_batch :: proc() -> Batch_GL_IDs {
 }
 
 load_textures :: proc(
-	allocator: mem.Allocator,
 	tex_cnt: int,
 	tex_index_to_file_path_func: Texture_Index_To_File_Path,
+	allocator := context.allocator,
 ) -> (
 	Textures,
 	bool,
@@ -466,10 +483,15 @@ load_textures :: proc(
 
 	for i in 0 ..< tex_cnt {
 		fp := tex_index_to_file_path_func(i)
-		assert(fp != nil)
+
+		fp_c_str, fp_c_str_err := strings.clone_to_cstring(fp, context.temp_allocator)
+
+		if fp_c_str_err != nil {
+			return textures, false
+		}
 
 		width, height, channel_cnt: i32
-		px_data := stbi.load(fp, &width, &height, &channel_cnt, TEXTURE_CHANNEL_CNT)
+		px_data := stbi.load(fp_c_str, &width, &height, &channel_cnt, TEXTURE_CHANNEL_CNT)
 
 		if px_data == nil {
 			fmt.printf("Failed to load image with file path \"%s\"!\n", fp)
@@ -513,7 +535,6 @@ get_texture_cnt :: proc(textures: ^Textures) -> int {
 
 load_fonts :: proc(
 	allocator: mem.Allocator,
-	scratch_allocator: mem.Allocator,
 	font_cnt: int,
 	font_index_to_load_info: Font_Index_To_Load_Info,
 ) -> (
@@ -548,7 +569,7 @@ load_fonts :: proc(
 	px_data_scratch_space := make(
 		[]u8,
 		TEXTURE_CHANNEL_CNT * FONT_TEXTURE_WIDTH * FONT_TEXTURE_HEIGHT_LIMIT,
-		scratch_allocator,
+		context.temp_allocator,
 	)
 
 	if px_data_scratch_space == nil {
@@ -565,7 +586,7 @@ load_fonts :: proc(
 
 		font_file_data, font_file_read_err := os.read_entire_file_from_filename_or_err(
 			font_load_info.file_path,
-			scratch_allocator,
+			context.temp_allocator,
 		)
 
 		if font_file_read_err != nil {
@@ -706,12 +727,73 @@ get_font_cnt :: proc(fonts: ^Fonts) -> int {
 	return len(fonts.arrangement_infos)
 }
 
+load_shader_progs :: proc(
+	allocator: mem.Allocator,
+	prog_cnt: int,
+	prog_index_to_file_paths_func: Shader_Prog_Index_To_File_Paths,
+) -> (
+	Shader_Progs,
+	bool,
+) {
+	assert(prog_cnt > 0)
+	assert(prog_index_to_file_paths_func != nil)
+
+	progs: Shader_Progs
+
+	progs.gl_ids = make([]u32, prog_cnt, allocator)
+
+	if progs.gl_ids == nil {
+		return progs, false
+	}
+
+	for i in 0 ..< prog_cnt {
+		vert_fp, frag_fp := prog_index_to_file_paths_func(i)
+
+		vert_contents, vert_contents_read_err := os.read_entire_file_from_filename_or_err(
+			vert_fp,
+			context.temp_allocator,
+		)
+
+		if vert_contents_read_err != nil {
+			return progs, false
+		}
+
+		frag_contents, frag_contents_read_err := os.read_entire_file_from_filename_or_err(
+			frag_fp,
+			context.temp_allocator,
+		)
+
+		if frag_contents_read_err != nil {
+			return progs, false
+		}
+
+		progs.gl_ids[i] = create_shader_prog_from_srcs(
+			string(vert_contents),
+			string(frag_contents),
+		)
+
+		if progs.gl_ids[i] == 0 {
+			return progs, false
+		}
+	}
+
+	return progs, true
+}
+
+unload_shader_progs :: proc(progs: ^Shader_Progs) {
+	for i in 0 ..< len(progs.gl_ids) {
+		gl.DeleteProgram(progs.gl_ids[i])
+	}
+
+	mem.zero_item(progs)
+}
+
 begin_rendering :: proc(state: ^Rendering_State) {
 	mem.zero_item(state)
 	init_iden_matrix_4x4(&state.view_mat)
 }
 
-render_clear :: proc(col: Vec_4D) {
+render_clear :: proc(col := Vec_4D{}) {
 	gl.ClearColor(col.x, col.y, col.z, col.w)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
@@ -943,7 +1025,7 @@ render_bar_hor :: proc(
 	render_rect(rendering_context, right_rect, {col_back.r, col_back.g, col_back.b, 1.0})
 }
 
-set_render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
+set_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
 	// NOTE: Should flushing be a prerequisite to this?
 
 	assert(surf_index >= 0 && surf_index < RENDER_SURFACE_LIMIT)
@@ -958,7 +1040,7 @@ set_render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: in
 	gl.BindFramebuffer(gl.FRAMEBUFFER, rendering_context.pers.surfs.framebuffer_gl_ids[surf_index])
 }
 
-unset_render_surface :: proc(rendering_context: ^Rendering_Context) {
+unset_surface :: proc(rendering_context: ^Rendering_Context) {
 	assert(
 		rendering_context.state.batch_slots_used_cnt == 0,
 		"The current render batch needs to have been flushed before unsetting render surface!",
@@ -976,6 +1058,37 @@ unset_render_surface :: proc(rendering_context: ^Rendering_Context) {
 			gl.FRAMEBUFFER,
 			rendering_context.pers.surfs.framebuffer_gl_ids[new_surf_index],
 		)
+	}
+}
+
+set_surface_shader_prog_uniform :: proc(
+	rendering_context: ^Rendering_Context,
+	name: string,
+	val: Shader_Prog_Uniform_Value,
+) {
+	assert(
+		rendering_context.state.surf_shader_prog_gl_id != 0,
+		"Surface shader program must be set before modifying uniforms!",
+	)
+
+	name_c_str := strings.clone_to_cstring(name, context.temp_allocator)
+	loc := gl.GetUniformLocation(rendering_context.state.surf_shader_prog_gl_id, name_c_str)
+	assert(loc != -1, "Failed to get location of shader uniform!")
+
+	switch v in val {
+	case i32:
+		gl.Uniform1i(loc, v)
+	case f32:
+		gl.Uniform1f(loc, v)
+	case Vec_2D:
+		gl.Uniform2f(loc, v.x, v.y)
+	case Vec_3D:
+		gl.Uniform3f(loc, v.x, v.y, v.z)
+	case Vec_4D:
+		gl.Uniform4f(loc, v.x, v.y, v.z, v.w)
+	case Matrix_4x4:
+		elems := v.elems
+		gl.UniformMatrix4fv(loc, 1, false, &elems[0][0])
 	}
 }
 

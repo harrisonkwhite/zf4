@@ -3,6 +3,7 @@ package zf4
 import "core:c"
 import "core:fmt"
 import "core:mem"
+import "core:strings"
 
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -15,22 +16,23 @@ TARG_TICK_DUR_SECS :: f64(1.0) / f64(TARG_TICKS_PER_SEC)
 
 // TODO: Update validity checking.
 Game_Info :: struct {
-	perm_mem_arena_size:          int, // NOTE: If either arena is given too small a size, the game will fail to initialise.
-	temp_mem_arena_size:          int,
-	user_mem_size:                int,
-	user_mem_alignment:           int,
-	window_init_size:             Vec_2D_I,
-	window_min_size:              Vec_2D_I,
-	window_title:                 cstring,
-	window_flags:                 Window_Flag_Set,
-	tex_cnt:                      int,
-	tex_index_to_file_path_func:  Texture_Index_To_File_Path,
-	font_cnt:                     int,
-	font_index_to_load_info_func: Font_Index_To_Load_Info,
-	init_func:                    proc(func_data: ^Game_Init_Func_Data) -> bool,
-	tick_func:                    proc(func_data: ^Game_Tick_Func_Data) -> bool,
-	draw_func:                    proc(func_data: ^Game_Render_Func_Data) -> bool,
-	clean_func:                   proc(user_mem: rawptr),
+	perm_mem_arena_size:                  int,
+	user_mem_size:                        int,
+	user_mem_alignment:                   int,
+	window_init_size:                     Vec_2D_I,
+	window_min_size:                      Vec_2D_I,
+	window_title:                         string,
+	window_flags:                         Window_Flag_Set,
+	tex_cnt:                              int,
+	tex_index_to_file_path_func:          Texture_Index_To_File_Path,
+	font_cnt:                             int,
+	font_index_to_load_info_func:         Font_Index_To_Load_Info,
+	shader_prog_cnt:                      int,
+	shader_prog_index_to_file_paths_func: Shader_Prog_Index_To_File_Paths,
+	init_func:                            proc(func_data: ^Game_Init_Func_Data) -> bool,
+	tick_func:                            proc(func_data: ^Game_Tick_Func_Data) -> bool,
+	draw_func:                            proc(func_data: ^Game_Render_Func_Data) -> bool,
+	clean_func:                           proc(user_mem: rawptr),
 }
 
 Game_Init_Func_Data :: struct {
@@ -38,7 +40,6 @@ Game_Init_Func_Data :: struct {
 	window_state_cache: Window_State,
 	input_state:        ^Input_State,
 	perm_allocator:     mem.Allocator,
-	scratch_allocator:  mem.Allocator,
 }
 
 Game_Tick_Func_Data :: struct {
@@ -49,8 +50,8 @@ Game_Tick_Func_Data :: struct {
 	input_state_last:       ^Input_State,
 	textures:               ^Textures,
 	fonts:                  ^Fonts,
+	shader_progs:           ^Shader_Progs,
 	perm_allocator:         mem.Allocator,
-	scratch_allocator:      mem.Allocator,
 	exit_game:              ^bool,
 }
 
@@ -59,7 +60,7 @@ Game_Render_Func_Data :: struct {
 	rendering_context: Rendering_Context,
 	textures:          ^Textures,
 	fonts:             ^Fonts,
-	scratch_allocator: mem.Allocator,
+	shader_progs:      ^Shader_Progs,
 }
 
 Window_State :: struct {
@@ -83,7 +84,7 @@ run_game :: proc(info: Game_Info) -> bool {
 	//
 	fmt.println("Initialising...")
 
-	// Set up the main memory arena.
+	// Set up the permanent memory arena.
 	perm_mem_arena_buf := make([]byte, info.perm_mem_arena_size)
 
 	if (perm_mem_arena_buf == nil) {
@@ -98,21 +99,6 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	perm_mem_arena_allocator := mem.arena_allocator(&perm_mem_arena)
 
-	// Set up the temporary memory arena.
-	temp_mem_arena_buf := make([]byte, info.temp_mem_arena_size)
-
-	if (temp_mem_arena_buf == nil) {
-		fmt.eprintln("Failed to allocate memory for the temporary memory arena!")
-		return false
-	}
-
-	defer delete(temp_mem_arena_buf)
-
-	temp_mem_arena: mem.Arena
-	mem.arena_init(&temp_mem_arena, temp_mem_arena_buf)
-
-	temp_mem_arena_allocator := mem.arena_allocator(&temp_mem_arena)
-
 	//
 	if (!glfw.Init()) {
 		return false
@@ -125,10 +111,19 @@ run_game :: proc(info: Game_Info) -> bool {
 	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 	glfw.WindowHint(glfw.VISIBLE, false)
 
+	window_title_c_str, window_title_c_str_alloc_err := strings.clone_to_cstring(
+		info.window_title,
+		perm_mem_arena_allocator,
+	)
+
+	if window_title_c_str_alloc_err != nil {
+		return false
+	}
+
 	glfw_window := glfw.CreateWindow(
 		c.int(info.window_init_size.x),
 		c.int(info.window_init_size.y),
-		info.window_title,
+		window_title_c_str,
 		nil,
 		nil,
 	)
@@ -178,9 +173,9 @@ run_game :: proc(info: Game_Info) -> bool {
 	}
 
 	textures, textures_loaded := load_textures(
-		perm_mem_arena_allocator,
 		info.tex_cnt,
 		info.tex_index_to_file_path_func,
+		perm_mem_arena_allocator,
 	)
 
 	defer unload_textures(&textures)
@@ -191,7 +186,6 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	fonts, fonts_loaded := load_fonts(
 		perm_mem_arena_allocator,
-		temp_mem_arena_allocator,
 		info.font_cnt,
 		info.font_index_to_load_info_func,
 	)
@@ -202,7 +196,17 @@ run_game :: proc(info: Game_Info) -> bool {
 		return false
 	}
 
-	defer clean_pers_render_data(&pers_render_data)
+	shader_progs, shader_progs_loaded := load_shader_progs(
+		perm_mem_arena_allocator,
+		info.shader_prog_cnt,
+		info.shader_prog_index_to_file_paths_func,
+	)
+
+	defer unload_shader_progs(&shader_progs)
+
+	if !shader_progs_loaded {
+		return false
+	}
 
 	user_mem, user_mem_alloc_err := mem.alloc(
 		info.user_mem_size,
@@ -214,9 +218,9 @@ run_game :: proc(info: Game_Info) -> bool {
 		return false
 	}
 
-	defer info.clean_func(user_mem)
-
 	defer mem.free(user_mem, perm_mem_arena_allocator)
+
+	defer info.clean_func(user_mem)
 
 	//
 	input_state := load_input_state(glfw_window)
@@ -225,7 +229,6 @@ run_game :: proc(info: Game_Info) -> bool {
 		func_data := Game_Init_Func_Data {
 			user_mem           = user_mem,
 			window_state_cache = load_window_state(glfw_window),
-			scratch_allocator  = temp_mem_arena_allocator,
 			input_state        = &input_state,
 		}
 
@@ -235,6 +238,8 @@ run_game :: proc(info: Game_Info) -> bool {
 	}
 
 	glfw.ShowWindow(glfw_window)
+
+	free_all(context.temp_allocator)
 
 	//
 	// Main Loop
@@ -269,8 +274,6 @@ run_game :: proc(info: Game_Info) -> bool {
 			input_state = load_input_state(glfw_window)
 
 			for frame_dur_accum >= TARG_TICK_DUR_SECS {
-				mem.arena_free_all(&temp_mem_arena)
-
 				exit_game: bool
 
 				func_data := Game_Tick_Func_Data {
@@ -281,13 +284,15 @@ run_game :: proc(info: Game_Info) -> bool {
 					input_state_last       = &input_state_last,
 					textures               = &textures,
 					fonts                  = &fonts,
-					scratch_allocator      = temp_mem_arena_allocator,
+					shader_progs           = &shader_progs,
 					exit_game              = &exit_game,
 				}
 
 				if !info.tick_func(&func_data) {
 					return false
 				}
+
+				free_all(context.temp_allocator)
 
 				if exit_game {
 					return true
@@ -296,16 +301,14 @@ run_game :: proc(info: Game_Info) -> bool {
 				frame_dur_accum -= TARG_TICK_DUR_SECS
 			}
 
-			mem.arena_free_all(&temp_mem_arena)
-
 			begin_rendering(rendering_state)
 
 			{
 				func_data := Game_Render_Func_Data {
-					user_mem          = user_mem,
-					textures          = &textures,
-					fonts             = &fonts,
-					scratch_allocator = temp_mem_arena_allocator,
+					user_mem     = user_mem,
+					textures     = &textures,
+					fonts        = &fonts,
+					shader_progs = &shader_progs,
 				}
 
 				func_data.rendering_context = {
@@ -317,6 +320,8 @@ run_game :: proc(info: Game_Info) -> bool {
 				if !info.draw_func(&func_data) {
 					return false
 				}
+
+				free_all(context.temp_allocator)
 			}
 
 			assert(rendering_state.batch_slots_used_cnt == 0) // Make sure that we flushed.
@@ -368,6 +373,10 @@ run_game :: proc(info: Game_Info) -> bool {
 				i32(window_state_after_poll_events.size.x),
 				i32(window_state_after_poll_events.size.y),
 			)
+
+			if !resize_surfaces(&pers_render_data.surfs, window_state_cache.size) {
+				return false
+			}
 		}
 
 		if window_state_after_poll_events.fullscreen && !window_state_cache.fullscreen {
