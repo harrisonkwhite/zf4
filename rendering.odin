@@ -1061,6 +1061,14 @@ unset_surface :: proc(rendering_context: ^Rendering_Context) {
 	}
 }
 
+set_surface_shader_prog :: proc(rendering_context: ^Rendering_Context, gl_id: u32) {
+	assert(gl_id != 0)
+	// NOTE: Should we also trip an assert if current shader program GL ID is not 0?
+
+	rendering_context.state.surf_shader_prog_gl_id = gl_id
+	gl.UseProgram(rendering_context.state.surf_shader_prog_gl_id)
+}
+
 set_surface_shader_prog_uniform :: proc(
 	rendering_context: ^Rendering_Context,
 	name: string,
@@ -1098,8 +1106,6 @@ render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
 		rendering_context.state.surf_shader_prog_gl_id != 0,
 		"Surface shader program must be set before rendering a surface!",
 	)
-
-	gl.UseProgram(rendering_context.state.surf_shader_prog_gl_id)
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, rendering_context.pers.surfs.framebuffer_tex_gl_ids[surf_index])
