@@ -374,7 +374,7 @@ run_game :: proc(info: Game_Info) -> bool {
 				i32(window_state_after_poll_events.size.y),
 			)
 
-			if !resize_surfaces(&pers_render_data.surfs, window_state_cache.size) {
+			if !resize_surfaces(&pers_render_data.surfs, window_state_after_poll_events.size) {
 				return false
 			}
 		}

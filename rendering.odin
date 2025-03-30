@@ -23,7 +23,7 @@ BATCH_SLOT_VERT_CNT :: BATCH_SHADER_PROG_VERT_CNT * 4
 BATCH_SLOT_VERTS_SIZE :: BATCH_SLOT_VERT_CNT * BATCH_SLOT_CNT
 BATCH_SLOT_ELEM_CNT :: 6
 
-RENDER_SURFACE_LIMIT :: 32
+SURFACE_LIMIT :: 32
 
 RENDERABLE_STR_BUF_SIZE :: 1023
 
@@ -58,7 +58,7 @@ Rendering_State :: struct {
 	batch_slot_verts:        [BATCH_SLOT_CNT][BATCH_SLOT_VERT_CNT]f32,
 	batch_tex_gl_id:         u32,
 	surf_shader_prog_gl_id:  u32, // When a surface is rendered, this shader program is used.
-	surf_index_stack:        [RENDER_SURFACE_LIMIT]int,
+	surf_index_stack:        [SURFACE_LIMIT]int,
 	surf_index_stack_height: int,
 	view_mat:                Matrix_4x4,
 }
@@ -111,8 +111,8 @@ Batch_GL_IDs :: struct {
 }
 
 Render_Surfaces :: struct {
-	framebuffer_gl_ids:     [RENDER_SURFACE_LIMIT]u32,
-	framebuffer_tex_gl_ids: [RENDER_SURFACE_LIMIT]u32,
+	framebuffer_gl_ids:     [SURFACE_LIMIT]u32,
+	framebuffer_tex_gl_ids: [SURFACE_LIMIT]u32,
 }
 
 Shader_Prog_Uniform_Value :: union {
@@ -210,8 +210,8 @@ gen_pers_render_data :: proc(display_size: Vec_2D_I) -> (Pers_Render_Data, bool)
 clean_pers_render_data :: proc(render_data: ^Pers_Render_Data) {
 	gl.DeleteTextures(1, &render_data.px_tex_gl_id)
 
-	gl.DeleteFramebuffers(RENDER_SURFACE_LIMIT, &render_data.surfs.framebuffer_gl_ids[0])
-	gl.DeleteTextures(RENDER_SURFACE_LIMIT, &render_data.surfs.framebuffer_tex_gl_ids[0])
+	gl.DeleteFramebuffers(SURFACE_LIMIT, &render_data.surfs.framebuffer_gl_ids[0])
+	gl.DeleteTextures(SURFACE_LIMIT, &render_data.surfs.framebuffer_tex_gl_ids[0])
 
 	gl.DeleteVertexArrays(1, &render_data.batch_gl_ids.vert_array_gl_id)
 	gl.DeleteBuffers(1, &render_data.batch_gl_ids.vert_buf_gl_id)
@@ -226,10 +226,10 @@ init_surfaces :: proc(surfs: ^Render_Surfaces, display_size: Vec_2D_I) -> bool {
 	assert(mem.check_zero_ptr(surfs, size_of(surfs^)))
 	assert(display_size.x > 0 && display_size.y > 0)
 
-	gl.GenFramebuffers(RENDER_SURFACE_LIMIT, &surfs.framebuffer_gl_ids[0])
-	gl.GenTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+	gl.GenFramebuffers(SURFACE_LIMIT, &surfs.framebuffer_gl_ids[0])
+	gl.GenTextures(SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
 
-	for i in 0 ..< RENDER_SURFACE_LIMIT {
+	for i in 0 ..< SURFACE_LIMIT {
 		if !attach_framebuffer_texture(
 			surfs.framebuffer_gl_ids[i],
 			surfs.framebuffer_tex_gl_ids[i],
@@ -245,10 +245,10 @@ init_surfaces :: proc(surfs: ^Render_Surfaces, display_size: Vec_2D_I) -> bool {
 resize_surfaces :: proc(surfs: ^Render_Surfaces, window_size: Vec_2D_I) -> bool {
 	assert(window_size.x > 0 && window_size.y > 0)
 
-	gl.DeleteTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
-	gl.GenTextures(RENDER_SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+	gl.DeleteTextures(SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
+	gl.GenTextures(SURFACE_LIMIT, &surfs.framebuffer_tex_gl_ids[0])
 
-	for i in 0 ..< RENDER_SURFACE_LIMIT {
+	for i in 0 ..< SURFACE_LIMIT {
 		if (!attach_framebuffer_texture(
 				   surfs.framebuffer_gl_ids[i],
 				   surfs.framebuffer_tex_gl_ids[i],
@@ -1028,8 +1028,8 @@ render_bar_hor :: proc(
 set_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
 	// NOTE: Should flushing be a prerequisite to this?
 
-	assert(surf_index >= 0 && surf_index < RENDER_SURFACE_LIMIT)
-	assert(rendering_context.state.surf_index_stack_height < RENDER_SURFACE_LIMIT)
+	assert(surf_index >= 0 && surf_index < SURFACE_LIMIT)
+	assert(rendering_context.state.surf_index_stack_height < SURFACE_LIMIT)
 
 	// Add the surface index to the stack.
 	rendering_context.state.surf_index_stack[rendering_context.state.surf_index_stack_height] =
@@ -1101,7 +1101,7 @@ set_surface_shader_prog_uniform :: proc(
 }
 
 render_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
-	assert(surf_index >= 0 && surf_index < RENDER_SURFACE_LIMIT)
+	assert(surf_index >= 0 && surf_index < SURFACE_LIMIT)
 	assert(
 		rendering_context.state.surf_shader_prog_gl_id != 0,
 		"Surface shader program must be set before rendering a surface!",
