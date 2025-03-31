@@ -77,6 +77,70 @@ calc_rect_i_bottom :: proc(rect: Rect_I) -> int {
 	return rect.y + rect.height
 }
 
+calc_rect_top_center :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + (rect.width / 2.0), rect.y}
+}
+
+calc_rect_i_top_center :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + (rect.width / 2), rect.y}
+}
+
+calc_rect_top_right :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + rect.width, rect.y}
+}
+
+calc_rect_i_top_right :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + rect.width, rect.y}
+}
+
+calc_rect_center_left :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x, rect.y + (rect.height / 2.0)}
+}
+
+calc_rect_i_center_left :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x, rect.y + (rect.height / 2)}
+}
+
+calc_rect_center :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + (rect.width / 2.0), rect.y + (rect.height / 2.0)}
+}
+
+calc_rect_i_center :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + (rect.width / 2), rect.y + (rect.height / 2)}
+}
+
+calc_rect_center_right :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + rect.width, rect.y + (rect.height / 2.0)}
+}
+
+calc_rect_i_center_right :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + rect.width, rect.y + (rect.height / 2)}
+}
+
+calc_rect_bottom_left :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x, rect.y + rect.height}
+}
+
+calc_rect_i_bottom_left :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x, rect.y + rect.height}
+}
+
+calc_rect_bottom_center :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + (rect.width / 2.0), rect.y + rect.height}
+}
+
+calc_rect_i_bottom_center :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + (rect.width / 2), rect.y + rect.height}
+}
+
+calc_rect_bottom_right :: proc(rect: Rect) -> Vec_2D {
+	return {rect.x + rect.width, rect.y + rect.height}
+}
+
+calc_rect_i_bottom_right :: proc(rect: Rect_I) -> Vec_2D_I {
+	return {rect.x + rect.width, rect.y + rect.height}
+}
+
 translate_rect :: proc(rect: ^Rect, trans: Vec_2D) {
 	assert(rect != nil)
 	rect.x += trans.x
