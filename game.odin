@@ -63,6 +63,7 @@ Game_Render_Func_Data :: struct {
 	shader_progs:      ^Shader_Progs,
 }
 
+
 Window_State :: struct {
 	pos:        Vec_2D_I,
 	size:       Vec_2D_I,
@@ -75,6 +76,95 @@ Window_Flag :: enum {
 }
 
 Window_Flag_Set :: bit_set[Window_Flag]
+
+Key_Code :: enum {
+	None,
+	Space,
+	Num_0,
+	Num_1,
+	Num_2,
+	Num_3,
+	Num_4,
+	Num_5,
+	Num_6,
+	Num_7,
+	Num_8,
+	Num_9,
+	A,
+	B,
+	C,
+	D,
+	E,
+	F,
+	G,
+	H,
+	I,
+	J,
+	K,
+	L,
+	M,
+	N,
+	O,
+	P,
+	Q,
+	R,
+	S,
+	T,
+	U,
+	V,
+	W,
+	X,
+	Y,
+	Z,
+	Escape,
+	Enter,
+	Tab,
+	Right,
+	Left,
+	Down,
+	Up,
+	F1,
+	F2,
+	F3,
+	F4,
+	F5,
+	F6,
+	F7,
+	F8,
+	F9,
+	F10,
+	F11,
+	F12,
+	Left_Shift,
+	Left_Control,
+	Left_Alt,
+	Right_Shift,
+	Right_Control,
+	Right_Alt,
+}
+
+Mouse_Button_Code :: enum {
+	None,
+	Left,
+	Right,
+	Middle,
+}
+
+Input_State :: struct {
+	keys_down:          Keys_Down_Set,
+	mouse_buttons_down: Mouse_Buttons_Down_Set,
+	mouse_pos:          Vec_2D,
+	mouse_scroll:       Mouse_Scroll_State,
+}
+
+Keys_Down_Set :: bit_set[Key_Code]
+Mouse_Buttons_Down_Set :: bit_set[Mouse_Button_Code]
+
+Mouse_Scroll_State :: enum {
+	No_Scroll,
+	Down,
+	Up,
+}
 
 run_game :: proc(info: Game_Info) -> bool {
 	// TODO: Assert correctness of game information data.
@@ -136,7 +226,7 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	glfw.MakeContextCurrent(glfw_window)
 
-	glfw.SwapInterval(1)
+	glfw.SwapInterval(1) // Enables VSync.
 
 	if info.window_min_size != {} {
 		glfw.SetWindowSizeLimits(
@@ -223,7 +313,196 @@ run_game :: proc(info: Game_Info) -> bool {
 	defer info.clean_func(user_mem)
 
 	//
-	input_state := load_input_state(glfw_window)
+	input_state: Input_State
+
+	glfw.SetWindowUserPointer(glfw_window, &input_state)
+	glfw.SetKeyCallback(
+		glfw_window,
+		proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: c.int) {
+			input_state := (^Input_State)(glfw.GetWindowUserPointer(window))
+
+			key_code: Key_Code
+
+			switch key {
+			case glfw.KEY_SPACE:
+				key_code = Key_Code.Space
+			case glfw.KEY_0:
+				key_code = Key_Code.Num_0
+			case glfw.KEY_1:
+				key_code = Key_Code.Num_1
+			case glfw.KEY_2:
+				key_code = Key_Code.Num_2
+			case glfw.KEY_3:
+				key_code = Key_Code.Num_3
+			case glfw.KEY_4:
+				key_code = Key_Code.Num_4
+			case glfw.KEY_5:
+				key_code = Key_Code.Num_5
+			case glfw.KEY_6:
+				key_code = Key_Code.Num_6
+			case glfw.KEY_7:
+				key_code = Key_Code.Num_7
+			case glfw.KEY_8:
+				key_code = Key_Code.Num_8
+			case glfw.KEY_9:
+				key_code = Key_Code.Num_9
+
+			case glfw.KEY_A:
+				key_code = Key_Code.A
+			case glfw.KEY_B:
+				key_code = Key_Code.B
+			case glfw.KEY_C:
+				key_code = Key_Code.C
+			case glfw.KEY_D:
+				key_code = Key_Code.D
+			case glfw.KEY_E:
+				key_code = Key_Code.E
+			case glfw.KEY_F:
+				key_code = Key_Code.F
+			case glfw.KEY_G:
+				key_code = Key_Code.G
+			case glfw.KEY_H:
+				key_code = Key_Code.H
+			case glfw.KEY_I:
+				key_code = Key_Code.I
+			case glfw.KEY_J:
+				key_code = Key_Code.J
+			case glfw.KEY_K:
+				key_code = Key_Code.K
+			case glfw.KEY_L:
+				key_code = Key_Code.L
+			case glfw.KEY_M:
+				key_code = Key_Code.M
+			case glfw.KEY_N:
+				key_code = Key_Code.N
+			case glfw.KEY_O:
+				key_code = Key_Code.O
+			case glfw.KEY_P:
+				key_code = Key_Code.P
+			case glfw.KEY_Q:
+				key_code = Key_Code.Q
+			case glfw.KEY_R:
+				key_code = Key_Code.R
+			case glfw.KEY_S:
+				key_code = Key_Code.S
+			case glfw.KEY_T:
+				key_code = Key_Code.T
+			case glfw.KEY_U:
+				key_code = Key_Code.U
+			case glfw.KEY_V:
+				key_code = Key_Code.V
+			case glfw.KEY_W:
+				key_code = Key_Code.W
+			case glfw.KEY_X:
+				key_code = Key_Code.X
+			case glfw.KEY_Y:
+				key_code = Key_Code.Y
+			case glfw.KEY_Z:
+				key_code = Key_Code.Z
+
+			case glfw.KEY_ESCAPE:
+				key_code = Key_Code.Escape
+			case glfw.KEY_ENTER:
+				key_code = Key_Code.Enter
+			case glfw.KEY_TAB:
+				key_code = Key_Code.Tab
+
+			case glfw.KEY_RIGHT:
+				key_code = Key_Code.Right
+			case glfw.KEY_LEFT:
+				key_code = Key_Code.Left
+			case glfw.KEY_DOWN:
+				key_code = Key_Code.Down
+			case glfw.KEY_UP:
+				key_code = Key_Code.Up
+
+			case glfw.KEY_F1:
+				key_code = Key_Code.F1
+			case glfw.KEY_F2:
+				key_code = Key_Code.F2
+			case glfw.KEY_F3:
+				key_code = Key_Code.F3
+			case glfw.KEY_F4:
+				key_code = Key_Code.F4
+			case glfw.KEY_F5:
+				key_code = Key_Code.F5
+			case glfw.KEY_F6:
+				key_code = Key_Code.F6
+			case glfw.KEY_F7:
+				key_code = Key_Code.F7
+			case glfw.KEY_F8:
+				key_code = Key_Code.F8
+			case glfw.KEY_F9:
+				key_code = Key_Code.F9
+			case glfw.KEY_F10:
+				key_code = Key_Code.F10
+			case glfw.KEY_F11:
+				key_code = Key_Code.F11
+			case glfw.KEY_F12:
+				key_code = Key_Code.F12
+
+			case glfw.KEY_LEFT_SHIFT:
+				key_code = Key_Code.Left_Shift
+			case glfw.KEY_LEFT_CONTROL:
+				key_code = Key_Code.Left_Control
+			case glfw.KEY_LEFT_ALT:
+				key_code = Key_Code.Left_Alt
+
+			case glfw.KEY_RIGHT_SHIFT:
+				key_code = Key_Code.Right_Shift
+			case glfw.KEY_RIGHT_CONTROL:
+				key_code = Key_Code.Right_Control
+			case glfw.KEY_RIGHT_ALT:
+				key_code = Key_Code.Right_Alt
+
+			case:
+				return
+			}
+
+			if action == glfw.PRESS {
+				input_state.keys_down += {key_code}
+			} else if action == glfw.RELEASE {
+				input_state.keys_down -= {key_code}
+			}
+		},
+	)
+	glfw.SetMouseButtonCallback(
+		glfw_window,
+		proc "c" (window: glfw.WindowHandle, button, action, mods: c.int) {
+			input_state := (^Input_State)(glfw.GetWindowUserPointer(window))
+
+			mb_code: Mouse_Button_Code
+
+			switch button {
+			case glfw.MOUSE_BUTTON_LEFT:
+				mb_code = Mouse_Button_Code.Left
+			case glfw.MOUSE_BUTTON_RIGHT:
+				mb_code = Mouse_Button_Code.Right
+			case glfw.MOUSE_BUTTON_MIDDLE:
+				mb_code = Mouse_Button_Code.Middle
+			}
+
+			if action == glfw.PRESS {
+				input_state.mouse_buttons_down += {mb_code}
+			} else if action == glfw.RELEASE {
+				input_state.mouse_buttons_down -= {mb_code}
+			}
+		},
+	)
+	glfw.SetCursorPosCallback(glfw_window, proc "c" (window: glfw.WindowHandle, x, y: f64) {
+		input_state := (^Input_State)(glfw.GetWindowUserPointer(window))
+		input_state.mouse_pos = {f32(x), f32(y)}
+	})
+	glfw.SetScrollCallback(glfw_window, proc "c" (window: glfw.WindowHandle, offs_x, offs_y: f64) {
+		input_state := (^Input_State)(glfw.GetWindowUserPointer(window))
+
+		if offs_y == 0.0 {
+			input_state.mouse_scroll = Mouse_Scroll_State.No_Scroll
+		} else {
+			input_state.mouse_scroll =
+				offs_y > 0.0 ? Mouse_Scroll_State.Up : Mouse_Scroll_State.Down
+		}
+	})
 
 	{
 		func_data := Game_Init_Func_Data {
@@ -257,6 +536,8 @@ run_game :: proc(info: Game_Info) -> bool {
 	window_pos_fullscreen_switch_cache: Vec_2D_I
 	window_size_fullscreen_switch_cache: Vec_2D_I
 
+	input_state_last: Input_State
+
 	fmt.println("Entering the main loop...")
 
 	for (!glfw.WindowShouldClose(glfw_window)) {
@@ -270,9 +551,6 @@ run_game :: proc(info: Game_Info) -> bool {
 		frame_dur_accum += frame_dur
 
 		if frame_dur_accum >= TARG_TICK_DUR_SECS {
-			input_state_last := input_state // PROBLEM
-			input_state = load_input_state(glfw_window)
-
 			for frame_dur_accum >= TARG_TICK_DUR_SECS {
 				exit_game: bool
 
@@ -300,6 +578,9 @@ run_game :: proc(info: Game_Info) -> bool {
 
 				frame_dur_accum -= TARG_TICK_DUR_SECS
 			}
+
+			input_state_last = input_state
+			input_state.mouse_scroll = Mouse_Scroll_State.No_Scroll
 
 			begin_rendering(rendering_state)
 
@@ -399,5 +680,213 @@ load_window_state :: proc(glfw_window: glfw.WindowHandle) -> Window_State {
 		size = {int(width), int(height)},
 		fullscreen = glfw.GetWindowMonitor(glfw_window) != nil,
 	}
+}
+
+get_key_code_name :: proc(kc: Key_Code) -> string {
+	switch kc {
+	case Key_Code.None:
+		break
+
+	case Key_Code.Space:
+		return "Space"
+
+	case Key_Code.Num_0:
+		return "0"
+	case Key_Code.Num_1:
+		return "1"
+	case Key_Code.Num_2:
+		return "2"
+	case Key_Code.Num_3:
+		return "3"
+	case Key_Code.Num_4:
+		return "4"
+	case Key_Code.Num_5:
+		return "5"
+	case Key_Code.Num_6:
+		return "6"
+	case Key_Code.Num_7:
+		return "7"
+	case Key_Code.Num_8:
+		return "8"
+	case Key_Code.Num_9:
+		return "9"
+
+	case Key_Code.A:
+		return "A"
+	case Key_Code.B:
+		return "B"
+	case Key_Code.C:
+		return "C"
+	case Key_Code.D:
+		return "D"
+	case Key_Code.E:
+		return "E"
+	case Key_Code.F:
+		return "F"
+	case Key_Code.G:
+		return "G"
+	case Key_Code.H:
+		return "H"
+	case Key_Code.I:
+		return "I"
+	case Key_Code.J:
+		return "J"
+	case Key_Code.K:
+		return "K"
+	case Key_Code.L:
+		return "L"
+	case Key_Code.M:
+		return "M"
+	case Key_Code.N:
+		return "N"
+	case Key_Code.O:
+		return "O"
+	case Key_Code.P:
+		return "P"
+	case Key_Code.Q:
+		return "Q"
+	case Key_Code.R:
+		return "R"
+	case Key_Code.S:
+		return "S"
+	case Key_Code.T:
+		return "T"
+	case Key_Code.U:
+		return "U"
+	case Key_Code.V:
+		return "V"
+	case Key_Code.W:
+		return "W"
+	case Key_Code.X:
+		return "X"
+	case Key_Code.Y:
+		return "Y"
+	case Key_Code.Z:
+		return "Z"
+
+	case Key_Code.Escape:
+		return "Escape"
+	case Key_Code.Enter:
+		return "Enter"
+	case Key_Code.Tab:
+		return "Tab"
+
+	case Key_Code.Right:
+		return "Right"
+	case Key_Code.Left:
+		return "Left"
+	case Key_Code.Down:
+		return "Down"
+	case Key_Code.Up:
+		return "Up"
+
+	case Key_Code.F1:
+		return "F1"
+	case Key_Code.F2:
+		return "F2"
+	case Key_Code.F3:
+		return "F3"
+	case Key_Code.F4:
+		return "F4"
+	case Key_Code.F5:
+		return "F5"
+	case Key_Code.F6:
+		return "F6"
+	case Key_Code.F7:
+		return "F7"
+	case Key_Code.F8:
+		return "F8"
+	case Key_Code.F9:
+		return "F9"
+	case Key_Code.F10:
+		return "F10"
+	case Key_Code.F11:
+		return "F11"
+	case Key_Code.F12:
+		return "F12"
+
+	case Key_Code.Left_Shift:
+		return "Left Shift"
+	case Key_Code.Left_Control:
+		return "Left Control"
+	case Key_Code.Left_Alt:
+		return "Left Alt"
+
+	case Key_Code.Right_Shift:
+		return "Right Shift"
+	case Key_Code.Right_Control:
+		return "Right Control"
+	case Key_Code.Right_Alt:
+		return "Right Alt"
+	}
+
+	return ""
+}
+
+get_mouse_button_code_name :: proc(mbc: Mouse_Button_Code) -> string {
+	switch mbc {
+	case Mouse_Button_Code.None:
+		break
+
+	case Mouse_Button_Code.Left:
+		return "Left Mouse Button"
+	case Mouse_Button_Code.Right:
+		return "Right Mouse Button"
+	case Mouse_Button_Code.Middle:
+		return "Middle Mouse Button"
+	}
+
+	return ""
+}
+
+// TODO: Remove, maybe?
+is_key_down :: proc(key_code: Key_Code, input_state: ^Input_State) -> bool {
+	return key_code in input_state.keys_down
+}
+
+is_key_pressed :: proc(
+	key_code: Key_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return is_key_down(key_code, input_state) && !is_key_down(key_code, input_state_last)
+}
+
+is_key_released :: proc(
+	key_code: Key_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return !is_key_down(key_code, input_state) && is_key_down(key_code, input_state_last)
+}
+
+// TODO: Remove, maybe?
+is_mouse_button_down :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+) -> bool {
+	return mouse_button_code in input_state.mouse_buttons_down
+}
+
+is_mouse_button_pressed :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return(
+		is_mouse_button_down(mouse_button_code, input_state) &&
+		!is_mouse_button_down(mouse_button_code, input_state_last) \
+	)
+}
+
+is_mouse_button_released :: proc(
+	mouse_button_code: Mouse_Button_Code,
+	input_state: ^Input_State,
+	input_state_last: ^Input_State,
+) -> bool {
+	return(
+		!is_mouse_button_down(mouse_button_code, input_state) &&
+		is_mouse_button_down(mouse_button_code, input_state_last) \
+	)
 }
 
