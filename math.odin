@@ -37,6 +37,10 @@ Poly :: struct {
 	pts: []Vec_2D,
 }
 
+to_vec_2d :: proc(vec: Vec_2D_I) -> Vec_2D {
+	return {f32(vec.x), f32(vec.y)}
+}
+
 is_size :: proc(vec: Vec_2D) -> bool {
 	return vec.x >= 0.0 && vec.y >= 0.0
 }
