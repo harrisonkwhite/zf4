@@ -2,6 +2,7 @@ package zf4
 
 import "core:c"
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import "core:strings"
 
@@ -31,7 +32,7 @@ Game_Info :: struct {
 	shader_prog_index_to_file_paths_func: Shader_Prog_Index_To_File_Paths,
 	init_func:                            proc(func_data: ^Game_Init_Func_Data) -> bool,
 	tick_func:                            proc(func_data: ^Game_Tick_Func_Data) -> bool,
-	draw_func:                            proc(func_data: ^Game_Render_Func_Data) -> bool,
+	render_func:                          proc(func_data: ^Game_Render_Func_Data) -> bool,
 	clean_func:                           proc(user_mem: rawptr),
 }
 
@@ -166,8 +167,39 @@ Mouse_Scroll_State :: enum {
 	Up,
 }
 
-run_game :: proc(info: Game_Info) -> bool {
-	// TODO: Assert correctness of game information data.
+assert_game_info_validity :: proc(info: ^Game_Info) {
+	assert(info.perm_mem_arena_size > 0)
+
+	assert(info.user_mem_size >= 0)
+	assert(info.user_mem_alignment > 0 && math.is_power_of_two(info.user_mem_alignment))
+
+	assert(info.window_init_size.x > 0 && info.window_init_size.y > 0)
+	assert(
+		info.window_min_size == {} || (info.window_min_size.x > 0 && info.window_min_size.y > 0),
+	)
+
+	assert(
+		(info.tex_cnt == 0 && info.tex_index_to_file_path_func == nil) ||
+		(info.tex_cnt > 0 && info.tex_index_to_file_path_func != nil),
+	)
+
+	assert(
+		(info.font_cnt == 0 && info.font_index_to_load_info_func == nil) ||
+		(info.font_cnt > 0 && info.font_index_to_load_info_func != nil),
+	)
+
+	assert(
+		(info.shader_prog_cnt == 0 && info.shader_prog_index_to_file_paths_func == nil) ||
+		(info.shader_prog_cnt > 0 && info.shader_prog_index_to_file_paths_func != nil),
+	)
+
+	assert(info.init_func != nil)
+	assert(info.tick_func != nil)
+	assert(info.render_func != nil)
+}
+
+run_game :: proc(info: ^Game_Info) -> bool {
+	assert_game_info_validity(info)
 
 	//
 	// Initialisation
@@ -310,7 +342,9 @@ run_game :: proc(info: Game_Info) -> bool {
 
 	defer mem.free(user_mem, perm_mem_arena_allocator)
 
-	defer info.clean_func(user_mem)
+	if info.clean_func != nil {
+		defer info.clean_func(user_mem)
+	}
 
 	//
 	input_state: Input_State
@@ -598,7 +632,7 @@ run_game :: proc(info: Game_Info) -> bool {
 					display_size = window_state_cache.size,
 				}
 
-				if !info.draw_func(&func_data) {
+				if !info.render_func(&func_data) {
 					return false
 				}
 
