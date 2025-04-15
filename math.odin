@@ -29,10 +29,6 @@ Rect_Edges :: struct {
 	bottom: f32,
 }
 
-Matrix_4x4 :: struct {
-	elems: [4][4]f32,
-}
-
 Poly :: struct {
 	pts: []Vec_2D,
 }
@@ -225,16 +221,17 @@ calc_len_dir :: proc(len: f32, dir: f32) -> Vec_2D {
 	return {math.cos(dir), -math.sin(dir)} * len
 }
 
-init_iden_matrix_4x4 :: proc(mat: ^Matrix_4x4) {
-	mem.zero(mat, size_of(mat^))
-	mat.elems[0][0] = 1.0
-	mat.elems[1][1] = 1.0
-	mat.elems[2][2] = 1.0
-	mat.elems[3][3] = 1.0
+init_iden_matrix_4x4 :: proc(mat: ^matrix[4, 4]f32) {
+	assert(mem.check_zero_ptr(mat, size_of(mat^)))
+
+	mat[0][0] = 1.0
+	mat[1][1] = 1.0
+	mat[2][2] = 1.0
+	mat[3][3] = 1.0
 }
 
 init_ortho_matrix_4x4 :: proc(
-	mat: ^Matrix_4x4,
+	mat: ^matrix[4, 4]f32,
 	left: f32,
 	right: f32,
 	bottom: f32,
@@ -242,14 +239,15 @@ init_ortho_matrix_4x4 :: proc(
 	near: f32,
 	far: f32,
 ) {
-	mem.zero(mat, size_of(mat^))
-	mat.elems[0][0] = 2.0 / (right - left)
-	mat.elems[1][1] = 2.0 / (top - bottom)
-	mat.elems[2][2] = -2.0 / (far - near)
-	mat.elems[3][0] = -(right + left) / (right - left)
-	mat.elems[3][1] = -(top + bottom) / (top - bottom)
-	mat.elems[3][2] = -(far + near) / (far - near)
-	mat.elems[3][3] = 1.0
+	assert(mem.check_zero_ptr(mat, size_of(mat^)))
+
+	mat[0][0] = 2.0 / (right - left)
+	mat[1][1] = 2.0 / (top - bottom)
+	mat[2][2] = -2.0 / (far - near)
+	mat[3][0] = -(right + left) / (right - left)
+	mat[3][1] = -(top + bottom) / (top - bottom)
+	mat[3][2] = -(far + near) / (far - near)
+	mat[3][3] = 1.0
 }
 
 alloc_quad_poly :: proc(
@@ -364,29 +362,4 @@ project_pts :: proc(pts: []Vec_2D, edge: Vec_2D) -> (f32, f32) {
 
 	return min, max
 }
-
-/*
-poly_left :: proc(poly: Poly) -> f32 {
-
-}
-
-poly_right :: proc(poly: Poly) -> f32 {
-
-}
-
-poly_top :: proc(poly: Poly) -> f32 {
-
-}
-
-poly_bottom :: proc(poly: Poly) -> f32 {
-
-}
-
-is_poly_quad :: proc(poly: Poly) -> bool {
-
-}
-
-is_poly_quad_non_rot :: proc(poly: Poly) -> bool {
-
-}*/
 

@@ -60,7 +60,7 @@ Rendering_State :: struct {
 	surf_shader_prog_gl_id:  u32, // When a surface is rendered, this shader program is used.
 	surf_index_stack:        [SURFACE_LIMIT]int,
 	surf_index_stack_height: int,
-	view_mat:                Matrix_4x4,
+	view_mat:                matrix[4, 4]f32,
 }
 
 Textures :: struct {
@@ -121,7 +121,7 @@ Shader_Prog_Uniform_Value :: union {
 	Vec_2D,
 	Vec_3D,
 	Vec_4D,
-	Matrix_4x4,
+	matrix[4, 4]f32,
 }
 
 Str_Hor_Align :: enum {
@@ -1083,7 +1083,7 @@ set_surface_shader_prog_uniform :: proc(
 	loc := gl.GetUniformLocation(rendering_context.state.surf_shader_prog_gl_id, name_c_str)
 	assert(loc != -1, "Failed to get location of shader uniform!")
 
-	switch v in val {
+	switch &v in val {
 	case i32:
 		gl.Uniform1i(loc, v)
 	case f32:
@@ -1094,9 +1094,8 @@ set_surface_shader_prog_uniform :: proc(
 		gl.Uniform3f(loc, v.x, v.y, v.z)
 	case Vec_4D:
 		gl.Uniform4f(loc, v.x, v.y, v.z, v.w)
-	case Matrix_4x4:
-		elems := v.elems
-		gl.UniformMatrix4fv(loc, 1, false, &elems[0][0])
+	case matrix[4, 4]f32:
+		gl.UniformMatrix4fv(loc, 1, false, &v[0][0])
 	}
 }
 
@@ -1137,7 +1136,7 @@ flush :: proc(rendering_context: ^Rendering_Context) {
 
 	gl.UseProgram(prog.gl_id)
 
-	proj_mat: Matrix_4x4
+	proj_mat: matrix[4, 4]f32
 	init_ortho_matrix_4x4(
 		&proj_mat,
 		0.0,
@@ -1148,12 +1147,12 @@ flush :: proc(rendering_context: ^Rendering_Context) {
 		1.0,
 	)
 
-	gl.UniformMatrix4fv(i32(prog.proj_uniform_loc), 1, false, &proj_mat.elems[0][0])
+	gl.UniformMatrix4fv(i32(prog.proj_uniform_loc), 1, false, &proj_mat[0][0])
 	gl.UniformMatrix4fv(
 		i32(prog.view_uniform_loc),
 		1,
 		false,
-		&rendering_context.state.view_mat.elems[0][0],
+		&rendering_context.state.view_mat[0][0],
 	)
 
 	gl.BindTexture(gl.TEXTURE_2D, rendering_context.state.batch_tex_gl_id)
