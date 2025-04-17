@@ -221,26 +221,24 @@ calc_len_dir :: proc(len: f32, dir: f32) -> Vec_2D {
 	return {math.cos(dir), -math.sin(dir)} * len
 }
 
-init_iden_matrix_4x4 :: proc(mat: ^matrix[4, 4]f32) {
-	assert(mem.check_zero_ptr(mat, size_of(mat^)))
-
+gen_iden_matrix_4x4 :: proc() -> matrix[4, 4]f32 {
+	mat: matrix[4, 4]f32
 	mat[0][0] = 1.0
 	mat[1][1] = 1.0
 	mat[2][2] = 1.0
 	mat[3][3] = 1.0
+	return mat
 }
 
-init_ortho_matrix_4x4 :: proc(
-	mat: ^matrix[4, 4]f32,
+gen_ortho_matrix_4x4 :: proc(
 	left: f32,
 	right: f32,
 	bottom: f32,
 	top: f32,
 	near: f32,
 	far: f32,
-) {
-	assert(mem.check_zero_ptr(mat, size_of(mat^)))
-
+) -> matrix[4, 4]f32 {
+	mat: matrix[4, 4]f32
 	mat[0][0] = 2.0 / (right - left)
 	mat[1][1] = 2.0 / (top - bottom)
 	mat[2][2] = -2.0 / (far - near)
@@ -248,6 +246,7 @@ init_ortho_matrix_4x4 :: proc(
 	mat[3][1] = -(top + bottom) / (top - bottom)
 	mat[3][2] = -(far + near) / (far - near)
 	mat[3][3] = 1.0
+	return mat
 }
 
 alloc_quad_poly :: proc(

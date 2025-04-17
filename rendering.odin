@@ -790,7 +790,10 @@ unload_shader_progs :: proc(progs: ^Shader_Progs) {
 
 begin_rendering :: proc(state: ^Rendering_State) {
 	mem.zero_item(state)
-	init_iden_matrix_4x4(&state.view_mat)
+	state.view_mat[0][0] = 1.0
+	state.view_mat[1][1] = 1.0
+	state.view_mat[2][2] = 1.0
+	state.view_mat[3][3] = 1.0
 }
 
 render_clear :: proc(col := Vec_4D{}) {
@@ -1136,9 +1139,7 @@ flush :: proc(rendering_context: ^Rendering_Context) {
 
 	gl.UseProgram(prog.gl_id)
 
-	proj_mat: matrix[4, 4]f32
-	init_ortho_matrix_4x4(
-		&proj_mat,
+	proj_mat := gen_ortho_matrix_4x4(
 		0.0,
 		f32(rendering_context.display_size.x),
 		f32(rendering_context.display_size.y),

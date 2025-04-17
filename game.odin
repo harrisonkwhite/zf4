@@ -64,7 +64,6 @@ Game_Render_Func_Data :: struct {
 	shader_progs:      ^Shader_Progs,
 }
 
-
 Window_State :: struct {
 	pos:        Vec_2D_I,
 	size:       Vec_2D_I,
