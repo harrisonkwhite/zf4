@@ -954,6 +954,7 @@ render_str :: proc(
 }
 
 render_rect :: proc(rendering_context: ^Rendering_Context, rect: Rect, blend := WHITE) {
+	assert(rect.width > 0.0 && rect.height > 0.0)
 	assert(is_color_valid_4d(blend))
 
 	render(
@@ -966,6 +967,39 @@ render_rect :: proc(rendering_context: ^Rendering_Context, rect: Rect, blend := 
 		0.0,
 		blend,
 	)
+}
+
+render_rect_outline :: proc(
+	rendering_context: ^Rendering_Context,
+	rect: Rect,
+	blend := WHITE,
+	thickness: f32 = 1.0,
+) {
+	assert(rect.width > 0.0 && rect.height > 0.0)
+	assert(is_color_valid_4d(blend))
+
+	outline_top_rect := Rect {
+		rect.x - thickness,
+		rect.y - thickness,
+		thickness + rect.width,
+		thickness,
+	}
+
+	outline_right_rect := Rect {
+		rect.x + rect.width,
+		rect.y - thickness,
+		thickness,
+		thickness + rect.height,
+	}
+
+	outline_bottom_rect := Rect{rect.x, rect.y + rect.height, rect.width + thickness, thickness}
+
+	outline_left_rect := Rect{rect.x - thickness, rect.y, thickness, rect.height + thickness}
+
+	render_rect(rendering_context, outline_top_rect)
+	render_rect(rendering_context, outline_right_rect)
+	render_rect(rendering_context, outline_bottom_rect)
+	render_rect(rendering_context, outline_left_rect)
 }
 
 render_line :: proc(
@@ -1021,11 +1055,22 @@ render_bar_hor :: proc(
 	assert(is_color_valid_3d(col_front))
 	assert(is_color_valid_3d(col_back))
 
-	left_rect := Rect{rect.x, rect.y, rect.width * perc, rect.height}
-	render_rect(rendering_context, left_rect, {col_front.r, col_front.g, col_front.b, 1.0})
+	left_rect := Rect{rect.x, rect.y, 0.0, rect.height}
 
-	right_rect := Rect{rect.x + left_rect.width, rect.y, rect.width - left_rect.width, rect.height}
-	render_rect(rendering_context, right_rect, {col_back.r, col_back.g, col_back.b, 1.0})
+	if perc > 0.0 {
+		left_rect.width = rect.width * perc
+		render_rect(rendering_context, left_rect, {col_front.r, col_front.g, col_front.b, 1.0})
+	}
+
+	if perc < 1.0 {
+		right_rect := Rect {
+			rect.x + left_rect.width,
+			rect.y,
+			rect.width - left_rect.width,
+			rect.height,
+		}
+		render_rect(rendering_context, right_rect, {col_back.r, col_back.g, col_back.b, 1.0})
+	}
 }
 
 set_surface :: proc(rendering_context: ^Rendering_Context, surf_index: int) {
